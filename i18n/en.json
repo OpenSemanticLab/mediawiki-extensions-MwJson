@@ -2,6 +2,6 @@
 	"@metadata": {
 		"authors": ["Simon Stier"]
 	},
-	"template-editor-desc": "Template for mediawiki extensions",
-	"template-editor-name": "Template"
+	"template-desc": "Template for mediawiki extensions",
+	"template-name": "Template"
 }
