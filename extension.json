@@ -1,40 +1,40 @@
 {
     "manifest_version":2,
-    "name":"Template",
+    "name":"TemplateJsonApi",
     "version":"0.0.1",
     "author":[
         "[https://github.com/simontaurus Simon Stier]"
     ],
-    "url":"https://github.com/simontaurus/mediawiki-extensions-Template",
-    "descriptionmsg":"template-desc",
-    "namemsg":"template-name",
+    "url":"https://github.com/simontaurus/mediawiki-extensions-TemplateJsonApi",
+    "descriptionmsg":"template-json-api-desc",
+    "namemsg":"template-json-api-name",
     "license-name":"AGPL-3.0-or-later",
     "type":"editor",
     "requires":{
         "MediaWiki":">= 1.31"
     },
     "MessagesDirs":{
-        "Template":[
+        "TemplateJsonApi":[
             "i18n"
         ]
     },
     "ResourceModules":{
-        "ext.Template":{
-            "localBasePath":"modules/ext.Template",
-            "remoteExtPath":"Template/modules/ext.Template",
+        "ext.TemplateJsonApi":{
+            "localBasePath":"modules/ext.TemplateJsonApi",
+            "remoteExtPath":"TemplateJsonApi/modules/ext.TemplateJsonApi",
             "styles":[
-                "Template.css"
+                "TemplateJsonApi.css"
             ],
             "scripts":[
-                "Template.js"
+                "TemplateJsonApi.js"
             ],
             "position":"bottom"
         }
     },
     "AutoloadClasses":{
-        "Template":"includes/Template.php"
+        "TemplateJsonApi":"includes/TemplateJsonApi.php"
     },
     "Hooks":{
-        "BeforePageDisplay":"Template::onBeforePageDisplay"
+        "BeforePageDisplay":"TemplateJsonApi::onBeforePageDisplay"
     }
 }

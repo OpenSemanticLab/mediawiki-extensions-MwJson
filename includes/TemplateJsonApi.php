@@ -1,10 +1,10 @@
 <?php
 
-class Template {
+class TemplateJsonApi {
 
 	public static function onBeforePageDisplay( $out ) {
 
-		$out->addModules( 'ext.Template' );
+		$out->addModules( 'ext.TemplateJsonApi' );
 
 		return true;
 
