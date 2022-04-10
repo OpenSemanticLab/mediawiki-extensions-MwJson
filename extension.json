@@ -29,6 +29,30 @@
                 "MwJson.js"
             ],
             "position":"bottom"
+        },
+        "ext.MwJson.util":{
+            "localBasePath":"modules/ext.MwJson.util",
+            "remoteExtPath":"MwJson/modules/ext.MwJson.util",
+            "scripts":[
+                "MwJson_util.js"
+            ],
+            "position":"bottom"
+        },
+        "ext.MwJson.api":{
+            "localBasePath":"modules/ext.MwJson.api",
+            "remoteExtPath":"MwJson/modules/ext.MwJson.api",
+            "scripts":[
+                "MwJson.js"
+            ],
+            "position":"bottom"
+        },
+        "ext.MwJson.editor":{
+            "localBasePath":"modules/ext.MwJson.editor",
+            "remoteExtPath":"MwJson/modules/ext.MwJson.editor",
+            "scripts":[
+                "MwJson_editor.js"
+            ],
+            "position":"bottom"
         }
     },
     "AutoloadClasses":{
