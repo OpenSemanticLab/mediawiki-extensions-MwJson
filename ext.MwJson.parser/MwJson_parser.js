@@ -1,5 +1,91 @@
 mwjson.parser = class {
 	constructor() {
+
+	}
+	
+	static getTemplateNameWithNamespace(page, template) {
+	    text = page.wikitext;
+	    regex = new RegExp("([a-zA-Z]+):" + template.replace(/\//g,'\\/'));
+	    res = text.match(regex);
+	    if (res) return res[1] + ":" + template;
+	    else return template;
+	}
+
+
+	static parseTemplateStructureRecursionFlat(page, template, debug = false) {
+	    if (template.name === undefined) {
+		if (debug) console.log("text " +  template);
+			return template.toString();
+	    }
+	    else if (debug) {
+			console.log("template " +  template.page_title); 
+			//for (const key in template){ console.log("key " + key + " value " + template[key]);}
+	    }
+	    var result = {};
+		var root = {};
+		for (const key in template.parameters){
+			if (typeof template.parameters[key] === 'string') {
+			    root[key] = template.parameters[key];
+			    if (debug) console.log("key " +  key + " = " + root[key] + " (string)");
+			}
+			else {
+				if (template.parameters[key].type === 'transclusion') {
+					root[key] = mwjson.parser.parseTemplateStructureRecursionFlat(page, template.parameters[key], debug);
+					if (debug) console.log("key " +  key + " = " + root[key] + " (transclusion / single template)");
+				}
+				if (template.parameters[key].type === 'plain') {
+				    if (debug) console.log("key " +  key + " (plain / template list)");
+					var params = [];
+					var i_template = 0;
+					var i = 0;
+					while(template.parameters[key][i_template]) {
+						//skip empty entries
+						if (Array.isArray(template.parameters[key][i_template])) {
+							//root[key][i] = parseTemplateStructureRecursionFlat(template.parameters[key][i_template]);
+							res = mwjson.parser.parseTemplateStructureRecursionFlat(page, template.parameters[key][i_template], debug);
+							//if (debug) console.log("res " +  i + " = " + stringifyObject(res));
+							//if (debug) console.log(res);
+							params.push(JSON.parse(JSON.stringify(res))); //clone obj
+							i += 1;
+						}
+						i_template += 1;
+					}
+					//if (debug) console.log("params " + stringifyObject(params));
+					root[key] = params;
+				}
+			}
+		}
+		if (debug) console.log(root);
+		result[mwjson.parser.getTemplateNameWithNamespace(page, template.name)] = root;
+		return result;
+	}
+	
+	static parsePage(page) {
+		const parsed = CeL.wiki.parser(page.content);
+		parsed.each('template', function(token, index, parent) { });
+		var data = [];
+		var i = 0;
+		var string_res = "";
+		while(parsed[i])
+		{
+		    //data[i] = {};
+		    //parseTemplateStructureRecursionFlat_old(data[i],parsed[i]);
+			var res = mwjson.parser.parseTemplateStructureRecursionFlat(page, parsed[i], debug = false);
+
+			//concat all plain text
+			if (typeof res === 'string') string_res += res;
+			else {
+			    if (string_res !== "") data.push(string_res);
+			    string_res = ""
+			    data.push(res);
+			    //console.log(stringifyObject(res));
+			}
+			//data[i] = parsed[i]
+			i += 1;
+		}
+		if (string_res !== "") data.push(string_res);
+		page.contentParsed = data;
+		return page;
 	}
 
 	static setWikitextFromContent(page)
@@ -60,3 +146,11 @@ mwjson.parser = class {
 		return wt
 	}
 }
+
+		window.CeL = { 
+			initializer: function() { 
+				CeL.run('application.net.wiki', function(){
+					console.log("parser init");
+				}); 
+			}
+		};	
