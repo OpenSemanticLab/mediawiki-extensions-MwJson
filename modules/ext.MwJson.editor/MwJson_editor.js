@@ -1,0 +1,4 @@
+mwjson.editor = class {
+	constructor() {
+	}
+}
