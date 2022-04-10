@@ -1,0 +1,4 @@
+mwjson.api = class {
+	constructor() {
+	}
+}
