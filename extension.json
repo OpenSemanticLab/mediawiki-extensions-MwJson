@@ -19,7 +19,7 @@
         ]
     },
     "ResourceModules":{
-        "ext.MwJson":{
+        "ext.mwjson":{
             "localBasePath":"modules/ext.MwJson",
             "remoteExtPath":"MwJson/modules/ext.MwJson",
             "styles":[
@@ -30,27 +30,36 @@
             ],
             "position":"bottom"
         },
-        "ext.MwJson.util":{
+        "ext.mwjson.util":{
             "localBasePath":"modules/ext.MwJson.util",
             "remoteExtPath":"MwJson/modules/ext.MwJson.util",
             "scripts":[
                 "MwJson_util.js"
             ],
-            "position":"bottom"
-        },
-        "ext.MwJson.api":{
-            "localBasePath":"modules/ext.MwJson.api",
-            "remoteExtPath":"MwJson/modules/ext.MwJson.api",
-            "scripts":[
-                "MwJson.js"
+            "dependencies": [
+                "ext.mwjson"
             ],
             "position":"bottom"
         },
-        "ext.MwJson.editor":{
+        "ext.mwjson.api":{
+            "localBasePath":"modules/ext.MwJson.api",
+            "remoteExtPath":"MwJson/modules/ext.MwJson.api",
+            "scripts":[
+                "MwJson_api.js"
+            ],
+            "dependencies": [
+                "ext.mwjson.util"
+            ],
+            "position":"bottom"
+        },
+        "ext.mwjson.editor":{
             "localBasePath":"modules/ext.MwJson.editor",
             "remoteExtPath":"MwJson/modules/ext.MwJson.editor",
             "scripts":[
                 "MwJson_editor.js"
+            ],
+            "dependencies": [
+                "ext.mwjson.api"
             ],
             "position":"bottom"
         }
