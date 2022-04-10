@@ -1,10 +1,10 @@
 <?php
 
-class TemplateJsonApi {
+class MwJson {
 
 	public static function onBeforePageDisplay( $out ) {
 
-		$out->addModules( 'ext.TemplateJsonApi' );
+		$out->addModules( 'ext.MwJson' );
 
 		return true;
 

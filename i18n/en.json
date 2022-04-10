@@ -2,6 +2,6 @@
 	"@metadata": {
 		"authors": ["Simon Stier"]
 	},
-	"template-json-api-desc": "Json Api for Mediawiki Templates",
-	"template-json-api-name": "TemplateJsonApi"
+	"mw-json-desc": "Json Api for Mediawiki Templates",
+	"mw-json-name": "MwJson"
 }
