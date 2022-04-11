@@ -52,7 +52,7 @@
             ],
             "position":"bottom"
         },
-		"ext.mwjson.parser":{
+        "ext.mwjson.parser":{
             "localBasePath":"modules/ext.MwJson.parser",
             "remoteExtPath":"MwJson/modules/ext.MwJson.parser",
             "scripts":[
@@ -67,12 +67,11 @@
             "localBasePath":"modules/ext.MwJson.editor",
             "remoteExtPath":"MwJson/modules/ext.MwJson.editor",
             "scripts":[
-				"ce.js"
                 "MwJson_editor.js"
             ],
             "dependencies": [
                 "ext.mwjson.api",
-				"ext.mwjson.parser"
+		"ext.mwjson.parser"
             ],
             "position":"bottom"
         }

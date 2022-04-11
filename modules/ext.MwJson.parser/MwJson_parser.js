@@ -3,10 +3,23 @@ mwjson.parser = class {
 
 	}
 	
+	static init() {
+		const deferred = $.Deferred();
+		if (!('ready' in mwjson.parser) || !mwjson.parser.ready) {
+			window.CeL = { initializer: function() { CeL.run('application.net.wiki', function(){
+				console.log("CeL ready");
+				mwjson.parser.ready = true;
+				deferred.resolve();
+			}); }};
+			$.getScript( "https://kanasimi.github.io/CeJS/ce.js" );
+		}
+		return deferred.promise(); 
+	}
+	
 	static getTemplateNameWithNamespace(page, template) {
-	    text = page.wikitext;
-	    regex = new RegExp("([a-zA-Z]+):" + template.replace(/\//g,'\\/'));
-	    res = text.match(regex);
+	    var text = page.content;
+	    var regex = new RegExp("([a-zA-Z]+):" + template.replace(/\//g,'\\/'));
+	    var res = text.match(regex);
 	    if (res) return res[1] + ":" + template;
 	    else return template;
 	}
@@ -42,7 +55,7 @@ mwjson.parser = class {
 						//skip empty entries
 						if (Array.isArray(template.parameters[key][i_template])) {
 							//root[key][i] = parseTemplateStructureRecursionFlat(template.parameters[key][i_template]);
-							res = mwjson.parser.parseTemplateStructureRecursionFlat(page, template.parameters[key][i_template], debug);
+							var res = mwjson.parser.parseTemplateStructureRecursionFlat(page, template.parameters[key][i_template], debug);
 							//if (debug) console.log("res " +  i + " = " + stringifyObject(res));
 							//if (debug) console.log(res);
 							params.push(JSON.parse(JSON.stringify(res))); //clone obj
@@ -61,6 +74,8 @@ mwjson.parser = class {
 	}
 	
 	static parsePage(page) {
+		console.log("parsePage");
+		console.log(CeL);
 		const parsed = CeL.wiki.parser(page.content);
 		parsed.each('template', function(token, index, parent) { });
 		var data = [];
@@ -70,13 +85,13 @@ mwjson.parser = class {
 		{
 		    //data[i] = {};
 		    //parseTemplateStructureRecursionFlat_old(data[i],parsed[i]);
-			var res = mwjson.parser.parseTemplateStructureRecursionFlat(page, parsed[i], debug = false);
+			var res = mwjson.parser.parseTemplateStructureRecursionFlat(page, parsed[i], false);
 
 			//concat all plain text
 			if (typeof res === 'string') string_res += res;
 			else {
 			    if (string_res !== "") data.push(string_res);
-			    string_res = ""
+			    string_res = "";
 			    data.push(res);
 			    //console.log(stringifyObject(res));
 			}
@@ -108,11 +123,11 @@ mwjson.parser = class {
 		var wt = "";
 		for (var key in d)
 		{
-			var value = d[key]
+			var value = d[key];
 			if (debug) console.log("key: " + key + ", valuetype:" + (typeof value) + ", value:" + value);
 			if (Array.isArray(value)) //handle first because arrays are also objects
 			{
-				if (debug) console.log("array")
+				if (debug) console.log("array");
 				wt += "\n|" + key + "=";
 				//var index = 0;
 				for (var index = 0; index < value.length; index++) {
@@ -132,25 +147,17 @@ mwjson.parser = class {
 			}
 			else if (typeof value == "object")
 			{
-				if (debug) console.log("dict")
+				if (debug) console.log("dict");
 				wt += "{{" + key;
 				wt += mwjson.parser.getWikitextFromWikipageTemplateKeyDict(value);
 				wt += "\n}}";
 			}
 
 			else {
-				if (debug) console.log("literal")
+				if (debug) console.log("literal");
 				wt += "\n|" + key + "=" + value;
 			}
 		}
-		return wt
+		return wt;
 	}
 }
-
-		window.CeL = { 
-			initializer: function() { 
-				CeL.run('application.net.wiki', function(){
-					console.log("parser init");
-				}); 
-			}
-		};	
