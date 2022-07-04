@@ -224,7 +224,7 @@ mwjson.parser = class {
 
 	static update_template_subparam_by_match(p, template, param_array_path, match, update) {
 		if (!Array.isArray(param_array_path)) param_array_path = [param_array_path];
-		var org_value = get_object(p.dict, [mwjson.parser.get_template_index(p, template), template].concat(param_array_path));
+		var org_value = mwjson.parser.get_object(p.dict, [mwjson.parser.get_template_index(p, template), template].concat(param_array_path));
 		//console.log(org_value);
 		if (!Array.isArray(org_value)) { //flat template
 			//console.log("flat template");
@@ -247,7 +247,11 @@ mwjson.parser = class {
 						}
 					}
 					if (allMatch) {
-						for (var subparam in update) org_value[index][param_template][subparam] = update[subparam];
+						if (!update || Object.keys(update).length === 0) {
+							console.log("Remove element");
+							org_value.splice(index, 1); //update is empty, remove complete
+						}
+						else for (var subparam in update) org_value[index][param_template][subparam] = update[subparam];
 					}
 				}
 			}
