@@ -109,7 +109,25 @@ mwjson.api = class {
 	static updatePage(page, summary = "") {
 		const deferred = $.Deferred();
 		const hasChangedFile = ('file' in page && page.file.changed);
-		if (page.changed) {
+		if (!page.exists) {
+			mwjson.api.createPage(page.title, page.content, summary).then( (data) => {
+				page.changed = false;
+				page.exists = true;
+				if (hasChangedFile) {
+					mwjson.api.uploadFile(page.file.contentBlob, page.file.name, summary).then( (data) => {
+						page.file.changed = false;
+						page.file.exists = true;
+						deferred.resolve(page);
+					}, (error) => {
+						deferred.reject(error);
+					});
+				}
+				else deferred.resolve(page);
+			}, (error) => {
+				deferred.reject(error);
+			});
+		}
+		else if (page.changed) {
 			mwjson.api.editPage(page.title, page.content, summary).then( (data) => {
 				page.changed = false;
 				page.exists = true;

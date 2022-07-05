@@ -17,6 +17,7 @@ mwjson.parser = class {
 			};
 			$.getScript("https://kanasimi.github.io/CeJS/ce.js");
 		}
+		else deferred.resolve(); //resolve immediately
 		return deferred.promise();
 	}
 
