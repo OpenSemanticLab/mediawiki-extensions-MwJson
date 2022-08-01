@@ -80,8 +80,7 @@ mwjson.parser = class {
 	}
 
 	static parsePage(page) {
-		console.log("parsePage");
-		console.log(CeL);
+		console.log("parsePage start");
 		const parsed = CeL.wiki.parser(page.content);
 		parsed.each('template', function (token, index, parent) { });
 		var data = [];
@@ -106,7 +105,15 @@ mwjson.parser = class {
 		if (string_res !== "") data.push(string_res);
 		page.dictType = "FLAT_ARRAY_TEMPLATE_KEY_DICT";
 		page.dict = data;
+		console.log("parsePage stop");
 		return page;
+	}
+
+	static parsePageAsync(page) {
+		return new Promise(resolve => {
+			page = mwjson.parser.parsePage(page);
+			resolve(page);
+		});
 	}
 
 	static appendTemplate(p, template_name, template_params)
