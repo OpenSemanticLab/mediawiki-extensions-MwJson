@@ -74,6 +74,18 @@ mwjson.api = class {
 		);
 	}
 
+	static purgePage(title) {
+		var api = new mw.Api();
+		return api.post(
+		    {
+				titles: title,
+				action: 'purge',
+				forcelinkupdate: true,
+				forcerecursivelinkupdate: true
+		    }
+		);
+	}
+
         static uploadFile(blob, name, summary = "") {
 		const deferred = $.Deferred();
 		var param = {
