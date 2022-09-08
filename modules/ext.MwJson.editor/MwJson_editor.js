@@ -64,7 +64,8 @@ mwjson.editor = class {
 						.then(data => {
 							//console.log("Parsed: " + data.parse.text);
 							//console.log("ID = " + props.id);
-							$( "#" + props.id).append( $( data.parse.text['*']) );
+							$("#" + props.id).append( $( data.parse.text['*']) );
+							$("#" + props.id).find("a").attr("target", "_blank"); //make all links open in new tab
 							//resolve(data.parse.text);
 						});
 					 });
