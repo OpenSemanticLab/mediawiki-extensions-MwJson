@@ -15,7 +15,8 @@ mwjson.editor = class {
 				if (result.printouts['HasDisplayName'][0]) return result.printouts['HasDisplayName'][0].toLowerCase().startsWith(input.toLowerCase()); 
 				else return result.fulltext.split(":")[result.fulltext.split(":").length - 1].toLowerCase().startsWith(input.toLowerCase());
 			},
-			render: (result, props) => `
+			renderMode: "html",
+			renderResult: (result, props) => `
 			<li ${props}>
 				<div class="wiki-title">
 					${result.printouts['HasDisplayName'][0]} (${result.fulltext})
@@ -51,7 +52,27 @@ mwjson.editor = class {
 					});
 				});
 			},
-			renderResult: (result, props) => config.render(result, props),
+			renderResult: (result, props) => {
+				if (config.renderMode == "html") return config.renderResult(result, props);
+				if (config.renderMode == "wikitext") {
+					var renderUrl = '/w/api.php?action=parse&format=json&text=';
+					renderUrl += encodeURIComponent(config.renderResult(result, props));
+					new Promise(resolve => {
+						//console.log("Render-URL: " + renderUrl);
+						fetch(renderUrl)
+						.then(response => response.json())
+						.then(data => {
+							//console.log("Parsed: " + data.parse.text);
+							//console.log("ID = " + props.id);
+							$( "#" + props.id).append( $( data.parse.text['*']) );
+							//resolve(data.parse.text);
+						});
+					 });
+					return `
+					<li ${props}>
+					</li>`;
+				}
+			},
 			getResultValue: result => config.getResultValue(result),
 			onSubmit: result => {
 				//console.log(result); 
