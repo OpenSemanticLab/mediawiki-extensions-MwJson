@@ -1,8 +1,5 @@
 /*@nomin*/
 
-//hotfix: manual load css
-mw.loader.load( 'https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/css/autoComplete.min.css', 'text/css' );
-
 mwjson.editor = class {
 	constructor() {
 	}
