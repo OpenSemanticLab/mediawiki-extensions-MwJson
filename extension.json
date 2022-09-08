@@ -66,6 +66,9 @@
         "ext.mwjson.editor":{
             "localBasePath":"modules/ext.MwJson.editor",
             "remoteExtPath":"MwJson/modules/ext.MwJson.editor",
+            "styles":[
+                "autoComplete.min.css"
+            ],
             "scripts":[
                 "autocomplete.min.js",
                 "MwJson_editor.js"
