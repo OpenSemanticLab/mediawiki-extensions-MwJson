@@ -67,7 +67,6 @@ mwjson.api = class {
 		        return {
 		            text: new_text,
 		            summary: summary,
-		            assert: 'bot',
 		            minor: false
 		        };
 		    }
