@@ -67,6 +67,7 @@
             "localBasePath":"modules/ext.MwJson.editor",
             "remoteExtPath":"MwJson/modules/ext.MwJson.editor",
             "scripts":[
+                "autocomplete.min.js",
                 "MwJson_editor.js"
             ],
             "dependencies": [
