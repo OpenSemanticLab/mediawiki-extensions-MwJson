@@ -30,6 +30,54 @@ mwjson.parser = class {
 		else return template;
 	}
 
+	/* Simple parser functions */
+	static getParamRegex(param) { 
+		return new RegExp(`\h*${param}\h*=[^\|}\r\n\t\f\v]*`); //finds param=, param=value
+	}
+	
+	static getParamValue(text, template, param, default_return=null) {
+		const paramRegex = mwjson.parser.getParamRegex(param);
+		if (!text.includes(param)) return default_return;
+		var result = text.match(paramRegex)[0].split("=");
+		if (result.length == 1) return "";
+		else return result[1];
+	}
+	
+	static updateParamValue(value, newValues, mode='replace', sep=';') {
+		var result = [];
+		if (mode === 'replace') { //replace old value(s) complete with new value(s)
+			result = newValues;
+		}
+		else if (mode === 'append' //add new value(s) if not already set
+			|| mode === 'remove') { //remove new value(s) if not already set
+			result = [];
+			if (value !== "") result = value.split(sep);
+			for (let i=0; i<newValues.length; i++) {
+				if (mode === 'append' && !result.includes(newValues[i])) result.push(newValues[i]);
+				else if (mode === 'remove' && result.includes(newValues[i])) result.splice(result.indexOf(newValues[i]),1);
+			}
+		}
+		var resultStr = "";
+		for (let i=0; i<result.length; i++) {
+			if (i > 0) resultStr += sep;
+			resultStr += result[i];
+		}
+		return resultStr;
+	}
+	
+	static updatePageText(text, template, params) {
+		if (!text.includes(template)) text += `{{${template}\n}}`;
+		for (let i=0; i<params.length; i++) {
+			const param = params[i].name;
+			const value = params[i].value;
+			const paramRegex = mwjson.parser.getParamRegex(param);
+			if (!text.includes(param)) text = text.replace("}}", `|${param}=${value}\n}}`);
+			else text = text.replace(paramRegex,`${param}=${value}`);
+		}
+		return text;
+	}
+
+	/* complex parser functions, require CeL parser */
 
 	static parseTemplateStructureRecursionFlat(page, template, debug = false) {
 		if (template.name === undefined) {
