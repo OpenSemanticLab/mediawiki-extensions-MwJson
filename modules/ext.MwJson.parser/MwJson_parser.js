@@ -1,3 +1,5 @@
+/*@nomin*/
+
 mwjson.parser = class {
 	constructor() {
 

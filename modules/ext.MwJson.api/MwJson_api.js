@@ -1,3 +1,5 @@
+/*@nomin*/
+
 mwjson.api = class {
 	constructor() {
 	}
