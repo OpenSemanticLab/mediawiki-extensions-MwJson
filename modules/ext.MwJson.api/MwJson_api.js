@@ -120,7 +120,7 @@ mwjson.api = class {
 	static updatePage(page, summary = "") {
 		const deferred = $.Deferred();
 		const hasChangedFile = ('file' in page && page.file.changed);
-		if (!page.exists) {
+		if (!page.exists && page.title && page.content) {
 			mwjson.api.createPage(page.title, page.content, summary).then( (data) => {
 				page.changed = false;
 				page.exists = true;
