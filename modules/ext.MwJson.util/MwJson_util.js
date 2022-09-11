@@ -14,4 +14,12 @@ mwjson.util = class {
 	static stripNamespace(title) {
 		return title.split(":")[title.split(":").length - 1]
 	}
+
+	static objectToCompressedBase64(object) {
+		return LZString.compressToBase64(JSON.stringify(object));
+	}
+
+	static objectFromCompressedBase64(base64) {
+		return JSON.parse(LZString.decompressFromBase64(base64));
+	}
 }

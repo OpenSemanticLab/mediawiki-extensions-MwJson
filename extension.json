@@ -34,6 +34,7 @@
             "localBasePath":"modules/ext.MwJson.util",
             "remoteExtPath":"MwJson/modules/ext.MwJson.util",
             "scripts":[
+                "lz-string.min.js",
                 "MwJson_util.js"
             ],
             "dependencies": [
