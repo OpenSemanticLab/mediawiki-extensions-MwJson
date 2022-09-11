@@ -170,4 +170,99 @@ mwjson.api = class {
 		else deferred.resolve(page);
 		return deferred.promise();
 	}
+
+	static getSemanticProperties(title, mode='html') {
+		const deferred = $.Deferred();
+
+		var subject = title.split("#")[0];
+		var subObject = "";
+		if (title.split("#")[1]) {
+			subObject = title.split("#")[1].replace(" ", "_");
+		}
+		var namespace_id = 0;
+		if (subject.split(":")[1]) {
+			const namespace = subject.split(":")[0];
+			subject = subject.split(":")[1];
+			namespace_id = mw.config.get('wgNamespaceIds')[namespace.replaceAll(" ", "_").toLowerCase()];
+			//console.log(`Namespace ${namespace}, ID ${namespace_id}`);
+		}
+
+		//only html mode can retrieve inverse properties
+		if (mode === 'html') {
+			const query = `/w/api.php?action=smwbrowse&browse=subject&params={"subject":"${encodeURIComponent(subject)}","subobject":"${subObject}","options":{"showAll":"true"}, "ns":${namespace_id}, "type":"html"}&format=json`;
+			fetch(query)
+				.then(response => response.json())
+				.then(data => {
+
+				var page_properties = [];
+				var $html = $(data.query);
+				$html.find("div.smwb-propvalue").each(function () {
+					var $prop = $(this).find("div.smwb-prophead a");
+					//var propName = $prop.text();
+					//var propName = $prop.attr('title').replace("Property:", "");
+					var propName = "";
+					if ($prop.attr('title') === "Special:Categories") propName += "Category";
+					else if ($prop.attr('title') === "Special:ListRedirects") return;
+					else if ($prop.attr('href')) propName += $prop.attr('href').split("Property:")[1].split("&")[0];
+					else return; //empty property
+					page_properties.push(propName);
+					//console.log(propName);
+					$(this).find("div.smwb-propval span.smwb-value").each(function () {
+						var value = $(this).find("a").attr("title");
+						//console.log("-> " + value);
+					});
+				})
+				$html.find("div.smwb-ipropvalue").each(function () {
+					var $prop = $(this).find("div.smwb-prophead a");
+					//var propName = $prop.text();
+					//var propName = $prop.attr('title').replace("Property:", "");
+					var propName = "-";
+					if ($prop.attr('title') === "Special:Categories") propName += "Category";
+					else if ($prop.attr('title') === "Special:ListRedirects") return;
+					else if ($prop.attr('href')) propName += $prop.attr('href').split("Property:")[1].split("&")[0];
+					else return; //empty property
+					page_properties.push(propName);
+					//console.log(propName);
+					$(this).find("div.smwb-propval span.smwb-ivalue").each(function () {
+						var value = $(this).find("a").attr("title");
+						//console.log("-> " + value);
+					});
+				})
+				deferred.resolve(page_properties);
+			},
+			(error) => {
+				deferred.reject(error);
+			});
+		}
+
+		else {
+			const query = `/w/api.php?action=smwbrowse&browse=subject&params={"subject":"${encodeURIComponent(subject)}","subobject":"${subObject}","options":{"showAll":"true"}, "ns":${namespace_id}, "type":"json"}&format=json`;
+			fetch(query)
+			.then(response => response.json())
+			.then(data => {
+				var page_properties = [];
+                var properties = data.query.data; //normal page
+                if (title.includes('#')) { //subobject
+                    for (var i = 0; i < data.query.sobj.length; i++) { 
+                        if (data.query.sobj[i].subject.endsWith(title.split('#').pop().replace(' ',''))){
+                            properties = data.query.sobj[i].data
+                            break;
+                        }
+                    }
+                }
+                for (var i = 0; i < properties.length; i++) {
+                    if (!properties[i].property.startsWith("_")) { //skip system properties
+                        page_properties.push(properties[i].property)
+                    }
+                }
+				deferred.resolve(page_properties);
+			},
+			(error) => {
+				deferred.reject(error);
+			});
+		}
+
+
+		return deferred.promise();
+	}
 }
