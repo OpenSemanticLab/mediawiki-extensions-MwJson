@@ -57,6 +57,7 @@
             "localBasePath":"modules/ext.MwJson.parser",
             "remoteExtPath":"MwJson/modules/ext.MwJson.parser",
             "scripts":[
+                "CeJS_wiki.min.js",
                 "MwJson_parser.js"
             ],
             "dependencies": [

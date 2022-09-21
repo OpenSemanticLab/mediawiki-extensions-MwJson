@@ -7,8 +7,8 @@ mwjson.parser = class {
 
 	static init() {
 		const deferred = $.Deferred();
-		if (!('ready' in mwjson.parser) || !mwjson.parser.ready) {
-			window.CeL = {
+		//if (!('ready' in mwjson.parser) || !mwjson.parser.ready) {
+			/*window.CeL = {
 				initializer: function () {
 					CeL.run('application.net.wiki', function () {
 						console.log("CeL ready");
@@ -16,10 +16,12 @@ mwjson.parser = class {
 						deferred.resolve();
 					});
 				}
-			};
-			$.getScript("https://kanasimi.github.io/CeJS/ce.js");
-		}
-		else deferred.resolve(); //resolve immediately
+			};*/
+			//$.getScript("https://kanasimi.github.io/CeJS/ce.js"); 
+			//$.getScript("https://kanasimi.github.io/CeJS_wiki/CeJS_wiki.js"); //use minified standalone version
+		//}
+		//else 
+		deferred.resolve(); //resolve immediately
 		return deferred.promise();
 	}
 
