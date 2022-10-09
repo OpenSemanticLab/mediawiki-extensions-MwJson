@@ -91,12 +91,25 @@ mwjson.editor = class {
 				})
 			).done(function () {
 				mwjson.editor.setCallbacks();
+				mwjson.editor.setDefaultOptions();
 				console.log("JsonEditor initialized");
 				deferred.resolve();
 			});
 		}
 		else deferred.resolve(); //resolve immediately
 		return deferred.promise();
+	}
+
+	static setDefaultOptions() {
+		window.JSONEditor.defaults.options.autocomplete = {
+			"search": "search_smw",
+			"getResultValue": "getResultValue_smw",
+			"renderResult": "renderResult_smw",
+			"onSubmit": "onSubmit_smw",
+			"autoSelect": "true"
+		}
+		window.JSONEditor.defaults.options.labelTemplate =  "{{#if result.printouts.label.length}}{{result.printouts.label}}{{else if result.displaytitle}}{{result.displaytitle}}{{else}}{{result.fulltext}}{{/if}}";
+		window.JSONEditor.defaults.options.previewWikiTextTemplate = "[[{{result.fulltext}}]]";
 	}
 
 	static setCallbacks() {
@@ -143,18 +156,14 @@ mwjson.editor = class {
 					});
 				},
 				renderResult_smw: (jseditor_editor, result, props) => {
-					var displayTitle = result.fulltext;
 					var renderUrl = '/w/api.php?action=parse&format=json&text=';
-					//if (jseditor_editor.schema.displayProperty) displayTitle = result.printouts[jseditor_editor.schema.displayProperty];
-					//if (result.printouts['HasImage'][0]) renderUrl += `[[${result.printouts['HasImage'][0]['fulltext']}|right|x66px]]`;
-					//renderUrl += encodeURIComponent(`</br>This is a building: [[${result.fulltext}]]. Levels: {{#ask: [[IsLocatedIn::${result.fulltext}]]|format=list}}`);
-					jseditor_editor.schema.previewWikiTextTemplate = jseditor_editor.schema.previewWikiTextTemplate.replaceAll("\\{", "&#123;"); //escape curly-brackets with html entities. ToDo: Do this once for the whole schema
-					jseditor_editor.schema.previewWikiTextTemplate = jseditor_editor.schema.previewWikiTextTemplate.replaceAll("\\}", "&#125;");
-					var template = Handlebars.compile(jseditor_editor.schema.previewWikiTextTemplate);
+					var previewWikiTextTemplate = jseditor_editor.jsoneditor.options.previewWikiTextTemplate; //use global/default value
+					if (jseditor_editor.schema.previewWikiTextTemplate) previewWikiTextTemplate = jseditor_editor.schema.previewWikiTextTemplate; //use custom value
+					previewWikiTextTemplate = previewWikiTextTemplate.replaceAll("\\{", "&#123;").replaceAll("\\}", "&#125;"); //escape curly-brackets with html entities. ToDo: Do this once for the whole schema
+					var template = Handlebars.compile(previewWikiTextTemplate);
 					//var template = Handlebars.compile("{{result.fulltext}}");
 					var templateText = template({result: result});
-					templateText = templateText.replaceAll("&#123;", "{");
-					templateText = templateText.replaceAll("&#125;", "}");
+					templateText = templateText.replaceAll("&#123;", "{").replaceAll("&#125;", "}");
 					renderUrl += encodeURIComponent(templateText);
 					new Promise(resolve => {
 						fetch(renderUrl)
@@ -181,8 +190,10 @@ mwjson.editor = class {
 				getResultValue_smw: (jseditor_editor, result) => {
 					var label = result.fulltext;
 					if (result.displaytitle && result.displaytitle !== "") label = result.displaytitle;
-					if (jseditor_editor.schema.labelTemplate) {
-						label = Handlebars.compile(jseditor_editor.schema.labelTemplate)({result: result});
+					var labelTemplate = jseditor_editor.jsoneditor.options.labelTemplate; //use global/default value
+					if (jseditor_editor.schema.labelTemplate) labelTemplate = jseditor_editor.schema.labelTemplate; //use custom value
+					if (labelTemplate) {
+						label = Handlebars.compile(labelTemplate)({result: result});
 					}
 					return label;
 				},
