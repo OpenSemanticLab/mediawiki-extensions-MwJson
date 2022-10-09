@@ -148,9 +148,9 @@ mwjson.editor = class {
 					//if (jseditor_editor.schema.displayProperty) displayTitle = result.printouts[jseditor_editor.schema.displayProperty];
 					//if (result.printouts['HasImage'][0]) renderUrl += `[[${result.printouts['HasImage'][0]['fulltext']}|right|x66px]]`;
 					//renderUrl += encodeURIComponent(`</br>This is a building: [[${result.fulltext}]]. Levels: {{#ask: [[IsLocatedIn::${result.fulltext}]]|format=list}}`);
-					jseditor_editor.schema.renderWikiTextTemplate = jseditor_editor.schema.renderWikiTextTemplate.replaceAll("\\{", "&#123;"); //escape curly-brackets with html entities. ToDo: Do this once for the whole schema
-					jseditor_editor.schema.renderWikiTextTemplate = jseditor_editor.schema.renderWikiTextTemplate.replaceAll("\\}", "&#125;");
-					var template = Handlebars.compile(jseditor_editor.schema.renderWikiTextTemplate);
+					jseditor_editor.schema.previewWikiTextTemplate = jseditor_editor.schema.previewWikiTextTemplate.replaceAll("\\{", "&#123;"); //escape curly-brackets with html entities. ToDo: Do this once for the whole schema
+					jseditor_editor.schema.previewWikiTextTemplate = jseditor_editor.schema.previewWikiTextTemplate.replaceAll("\\}", "&#125;");
+					var template = Handlebars.compile(jseditor_editor.schema.previewWikiTextTemplate);
 					//var template = Handlebars.compile("{{result.fulltext}}");
 					var templateText = template({result: result});
 					templateText = templateText.replaceAll("&#123;", "{");
@@ -177,14 +177,22 @@ mwjson.editor = class {
 				//       {"PAGE":
 				//           {"printouts":[],"fulltext":"PAGE","fullurl":"https://.../wiki/PAGE","namespace":0,"exists":"1","displaytitle":""}
 				// ...
-				// We want to display the title
-				getResultValue_smw: (jseditor_editor, result) => result.fulltext,
+				// Display the label...
+				getResultValue_smw: (jseditor_editor, result) => {
+					var label = result.fulltext;
+					if (result.displaytitle && result.displaytitle !== "") label = result.displaytitle;
+					if (jseditor_editor.schema.labelTemplate) {
+						label = Handlebars.compile(jseditor_editor.schema.labelTemplate)({result: result});
+					}
+					return label;
+				},
+				//... but store the fulltext / id
 				onSubmit_smw: (jseditor_editor, result) => {
 					jseditor_editor.value = result.fulltext;
 					jseditor_editor.onChange(true);
 					//jseditor_editor.jsoneditor.trigger('change',jseditor_editor);
 					//window.JSONEditor.trigger('change',jseditor_editor);
-					console.log("Selected: " + result.fulltext);
+					console.log("Selected: " + result.displaytitle + " / " + result.fulltext);
 				}
 			}
 		};
