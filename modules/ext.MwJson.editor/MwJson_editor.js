@@ -85,8 +85,7 @@ mwjson.editor = class {
 			mw.loader.load('https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css', 'text/css');
 			mwjson.parser.init();
 			$.when(
-				$.getScript('https://cdn.jsdelivr.net/npm/@json-editor/json-editor@latest/dist/jsoneditor.min.js'),
-				$.getScript('https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js'),
+				//nothing to do
 				$.Deferred(function (deferred) {
 					$(deferred.resolve);
 				})
@@ -158,8 +157,6 @@ mwjson.editor = class {
 					templateText = templateText.replaceAll("&#125;", "}");
 					renderUrl += encodeURIComponent(templateText);
 					new Promise(resolve => {
-
-						console.log("Render-URL: " + renderUrl);
 						fetch(renderUrl)
 							.then(response => response.json())
 							.then(data => {

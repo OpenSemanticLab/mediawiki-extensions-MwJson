@@ -72,7 +72,9 @@
                 "autocomplete.min.css"
             ],
             "scripts":[
+                "handlebars.min.js",
                 "autocomplete.min.js",
+                "jsoneditor.min.js",
                 "MwJson_editor.js"
             ],
             "dependencies": [
