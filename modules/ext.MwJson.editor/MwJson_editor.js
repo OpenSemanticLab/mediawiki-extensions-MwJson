@@ -17,15 +17,15 @@ mwjson.editor = class {
 		this.jsoneditor = new JSONEditor(this.container, {
 			schema: this.schema,
 			theme: 'bootstrap4',
-			disable_collapse: true,
+			disable_collapse: false,
 			disable_edit_json: true,
 			disable_properties: true,
-			use_default_values: false,
-			required_by_default: true,
-			show_errors: 'always',
-			disable_array_reorder: true,
-			disable_array_delete_all_rows: true,
-			disable_array_delete_last_row: true,
+			use_default_values: true,
+			required_by_default: false,
+			//show_errors: 'always',
+			disable_array_reorder: false,
+			disable_array_delete_all_rows: false,
+			disable_array_delete_last_row: false,
 			keep_oneof_values: false,
 			no_additional_properties: true,
 			form_name_root: 'form_1'
@@ -86,6 +86,7 @@ mwjson.editor = class {
 			mwjson.parser.init();
 			$.when(
 				//nothing to do
+				$.getScript("https://unpkg.com/imask"),
 				$.Deferred(function (deferred) {
 					$(deferred.resolve);
 				})
@@ -101,6 +102,7 @@ mwjson.editor = class {
 	}
 
 	static setDefaultOptions() {
+		window.JSONEditor.defaults.options.template = 'handlebars';
 		window.JSONEditor.defaults.options.autocomplete = {
 			"search": "search_smw",
 			"getResultValue": "getResultValue_smw",
@@ -108,7 +110,7 @@ mwjson.editor = class {
 			"onSubmit": "onSubmit_smw",
 			"autoSelect": "true"
 		}
-		window.JSONEditor.defaults.options.labelTemplate =  "{{#if result.printouts.label.length}}{{result.printouts.label}}{{else if result.displaytitle}}{{result.displaytitle}}{{else}}{{result.fulltext}}{{/if}}";
+		window.JSONEditor.defaults.options.labelTemplate = "{{#if result.printouts.label.length}}{{result.printouts.label}}{{else if result.displaytitle}}{{result.displaytitle}}{{else}}{{result.fulltext}}{{/if}}";
 		window.JSONEditor.defaults.options.previewWikiTextTemplate = "[[{{result.fulltext}}]]";
 	}
 
@@ -145,10 +147,17 @@ mwjson.editor = class {
 							.then(response => response.json())
 							.then(data => {
 								//convert result dict to list/array
-								var resultList = Object.values(data.query.results);
+								var resultList = Object.values(data.query.results); //use subjects as results
+								if (jseditor_editor.schema.listProperty) { //use objects as results
+									resultList = [];
+									Object.values(data.query.results).forEach(result => {
+										resultList = resultList.concat(result.printouts[jseditor_editor.schema.listProperty])
+									});
+									resultList = [...new Set(resultList)]; //remove duplicates
+								}
 								//filter list
-								resultList = resultList.filter(fulltext => {
-									return fulltext.fulltext.toLowerCase().startsWith(input.toLowerCase());
+								resultList = resultList.filter(result => {
+									return JSON.stringify(result).toLowerCase().includes(input.toLowerCase()); //slow but generic
 								});
 
 								resolve(resultList);
@@ -162,7 +171,7 @@ mwjson.editor = class {
 					previewWikiTextTemplate = previewWikiTextTemplate.replaceAll("\\{", "&#123;").replaceAll("\\}", "&#125;"); //escape curly-brackets with html entities. ToDo: Do this once for the whole schema
 					var template = Handlebars.compile(previewWikiTextTemplate);
 					//var template = Handlebars.compile("{{result.fulltext}}");
-					var templateText = template({result: result});
+					var templateText = template({ result: result });
 					templateText = templateText.replaceAll("&#123;", "{").replaceAll("&#125;", "}");
 					renderUrl += encodeURIComponent(templateText);
 					new Promise(resolve => {
@@ -193,7 +202,7 @@ mwjson.editor = class {
 					var labelTemplate = jseditor_editor.jsoneditor.options.labelTemplate; //use global/default value
 					if (jseditor_editor.schema.labelTemplate) labelTemplate = jseditor_editor.schema.labelTemplate; //use custom value
 					if (labelTemplate) {
-						label = Handlebars.compile(labelTemplate)({result: result});
+						label = Handlebars.compile(labelTemplate)({ result: result });
 					}
 					return label;
 				},
@@ -207,6 +216,38 @@ mwjson.editor = class {
 				}
 			}
 		};
+
+		//  register compare operator 
+		// e.g. {{#when <operand1> 'eq' <operand2>}} {{/when}}
+		// {{#when var1 'eq' var2}}equal{{else when var1 'gt' var2}}gt{{else}}lt{{/when}}
+		Handlebars.registerHelper("when", (operand_1, operator, operand_2, options) => {
+			let operators = {
+				'eq': (l, r) => l == r,
+				'==': (l, r) => l == r,
+				'===': (l, r) => l === r,
+				'noteq': (l, r) => l != r,
+				'!=': (l, r) => l != r,
+				'!==': (l, r) => l !== r,
+				'gt': (l, r) => (+l) > (+r),
+				'>': (l, r) => (+l) > (+r),
+				'gteq': (l, r) => ((+l) > (+r)) || (l == r),
+				'>=': (l, r) => ((+l) > (+r)) || (l == r),
+				'lt': (l, r) => (+l) < (+r),
+				'<': (l, r) => (+l) < (+r),
+				'lteq': (l, r) => ((+l) < (+r)) || (l == r),
+				'<=': (l, r) => ((+l) < (+r)) || (l == r),
+				'or': (l, r) => l || r,
+				'||': (l, r) => l || r,
+				'and': (l, r) => l && r,
+				'&&': (l, r) => l && r,
+				'mod': (l, r) => (l % r) === 0,
+				'%': (l, r) => (l % r) === 0
+			}
+			let result = operators[operator](operand_1, operand_2);
+			if (result) return options.fn(this);
+			return options.inverse(this);
+		});
+
 		console.log("Callbacks set");
 	};
 
