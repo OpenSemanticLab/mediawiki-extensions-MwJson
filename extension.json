@@ -69,13 +69,15 @@
             "localBasePath":"modules/ext.MwJson.editor",
             "remoteExtPath":"MwJson/modules/ext.MwJson.editor",
             "styles":[
-                "autocomplete.min.css"
+                "autocomplete.min.css",
+                "jsoneditor.css"
             ],
             "scripts":[
                 "handlebars.min.js",
                 "autocomplete.min.js",
                 "jsoneditor.min.js",
-                "MwJson_editor.js"
+                "MwJson_editor.js",
+                "MwJson_editor_init.js"
             ],
             "dependencies": [
                 "ext.mwjson.api",
