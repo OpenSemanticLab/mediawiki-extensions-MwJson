@@ -1,3 +1,5 @@
+/*@nomin*/
+
 var schema = {
     "title": "TestTemplate",
     "template": "TestTemplate",
@@ -76,109 +78,152 @@ var schema = {
 
 var schema2 = {
     "title": "Lab Process",
-    "template": "OslTemplate:LabProcess/Header",
     "type": "object",
     "id": "process",
     "properties": {
-        "id": {
-            "title": "ID",
-            "type": "string",
-            "description": "Short local ID"
-        },
-        "name": {
-            "title": "Name",
-            "type": "string",
-            "description": "Human readable name"
-        },
-        /*"creation_data": {
-            'type': 'string',
-            'format': 'datetime-local',
-            //template': 'now',
-            //'format': 'flatpickr'
-        },*/
-        "output_category": {
-            "title": "Output category",
-            "type": "string",
-            "description": "Category/Class of the primary process output",
-            "format": "autocomplete",
-            "query": "[[IsASubcategoryOf::Category:Thing]] OR [[IsASubcategoryOf.IsASubcategoryOf::Category:Thing]]|?Display_title_of=label",
-            "labelTemplate": "{{#if result.printouts.label.length}}{{result.printouts.label}}{{else if result.displaytitle}}{{result.displaytitle}}{{else}}{{result.fulltext}}{{/if}}",
-            "previewWikiTextTemplate": "[[:{{result.fulltext}}]]",
-            "default": ""
-        },
-        "output_type": {
-            "title": "Output type",
-            "type": "string",
-            "description": "Type of the primary process output",
-            "format": "autocomplete",
-            "query": "[[$(category)]]",
-            "watch": {
-                "category": "output_category"
-            },
-            "default": ""
-        },
-        "parameters": {
-            "title": "Parameters",
-            "type": "array",
-            "format": "table",
-            "id": "parameters",
-            "items": {
-                "title": "Parameter",
-                "headerTemplate": "{{i}} - {{self.name}}",
-                "id": "parameter",
-                "properties": {
-                    "id": {
-                        "title": "ID",
-                        "type": "string",
-                        "description": "Short local ID",
-                        "default": "P0000",
-                        "options": {
-                            "imask": {
-                                "returnUnmasked": true,
-                                "mask": "{P}0000",
-                                "lazy": false,
-                                "placeholderChar": "#"
+        "staticText0010": { "type": "string", "format": "markdown", "options": { "hidden": true }, "default": "<noinclude>\n" },
+        "header": {
+            "title": "General Data",
+            "type": "object",
+            "id": "header",
+            "properties": {
+                "_template": {
+                    "type": "string",
+                    "default": "OslTemplate:LabProcess/Header",
+                    "options": {
+                        "hidden": true,
+                    }
+                },
+                "id": {
+                    "title": "ID",
+                    "type": "string",
+                    "description": "Short local ID"
+                },
+                "name": {
+                    "title": "Name",
+                    "type": "string",
+                    "description": "Human readable name"
+                },
+                /*"creation_data": {
+                    'type': 'string',
+                    'format': 'datetime-local',
+                    //template': 'now',
+                    //'format': 'flatpickr'
+                },*/
+                "output_category": {
+                    "title": "Output category",
+                    "type": "string",
+                    "description": "Category/Class of the primary process output",
+                    "format": "autocomplete",
+                    "query": "[[IsASubcategoryOf::Category:Thing]] OR [[IsASubcategoryOf.IsASubcategoryOf::Category:Thing]]|?Display_title_of=label",
+                    "labelTemplate": "{{#if result.printouts.label.length}}{{result.printouts.label}}{{else if result.displaytitle}}{{result.displaytitle}}{{else}}{{result.fulltext}}{{/if}}",
+                    "previewWikiTextTemplate": "[[:{{result.fulltext}}]]",
+                    "default": ""
+                },
+                "output_type": {
+                    "title": "Output type",
+                    "type": "string",
+                    "description": "Type of the primary process output",
+                    "format": "autocomplete",
+                    "query": "[[$(category)]]",
+                    "watch": {
+                        "category": "output_category"
+                    },
+                    "default": ""
+                },
+                "parameters": {
+                    "title": "Parameters",
+                    "type": "array",
+                    "format": "table",
+                    "id": "parameters",
+                    "items": {
+                        "title": "Parameter",
+                        "headerTemplate": "{{i}} - {{self.name}}",
+                        "id": "parameter",
+                        "properties": {
+                            "_template": {
+                                "type": "string",
+                                "default": "#invoke:LabProcess/Parameter/Config|quantitative",
+                                "options": {
+                                    "hidden": true,
+                                }
+                            },
+                            "id": {
+                                "title": "ID",
+                                "type": "string",
+                                "description": "Short local ID",
+                                "default": "P0000",
+                                "options": {
+                                    "imask": {
+                                        "returnUnmasked": true,
+                                        "mask": "{P}0000",
+                                        "lazy": false,
+                                        "placeholderChar": "#"
+                                    }
+                                }
+                            },
+                            "name": {
+                                "title": "Name",
+                                "type": "string",
+                                "description": "Human readable name"
+                            },
+                            "property": {
+                                "title": "Property",
+                                "type": "string",
+                                "format": "autocomplete",
+                                "query": "[[Category:QuantityProperty]]|?HasDescription",
+                                "previewWikiTextTemplate": "[[{{result.fulltext}}]]<br/>{{result.printouts.HasDescription}}",
+                            },
+                            "nominal_value": {
+                                "title": "Nominal Value",
+                                "type": "number",
+                                "format": "number",
+                                "step": 0.1
+                            },
+                            "actual_value": {
+                                "title": "Actual Value",
+                                "type": "number",
+                                "format": "number",
+                                "step": 0.1
+                            },
+                            "unit": {
+                                "title": "Unit",
+                                "type": "string",
+                                "format": "autocomplete",
+                                "query": "[[$(property)]]|?HasInputUnitSymbol",
+                                "listProperty": "HasInputUnitSymbol",
+                                "previewWikiTextTemplate": "{{result}}",
+                                "labelTemplate": "{{result}}",
+                                "watch": {
+                                    "property": "parameter.property"
+                                }
                             }
-                        }
-                    },
-                    "name": {
-                        "title": "Name",
-                        "type": "string",
-                        "description": "Human readable name"
-                    },
-                    "property": {
-                        "title": "Property",
-                        "type": "string",
-                        "format": "autocomplete",
-                        "query": "[[Category:QuantityProperty]]|?HasDescription",
-                        "previewWikiTextTemplate": "[[{{result.fulltext}}]]<br/>{{result.printouts.HasDescription}}",
-                    },
-                    "nominal_value": {
-                        "title": "Nominal Value",
-                        "type": "number",
-                        "format": "number",
-                        "step": 0.1
-                    },
-                    "actual_value": {
-                        "title": "Actual Value",
-                        "type": "number",
-                        "format": "number",
-                        "step": 0.1
-                    },
-                    "unit": {
-                        "title": "Unit",
-                        "type": "string",
-                        "format": "autocomplete",
-                        "query": "[[$(property)]]|?HasInputUnitSymbol",
-                        "listProperty": "HasInputUnitSymbol",
-                        "previewWikiTextTemplate": "{{result}}",
-                        "labelTemplate": "{{result}}",
-                        "watch": {
-                            "property": "parameter.property"
                         }
                     }
                 }
             }
+        },
+        "staticText0020": {
+            "type": "string", "format": "markdown", "options": { "hidden": true }, "default": `
+</noinclude>
+<includeonly>
+{{OslTemplate:LabProcess/Instance/Header
+  |id={{{id|}}}
+  |name=Drying Protocol
+  |output_category={{{output_category}}}
+  |output_type={{{output_type}}}
+  |type_symbol={{{type_symbol}}}
+  |creator_abbreviation={{{creator_abbreviation}}}
+  |creator={{{creator}}}
+  |short_timestamp={{{short_timestamp}}}
+  |timestamp={{{timestamp}}}
+  |projects={{{projects}}}
+  |additional_ids={{{additional_ids}}}
+  |template={{{template}}}
+  |debug={{OslTemplate:Helper/Strings/No}}
+}}
+</includeonly>
+`
         },
         "objects": {
             "title": "Objects",
@@ -190,6 +235,13 @@ var schema2 = {
                 "headerTemplate": "{{i}} - {{self.name}}",
                 "id": "object",
                 "properties": {
+                    "_template": {
+                        "type": "string",
+                        "default": "#invoke:LabProcess/Object|object",
+                        "options": {
+                            "hidden": true,
+                        }
+                    },
                     "id": {
                         "title": "ID",
                         "type": "string",
@@ -242,7 +294,7 @@ var schema2 = {
                                 "type": "string",
                                 "description": "Number of similar objects/batch members",
                                 "watch": {
-                                    "parameters": "process.parameters"
+                                    "parameters": "process.header.parameters"
                                 },
                                 "enumSource": [
                                     {
@@ -263,6 +315,7 @@ var schema2 = {
                     }
                 }
             }
+
         },
         "steps": {
             "title": "Process Steps",
@@ -296,6 +349,13 @@ var schema2 = {
                         "type": "object",
                         "id": "step",
                         "properties": {
+                            "_template": {
+                                "type": "string",
+                                "default": "OslTemplate:LabProcess/Steps/Generic",
+                                "options": {
+                                    "hidden": true,
+                                }
+                            },
                             "id": {
                                 "title": "ID",
                                 "type": "string",
@@ -393,6 +453,13 @@ var schema2 = {
                                     "headerTemplate": "{{i}} - {{self.name}}",
                                     "id": "tool",
                                     "properties": {
+                                        "_template": {
+                                            "type": "string",
+                                            "default": "#invoke:LabProcess/Parameter/Config|tool",
+                                            "options": {
+                                                "hidden": true,
+                                            }
+                                        },
                                         "id": {
                                             "title": "ID",
                                             "type": "string",
@@ -454,6 +521,13 @@ var schema2 = {
                                     "headerTemplate": "{{i}} - {{self.name}}",
                                     "id": "object",
                                     "properties": {
+                                        "_template": {
+                                            "type": "string",
+                                            "default": "#invoke:LabProcess/Parameter/Config|object",
+                                            "options": {
+                                                "hidden": true,
+                                            }
+                                        },
                                         "id": {
                                             "title": "ID",
                                             "type": "string",
@@ -529,6 +603,13 @@ var schema2 = {
                                     "headerTemplate": "{{i}} - {{self.name}}",
                                     "id": "parameter",
                                     "properties": {
+                                        "_template": {
+                                            "type": "string",
+                                            "default": "#invoke:LabProcess/Parameter/Config|quantitative",
+                                            "options": {
+                                                "hidden": true,
+                                            }
+                                        },
                                         "id": {
                                             "title": "ID",
                                             "type": "string",
@@ -597,7 +678,17 @@ var schema2 = {
                         }
                     }]
             }
-        }
+        },
+        "staticText0030": {
+            "type": "string", "format": "markdown", "options": { "hidden": true }, "default": `
+<includeonly>
+{{OslTemplate:LabProcess/Instance/Footer}}
+</includeonly>
+<noinclude>
+{{OslTemplate:LabProcess/Footer}}
+</noinclude>
+`
+        },
     }
 }
 
@@ -620,6 +711,10 @@ $(document).ready(function () {
                 if (this.dataset.config) userOptions = JSON.parse(this.dataset.config);
                 else if (this.innerText !== "") userOptions = JSON.parse(this.innerText); //Legacy support
                 var config = { ...defaultOptions, ...userOptions };
+                searchParams = new URLSearchParams(window.location.search);
+                if ((searchParams.has('target') && !(searchParams.get('target') === ""))) config.target = searchParams.get('target');
+                if ((searchParams.has('schema') && !(searchParams.get('schema') === ""))) config.schema = searchParams.get('schema');
+                if ((searchParams.has('data') && !(searchParams.get('data') === ""))) config.data = mwjson.util.objectFromCompressedBase64(decodeURIComponent(searchParams.get('data')));
                 if (!config.schema) config.schema = schema2;
                 var editor = new mwjson.editor(this, config, config.schema);
             });

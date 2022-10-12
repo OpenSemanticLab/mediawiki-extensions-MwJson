@@ -8,6 +8,32 @@ mwjson.editor = class {
 		this.createEditor();
 	}
 
+	static data2template(data, isRoot = true) {
+		var wikitext = "";
+		if (data._template) {
+			wikitext += "{{";
+			wikitext += data._template;
+		}
+			for (var key in data) {
+				if (key.startsWith('_')) continue;
+				if (data._template) wikitext += "\n|" + key + "=";
+				if (data[key] === undefined) continue;
+				else if (typeof data[key] === 'string') wikitext += data[key];
+				else if (typeof data[key] === 'number') wikitext += (data[key]);
+				else if (Array.isArray(data[key])) {
+					data[key].forEach(o => {
+						wikitext += mwjson.editor.data2template(o, false);
+					});
+				}
+				else wikitext += mwjson.editor.data2template(data[key], false);
+				//wikitext += "\n";
+			}
+		if (data._template) {
+			wikitext += "\n}}"
+		}
+		return wikitext;
+	}
+
 	createEditor() {
 		//return function(err, config) {
 
@@ -17,6 +43,8 @@ mwjson.editor = class {
 		this.jsoneditor = new JSONEditor(this.container, {
 			schema: this.schema,
 			theme: 'bootstrap4',
+			ajax: true,
+			ajax_cache_responses: false,
 			disable_collapse: false,
 			disable_edit_json: true,
 			disable_properties: true,
@@ -30,9 +58,28 @@ mwjson.editor = class {
 			no_additional_properties: true,
 			form_name_root: 'form_1'
 		});
-		$(this.container).append($("<button class='btn btn-primary btn-block' id='save-form'>Save</button>"));
+		console.log(this.config.data);
+		this.jsoneditor.on('ready', () => {if (this.config.data) this.jsoneditor.setValue(this.config.data)});
+		$(this.container).append($("<button type='Button' class='btn btn-primary btn-block' id='save-form'>Save</button>"));
 		$("#save-form").click(() => {
+			if (!this.config.target) this.config.target = "LabProcess:" + mwjson.util.OslId()
 			console.log("Save form");
+			var json = this.jsoneditor.getValue();
+			var url = window.location.href.replace(/\?.*/, '') ;
+			url += '?target=' + encodeURIComponent(this.config.target);
+			url += '&data=' + encodeURIComponent(mwjson.util.objectToCompressedBase64(json));
+
+			console.log(JSON.stringify(json));
+			mwjson.api.getPage(this.config.target).then((page) => {
+				page.content = mwjson.editor.data2template(json)
+				page.content = "<noinclude>[" + url + " Edit]</noinclude>\n<br\>" + page.content;
+				page.changed = true;
+				console.log(page.content);
+				mwjson.api.updatePage(page, "Edited with JsonEditor").then(() => window.location.href = "/wiki/" + page.title);
+			});
+			//mwjson.parser.parsePage(page)
+			//console.log(page.dict);
+			return;
 			//console.log(this.targetPage.data);
 			if (Array.isArray(this.targetPage.data)) {
 				this.targetPage.data.forEach((template, index) => {
@@ -116,6 +163,11 @@ mwjson.editor = class {
 
 	static setCallbacks() {
 		window.JSONEditor.defaults.callbacks = {
+			'now': (jseditor_editor, e) => {
+				var t = new Date()
+				t.setDate(t.getDate())
+				return t.toISOString().split('T')[0] + 'T00:00'
+			},
 			"autocomplete": {
 				// This is callback functions for the "autocomplete" editor
 				// In the schema you refer to the callback function by key
