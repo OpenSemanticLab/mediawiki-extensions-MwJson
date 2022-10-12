@@ -76,7 +76,7 @@ var schema = {
 
 var schema2 = {
     "title": "Lab Process",
-    "template": "LabProcess",
+    "template": "OslTemplate:LabProcess/Header",
     "type": "object",
     "id": "process",
     "properties": {
@@ -90,6 +90,12 @@ var schema2 = {
             "type": "string",
             "description": "Human readable name"
         },
+        /*"creation_data": {
+            'type': 'string',
+            'format': 'datetime-local',
+            //template': 'now',
+            //'format': 'flatpickr'
+        },*/
         "output_category": {
             "title": "Output category",
             "type": "string",
@@ -228,7 +234,8 @@ var schema2 = {
                                 "title": "Constant",
                                 "type": "integer",
                                 "format": "number",
-                                "description": "Number of similar objects/batch members"
+                                "description": "Number of similar objects/batch members",
+                                "default": 1
                             },
                             {
                                 "title": "Parameter",
@@ -246,6 +253,13 @@ var schema2 = {
                                 ]
                             }
                         ]
+                    },
+                    "global": {
+                        "title": "Global",
+                        "type": "boolean",
+                        "format": "checkbox",
+                        "default": false,
+                        "description": "Object is global visible and reuseable"
                     }
                 }
             }
@@ -369,6 +383,142 @@ var schema2 = {
                                     }
                                 }
                             },
+                            "tools": {
+                                "title": "Used Devices and Software Tools",
+                                "type": "array",
+                                "format": "table",
+                                "id": "tools",
+                                "items": {
+                                    "title": "Tool/Device",
+                                    "headerTemplate": "{{i}} - {{self.name}}",
+                                    "id": "tool",
+                                    "properties": {
+                                        "id": {
+                                            "title": "ID",
+                                            "type": "string",
+                                            "default": "P0000",
+                                            "options": {
+                                                "imask": {
+                                                    "returnUnmasked": true,
+                                                    "mask": "{P}0000",
+                                                    "lazy": false,
+                                                    "placeholderChar": "#"
+                                                }
+                                            }
+                                        },
+                                        "name": {
+                                            "title": "Name",
+                                            "type": "string",
+                                        },
+                                        "nominal_category": {
+                                            "title": "Category (Nominal)",
+                                            "type": "string",
+                                            //"description": "Category/Class of the tool/device",
+                                            "format": "autocomplete",
+                                            "query": "[[IsASubcategoryOf::Category:Tool]] OR [[IsASubcategoryOf.IsASubcategoryOf::Category:Tool]] OR [[IsASubcategoryOf.IsASubcategoryOf.IsASubcategoryOf::Category:Tool]] |?Display_title_of=label",
+                                            "previewWikiTextTemplate": "[[:{{result.fulltext}}]]",
+                                            "default": ""
+                                        },
+                                        "nominal_type": {
+                                            "title": "Type (Nominal)",
+                                            "type": "string",
+                                            //"description": "Type of the tool/device",
+                                            "format": "autocomplete",
+                                            "query": "[[$(category)]]",
+                                            "watch": {
+                                                "category": "tool.nominal_category"
+                                            },
+                                            "default": ""
+                                        },
+                                        "nominal_instance": {
+                                            "title": "Instance (Nominal)",
+                                            "type": "string",
+                                            //"description": "Instance of the tool/device",
+                                            "format": "autocomplete",
+                                            "query": "[[IsInstanceOf::$(type)]]",
+                                            "watch": {
+                                                "type": "tool.nominal_type"
+                                            },
+                                            "default": ""
+                                        }
+                                    }
+                                }
+                            },
+                            "objects": {
+                                "title": "Used Materials/Parts",
+                                "type": "array",
+                                "format": "table",
+                                "id": "objects",
+                                "items": {
+                                    "title": "Materials/Parts",
+                                    "headerTemplate": "{{i}} - {{self.name}}",
+                                    "id": "object",
+                                    "properties": {
+                                        "id": {
+                                            "title": "ID",
+                                            "type": "string",
+                                            "default": "P0000",
+                                            "options": {
+                                                "imask": {
+                                                    "returnUnmasked": true,
+                                                    "mask": "{P}0000",
+                                                    "lazy": false,
+                                                    "placeholderChar": "#"
+                                                }
+                                            }
+                                        },
+                                        "name": {
+                                            "title": "Name",
+                                            "type": "string",
+                                        },
+                                        "object_id": {
+                                            "title": "Object Reference",
+                                            "type": "string",
+                                            "watch": {
+                                                "objects": "process.objects"
+                                            },
+                                            "enumSource": [
+                                                {
+                                                    "source": "objects",
+                                                    "title": "{{item.name}}",
+                                                    "value": "{{item.id}}"
+                                                }
+                                            ]
+                                        },
+                                        "nominal_category": {
+                                            "title": "Category (Nominal)",
+                                            "type": "string",
+                                            //"description": "Category/Class of the tool/device",
+                                            "format": "autocomplete",
+                                            "query": "[[IsASubcategoryOf::Category:Material]] OR [[IsASubcategoryOf.IsASubcategoryOf::Category:Material]] OR [[IsASubcategoryOf.IsASubcategoryOf.IsASubcategoryOf::Category:Material]] |?Display_title_of=label",
+                                            "previewWikiTextTemplate": "[[:{{result.fulltext}}]]",
+                                            "default": ""
+                                        },
+                                        "nominal_type": {
+                                            "title": "Type (Nominal)",
+                                            "type": "string",
+                                            //"description": "Type of the tool/device",
+                                            "format": "autocomplete",
+                                            "query": "[[$(category)]]",
+                                            "watch": {
+                                                "category": "object.nominal_category"
+                                            },
+                                            "default": ""
+                                        },
+                                        "nominal_instance": {
+                                            "title": "Instance (Nominal)",
+                                            "type": "string",
+                                            //"description": "Instance of the tool/device",
+                                            "format": "autocomplete",
+                                            "query": "[[IsInstanceOf::$(type)]]",
+                                            "watch": {
+                                                "type": "object.nominal_type"
+                                            },
+                                            "default": ""
+                                        }
+                                    }
+                                }
+                            },
                             "quantitatives": {
                                 "title": "Quantitative Parameters",
                                 "type": "array",
@@ -395,6 +545,20 @@ var schema2 = {
                                         "name": {
                                             "title": "Name",
                                             "type": "string",
+                                        },
+                                        "object_id": {
+                                            "title": "Object Reference",
+                                            "type": "string",
+                                            "watch": {
+                                                "objects": "process.objects"
+                                            },
+                                            "enumSource": [
+                                                {
+                                                    "source": "objects",
+                                                    "title": "{{item.name}}",
+                                                    "value": "{{item.id}}"
+                                                }
+                                            ]
                                         },
                                         "property": {
                                             "title": "Property",
@@ -456,8 +620,8 @@ $(document).ready(function () {
                 if (this.dataset.config) userOptions = JSON.parse(this.dataset.config);
                 else if (this.innerText !== "") userOptions = JSON.parse(this.innerText); //Legacy support
                 var config = { ...defaultOptions, ...userOptions };
-                config.depth = parseInt(config.depth);
-                var editor = new mwjson.editor(this, config, schema2);
+                if (!config.schema) config.schema = schema2;
+                var editor = new mwjson.editor(this, config, config.schema);
             });
         });
     });
