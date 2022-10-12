@@ -133,7 +133,15 @@ mwjson.parser = class {
 
 	static parsePage(page) {
 		console.log("parsePage start");
+		var containsTemplateTage = page.content.includes("<noinclude>") || page.content.includes("<includeonly>")
+		if (containsTemplateTage) {
+			page.content = page.content.replaceAll("<noinclude>", "<Xnoinclude>");
+			page.content = page.content.replaceAll("</noinclude>", "<X/noinclude>");
+			page.content = page.content.replaceAll("<includeonly>", "<Xincludeonly>");
+			page.content = page.content.replaceAll("</includeonly>", "<X/includeonly>")
+		}
 		const parsed = CeL.wiki.parser(page.content);
+
 		parsed.each('template', function (token, index, parent) { });
 		var data = [];
 		var i = 0;
@@ -156,6 +164,14 @@ mwjson.parser = class {
 		}
 		if (string_res !== "") data.push(string_res);
 		page.dictType = "FLAT_ARRAY_TEMPLATE_KEY_DICT";
+		if (containsTemplateTage) {
+			var data_str = JSON.stringify(data);
+			data_str = data_str.replaceAll("<Xnoinclude>", "<noinclude>");
+			data_str = data_str.replaceAll("<X/noinclude>", "</noinclude>");
+			data_str = data_str.replaceAll("<Xincludeonly>", "<includeonly>");
+			data_str = data_str.replaceAll("<X/includeonly>", "</includeonly>");
+			data = JSON.parse(data_str);
+		}
 		page.dict = data;
 		console.log("parsePage stop");
 		return page;
