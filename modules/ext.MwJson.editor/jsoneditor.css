@@ -1,6 +1,7 @@
 /* compact design: inline labels and descriptions */
 .json-editor-compact div.form-group {display: flex;}
 .json-editor-compact div.form-group>label {display: flex; align-items: center; margin-right: 10px; width: 200px;}
+.json-editor-compact div.form-group input.form-check-input {right: 50px;}
 .json-editor-compact div.form-group>small.form-text {width: 150px; margin-left: 10px;}
 .json-editor-compact div.form-group>div.autocomplete {width: 100%; }
 
