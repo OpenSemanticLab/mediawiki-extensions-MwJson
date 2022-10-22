@@ -382,6 +382,7 @@ var schema2 = {
                                     "steps": "process.steps"
                                 },
                                 "enumSource": [
+                                    [""],
                                     {
                                         "source": "steps",
                                         "title": "{{item.name}}",
@@ -407,6 +408,7 @@ var schema2 = {
                                                 "objects": "process.objects"
                                             },
                                             "enumSource": [
+                                                [""],
                                                 {
                                                     "source": "objects",
                                                     "title": "{{item.name}}",
@@ -433,6 +435,7 @@ var schema2 = {
                                                 "objects": "process.objects"
                                             },
                                             "enumSource": [
+                                                [""],
                                                 {
                                                     "source": "objects",
                                                     "title": "{{item.name}}",
@@ -472,6 +475,10 @@ var schema2 = {
                                                     "placeholderChar": "#"
                                                 }
                                             }
+                                        },
+                                        "index_offset": {
+                                            "type": "integer",
+                                            "format": "number"
                                         },
                                         "name": {
                                             "title": "Name",
@@ -541,6 +548,10 @@ var schema2 = {
                                                 }
                                             }
                                         },
+                                        "index_offset": {
+                                            "type": "integer",
+                                            "format": "number"
+                                        },
                                         "name": {
                                             "title": "Name",
                                             "type": "string",
@@ -552,6 +563,7 @@ var schema2 = {
                                                 "objects": "process.objects"
                                             },
                                             "enumSource": [
+                                                [""],
                                                 {
                                                     "source": "objects",
                                                     "title": "{{item.name}}",
@@ -623,6 +635,10 @@ var schema2 = {
                                                 }
                                             }
                                         },
+                                        "index_offset": {
+                                            "type": "integer",
+                                            "format": "number"
+                                        },
                                         "name": {
                                             "title": "Name",
                                             "type": "string",
@@ -634,6 +650,7 @@ var schema2 = {
                                                 "objects": "process.objects"
                                             },
                                             "enumSource": [
+                                                [""],
                                                 {
                                                     "source": "objects",
                                                     "title": "{{item.name}}",
@@ -641,7 +658,7 @@ var schema2 = {
                                                 }
                                             ]
                                         },
-                                        "property": {
+                                        "nominal_quantity": {
                                             "title": "Property",
                                             "type": "string",
                                             "format": "autocomplete",
@@ -660,7 +677,7 @@ var schema2 = {
                                             "format": "number",
                                             "step": 0.1
                                         },
-                                        "unit": {
+                                        "nominal_unit": {
                                             "title": "Unit",
                                             "type": "string",
                                             "format": "autocomplete",
@@ -669,7 +686,7 @@ var schema2 = {
                                             "previewWikiTextTemplate": "{{result}}",
                                             "labelTemplate": "{{result}}",
                                             "watch": {
-                                                "property": "parameter.property"
+                                                "property": "parameter.nominal_quantity"
                                             }
                                         }
                                     }
