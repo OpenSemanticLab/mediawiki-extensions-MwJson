@@ -189,7 +189,7 @@ mwjson.parser = class {
 		p.dict.push({template_name: template_params});
 	}
 
-	static appendText(p)
+	static appendText(p, text)
 	{
 		p.dict.push(text);
 	}
