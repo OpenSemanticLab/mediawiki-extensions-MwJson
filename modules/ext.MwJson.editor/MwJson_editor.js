@@ -23,6 +23,9 @@ mwjson.editor = class {
 				else if (Array.isArray(data[key])) {
 					data[key].forEach(o => {
 						wikitext += mwjson.editor.data2template(o, false);
+						//console.log("Type of " + o + " is " + typeof o);
+						if (o._template) {}
+						else wikitext += ";";
 					});
 				}
 				else wikitext += mwjson.editor.data2template(data[key], false);
@@ -72,7 +75,7 @@ mwjson.editor = class {
 			console.log(JSON.stringify(json));
 			mwjson.api.getPage(this.config.target).then((page) => {
 				page.content = mwjson.editor.data2template(json)
-				page.content = "<noinclude>[" + url + " Edit]</noinclude>\n<br\>" + page.content;
+				page.content = "<noinclude>[" + url + " Edit Template]</noinclude>\n<br\>" + page.content;
 				page.changed = true;
 				console.log(page.content);
 				mwjson.api.updatePage(page, "Edited with JsonEditor").then(() => window.location.href = "/wiki/" + page.title);
