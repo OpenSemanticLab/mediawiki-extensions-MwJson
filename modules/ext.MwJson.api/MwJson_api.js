@@ -4,47 +4,47 @@ mwjson.api = class {
 	constructor() {
 	}
 
-	static getPage(title) {           
+	static getPage(title) {
 		const deferred = $.Deferred();
 		//$.getJSON(`/w/api.php?action=query&prop=revisions&titles=${title}&rvprop=content&formatversion=2&format=json`, function(data) {
 		var api = new mw.Api();
-			api.get( {
-    			action: 'query',
-    			prop: 'revisions',
-    			titles: title,
-    			rvprop: ['content'],
-    			formatversion: 2,
-    			format: 'json',
-		} ).done( function ( data ) {
-			var page = {title: title, exists: false, changed: false, content: ""};
-            		if (!(data.query.pages[0].hasOwnProperty("missing") && data.query.pages[0].missing === true)) {
+		api.get({
+			action: 'query',
+			prop: 'revisions',
+			titles: title,
+			rvprop: ['content'],
+			formatversion: 2,
+			format: 'json',
+		}).done(function (data) {
+			var page = { title: title, exists: false, changed: false, content: "" };
+			if (!(data.query.pages[0].hasOwnProperty("missing") && data.query.pages[0].missing === true)) {
 				page.exists = true;
 				page.content = data.query.pages[0].revisions[0].content;
-            		}
-            		deferred.resolve(page);
+			}
+			deferred.resolve(page);
 		});
 		return deferred.promise();
 	}
 
 	static getFilePage(name, dataType = "text") {
 		const deferred = $.Deferred();
-		mwjson.api.getPage("File:" + name).then( (page) => {
-			page.file = {name: name, changed: false};
+		mwjson.api.getPage("File:" + name).then((page) => {
+			page.file = { name: name, changed: false };
 			if (page.exists && dataType == "text") {
 				$.ajax({
 					url: "/wiki/Special:Redirect/file/" + name,
 					dataType: dataType,
-					success: function(data) {
+					success: function (data) {
 						page.file.exists = true;
 						page.file.content = data;
 						deferred.resolve(page);
 					},
-					error: function(data) {
+					error: function (data) {
 						page.file.exists = false;
 						console.log("Error while fetching file: " + data);
 						deferred.reject(data);
 					}
-                	    	});
+				});
 			}
 			else {
 				deferred.reject(new Error('File does not exists'));
@@ -52,42 +52,75 @@ mwjson.api = class {
 		});
 		return deferred.promise();
 	}
-	
+
 	static createPage(title, content, summary = "") {
 		var api = new mw.Api();
-		return api.create( title,
-		    { summary: summary },
-		    content
+		return api.create(title,
+			{ summary: summary },
+			content
 		);
 	}
-	
+
 	static editPage(title, new_text, summary = "") {
 		var api = new mw.Api();
 		return api.edit(
-		    title,
-		    function ( revision ) {
-		        return {
-		            text: new_text,
-		            summary: summary,
-		            minor: false
-		        };
-		    }
+			title,
+			function (revision) {
+				return {
+					text: new_text,
+					summary: summary,
+					minor: false
+				};
+			}
 		);
+	}
+
+	static copyPage(sourceTitle, targetTitle, summary = "") {
+		const deferred = $.Deferred();
+		mwjson.api.getPage(sourceTitle).then((sourcePage) => {
+			mwjson.api.getPage(targetTitle).then((targetPage) => {
+				if (targetPage.exists) {
+					OO.ui.confirm('Page does exist. Overwrite?').done((confirmed) => {
+						if (confirmed) {
+							if (summary === "") summary = "Copy of [[" + sourceTitle + "]]";
+							mwjson.api.editPage(targetTitle, sourcePage.content, summary).then(() => {
+								mw.notify("Copy: [[" + targetTitle + "]]", {
+									title: 'Copy created',
+									type: 'success'
+								});
+								deferred.resolve();
+							})
+						}
+					});
+				}
+				else {
+					if (summary === "") summary = "Copy of [[" + sourceTitle + "]]";
+					mwjson.api.createPage(targetTitle, sourcePage.content, summary).then(() => {
+						mw.notify("Copy: [[" + targetTitle + "]]", {
+							title: 'Copy created',
+							type: 'success'
+						});
+						deferred.resolve();
+					})
+				}
+			});
+		});
+		return deferred.promise();
 	}
 
 	static purgePage(title) {
 		var api = new mw.Api();
 		return api.post(
-		    {
+			{
 				titles: title,
 				action: 'purge',
 				forcelinkupdate: true,
 				forcerecursivelinkupdate: true
-		    }
+			}
 		);
 	}
 
-        static uploadFile(blob, name, summary = "") {
+	static uploadFile(blob, name, summary = "") {
 		const deferred = $.Deferred();
 		var param = {
 			filename: name,
@@ -96,24 +129,24 @@ mwjson.api = class {
 			format: 'json',
 			ignorewarnings: 1
 		};
-		new mw.Api().upload(blob, param).done(function(data) {
+		new mw.Api().upload(blob, param).done(function (data) {
 			mw.notify('Saved', {
 				type: 'success'
 			});
 			deferred.resolve(data);
-		}).fail(function(data) {
+		}).fail(function (data) {
 			if (data === 'exists' || data === 'was-deleted') { //only warning, upload was successful anyway
 				mw.notify('Saved', {
 					type: 'success'
 				});
-				 deferred.resolve(data);
+				deferred.resolve(data);
 			}
 			else {
 				mw.notify('An error occured while saving. \nPlease save your work on the local disk.', {
 					title: 'Error',
 					type: 'error'
 				});
-			deferred.reject(data);
+				deferred.reject(data);
 			}
 		});
 		return deferred.promise();
@@ -123,11 +156,11 @@ mwjson.api = class {
 		const deferred = $.Deferred();
 		const hasChangedFile = ('file' in page && page.file.changed);
 		if (!page.exists && page.title && page.content) {
-			mwjson.api.createPage(page.title, page.content, summary).then( (data) => {
+			mwjson.api.createPage(page.title, page.content, summary).then((data) => {
 				page.changed = false;
 				page.exists = true;
 				if (hasChangedFile) {
-					mwjson.api.uploadFile(page.file.contentBlob, page.file.name, summary).then( (data) => {
+					mwjson.api.uploadFile(page.file.contentBlob, page.file.name, summary).then((data) => {
 						page.file.changed = false;
 						page.file.exists = true;
 						deferred.resolve(page);
@@ -141,11 +174,11 @@ mwjson.api = class {
 			});
 		}
 		else if (page.changed) {
-			mwjson.api.editPage(page.title, page.content, summary).then( (data) => {
+			mwjson.api.editPage(page.title, page.content, summary).then((data) => {
 				page.changed = false;
 				page.exists = true;
 				if (hasChangedFile) {
-					mwjson.api.uploadFile(page.file.contentBlob, page.file.name, summary).then( (data) => {
+					mwjson.api.uploadFile(page.file.contentBlob, page.file.name, summary).then((data) => {
 						page.file.changed = false;
 						page.file.exists = true;
 						deferred.resolve(page);
@@ -159,7 +192,7 @@ mwjson.api = class {
 			});
 		}
 		else if (hasChangedFile) {
-			mwjson.api.uploadFile(page.file.contentBlob, page.file.name, summary).then( (data) => {
+			mwjson.api.uploadFile(page.file.contentBlob, page.file.name, summary).then((data) => {
 				page.file.changed = false;
 				page.file.exists = true;
 				deferred.resolve(page);
@@ -171,7 +204,7 @@ mwjson.api = class {
 		return deferred.promise();
 	}
 
-	static getSemanticProperties(title, mode='html') {
+	static getSemanticProperties(title, mode = 'html') {
 		const deferred = $.Deferred();
 
 		var subject = title.split("#")[0];
@@ -194,72 +227,72 @@ mwjson.api = class {
 				.then(response => response.json())
 				.then(data => {
 
-				var page_properties = [];
-				var $html = $(data.query);
-				$html.find("div.smwb-propvalue").each(function () {
-					var $prop = $(this).find("div.smwb-prophead a");
-					//var propName = $prop.text();
-					//var propName = $prop.attr('title').replace("Property:", "");
-					var propName = "";
-					if ($prop.attr('title') === "Special:Categories") propName += "Category";
-					else if ($prop.attr('title') === "Special:ListRedirects") return;
-					else if ($prop.attr('href')) propName += $prop.attr('href').split("Property:")[1].split("&")[0];
-					else return; //empty property
-					page_properties.push(propName);
-					//console.log(propName);
-					$(this).find("div.smwb-propval span.smwb-value").each(function () {
-						var value = $(this).find("a").attr("title");
-						//console.log("-> " + value);
+					var page_properties = [];
+					var $html = $(data.query);
+					$html.find("div.smwb-propvalue").each(function () {
+						var $prop = $(this).find("div.smwb-prophead a");
+						//var propName = $prop.text();
+						//var propName = $prop.attr('title').replace("Property:", "");
+						var propName = "";
+						if ($prop.attr('title') === "Special:Categories") propName += "Category";
+						else if ($prop.attr('title') === "Special:ListRedirects") return;
+						else if ($prop.attr('href')) propName += $prop.attr('href').split("Property:")[1].split("&")[0];
+						else return; //empty property
+						page_properties.push(propName);
+						//console.log(propName);
+						$(this).find("div.smwb-propval span.smwb-value").each(function () {
+							var value = $(this).find("a").attr("title");
+							//console.log("-> " + value);
+						});
+					})
+					$html.find("div.smwb-ipropvalue").each(function () {
+						var $prop = $(this).find("div.smwb-prophead a");
+						//var propName = $prop.text();
+						//var propName = $prop.attr('title').replace("Property:", "");
+						var propName = "-";
+						if ($prop.attr('title') === "Special:Categories") propName += "Category";
+						else if ($prop.attr('title') === "Special:ListRedirects") return;
+						else if ($prop.attr('href')) propName += $prop.attr('href').split("Property:")[1].split("&")[0];
+						else return; //empty property
+						page_properties.push(propName);
+						//console.log(propName);
+						$(this).find("div.smwb-propval span.smwb-ivalue").each(function () {
+							var value = $(this).find("a").attr("title");
+							//console.log("-> " + value);
+						});
+					})
+					deferred.resolve(page_properties);
+				},
+					(error) => {
+						deferred.reject(error);
 					});
-				})
-				$html.find("div.smwb-ipropvalue").each(function () {
-					var $prop = $(this).find("div.smwb-prophead a");
-					//var propName = $prop.text();
-					//var propName = $prop.attr('title').replace("Property:", "");
-					var propName = "-";
-					if ($prop.attr('title') === "Special:Categories") propName += "Category";
-					else if ($prop.attr('title') === "Special:ListRedirects") return;
-					else if ($prop.attr('href')) propName += $prop.attr('href').split("Property:")[1].split("&")[0];
-					else return; //empty property
-					page_properties.push(propName);
-					//console.log(propName);
-					$(this).find("div.smwb-propval span.smwb-ivalue").each(function () {
-						var value = $(this).find("a").attr("title");
-						//console.log("-> " + value);
-					});
-				})
-				deferred.resolve(page_properties);
-			},
-			(error) => {
-				deferred.reject(error);
-			});
 		}
 
 		else {
 			const query = `/w/api.php?action=smwbrowse&browse=subject&params={"subject":"${encodeURIComponent(subject)}","subobject":"${subObject}","options":{"showAll":"true"}, "ns":${namespace_id}, "type":"json"}&format=json`;
 			fetch(query)
-			.then(response => response.json())
-			.then(data => {
-				var page_properties = [];
-                var properties = data.query.data; //normal page
-                if (title.includes('#')) { //subobject
-                    for (var i = 0; i < data.query.sobj.length; i++) { 
-                        if (data.query.sobj[i].subject.endsWith(title.split('#').pop().replace(' ',''))){
-                            properties = data.query.sobj[i].data
-                            break;
-                        }
-                    }
-                }
-                for (var i = 0; i < properties.length; i++) {
-                    if (!properties[i].property.startsWith("_")) { //skip system properties
-                        page_properties.push(properties[i].property)
-                    }
-                }
-				deferred.resolve(page_properties);
-			},
-			(error) => {
-				deferred.reject(error);
-			});
+				.then(response => response.json())
+				.then(data => {
+					var page_properties = [];
+					var properties = data.query.data; //normal page
+					if (title.includes('#')) { //subobject
+						for (var i = 0; i < data.query.sobj.length; i++) {
+							if (data.query.sobj[i].subject.endsWith(title.split('#').pop().replace(' ', ''))) {
+								properties = data.query.sobj[i].data
+								break;
+							}
+						}
+					}
+					for (var i = 0; i < properties.length; i++) {
+						if (!properties[i].property.startsWith("_")) { //skip system properties
+							page_properties.push(properties[i].property)
+						}
+					}
+					deferred.resolve(page_properties);
+				},
+					(error) => {
+						deferred.reject(error);
+					});
 		}
 
 
