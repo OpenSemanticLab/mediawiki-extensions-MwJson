@@ -14,23 +14,23 @@ mwjson.editor = class {
 			wikitext += "{{";
 			wikitext += data._template;
 		}
-			for (var key in data) {
-				if (key.startsWith('_')) continue;
-				if (data._template) wikitext += "\n|" + key + "=";
-				if (data[key] === undefined) continue;
-				else if (typeof data[key] === 'string') wikitext += data[key];
-				else if (typeof data[key] === 'number') wikitext += (data[key]);
-				else if (Array.isArray(data[key])) {
-					data[key].forEach(o => {
-						wikitext += mwjson.editor.data2template(o, false);
-						//console.log("Type of " + o + " is " + typeof o);
-						if (o._template) {}
-						else wikitext += ";";
-					});
-				}
-				else wikitext += mwjson.editor.data2template(data[key], false);
-				//wikitext += "\n";
+		for (var key in data) {
+			if (key.startsWith('_')) continue;
+			if (data._template) wikitext += "\n|" + key + "=";
+			if (data[key] === undefined) continue;
+			else if (typeof data[key] === 'string') wikitext += data[key];
+			else if (typeof data[key] === 'number') wikitext += (data[key]);
+			else if (Array.isArray(data[key])) {
+				data[key].forEach(o => {
+					wikitext += mwjson.editor.data2template(o, false);
+					//console.log("Type of " + o + " is " + typeof o);
+					if (o._template) { }
+					else wikitext += ";";
+				});
 			}
+			else wikitext += mwjson.editor.data2template(data[key], false);
+			//wikitext += "\n";
+		}
 		if (data._template) {
 			wikitext += "\n}}"
 		}
@@ -62,13 +62,13 @@ mwjson.editor = class {
 			form_name_root: 'form_1'
 		});
 		console.log(this.config.data);
-		this.jsoneditor.on('ready', () => {if (this.config.data) this.jsoneditor.setValue(this.config.data)});
+		this.jsoneditor.on('ready', () => { if (this.config.data) this.jsoneditor.setValue(this.config.data) });
 		$(this.container).append($("<button type='Button' class='btn btn-primary btn-block' id='save-form'>Save</button>"));
 		$("#save-form").click(() => {
 			if (!this.config.target) this.config.target = "LabProcess:" + mwjson.util.OslId()
 			console.log("Save form");
 			var json = this.jsoneditor.getValue();
-			var url = window.location.href.replace(/\?.*/, '') ;
+			var url = window.location.href.replace(/\?.*/, '');
 			url += '?target=' + encodeURIComponent(this.config.target);
 			url += '&data=' + encodeURIComponent(mwjson.util.objectToCompressedBase64(json));
 
@@ -316,8 +316,8 @@ mwjson.editor = class {
 			query: input => `[[Display_title_of::like:*${input}*]][[!~*QUERY*]]|?Display_title_of=HasDisplayName|?HasDescription`,
 			minInputLen: 0,
 			filter: (result, input) => {
-				if (result.printouts['HasDisplayName'][0]) return result.printouts['HasDisplayName'][0].toLowerCase().startsWith(input.toLowerCase());
-				else return result.fulltext.split(":")[result.fulltext.split(":").length - 1].toLowerCase().startsWith(input.toLowerCase());
+				if (result.printouts['HasDisplayName'][0]) return result.printouts['HasDisplayName'][0].toLowerCase().includes(input.toLowerCase());
+				else return result.fulltext.split(":")[result.fulltext.split(":").length - 1].toLowerCase().includes(input.toLowerCase());
 			},
 			renderMode: "html",
 			renderResult: (result, props) => `
@@ -384,5 +384,199 @@ mwjson.editor = class {
 				config.onSubmit(result);
 			}
 		});
+	}
+
+	static createCopyTemplateDialog(_config) {
+		var defaultConfig = {"title": "", "sourceTitle": mw.config.get("wgPageName")};
+		_config = {...defaultConfig, ..._config};
+		_config.beforeSubmit = (targetTitle) => {return mwjson.api.copyPage(_config.sourceTitle, targetTitle)};
+		mwjson.editor.createPageDialog(_config);
+	}
+
+	static createCopyPageDialog(_config) {
+		var defaultConfig = {"title": "", "sourceTitle": mw.config.get("wgPageName")};
+		_config = {...defaultConfig, ..._config};
+		_config.beforeSubmit = (targetTitle) => {return mwjson.api.copyPage(_config.sourceTitle, targetTitle)};
+		mwjson.editor.createPageDialog(_config);
+	}
+
+	static createSubpageDialog(_config) {
+		var defaultConfig = {"superpage": mw.config.get("wgPageName"), "namespace": "", "title": ""};
+		_config = {...defaultConfig, ..._config};
+		mwjson.editor.createPageDialog(_config);
+	}
+
+	static createPageDialog(_config) {
+		var defaultConfig = {"superpage": "", "namespace": "", "title": "", "template": "", "template_query": ""};
+		defaultConfig.template_autocomplete = {
+			div_id : "autocomplete",
+			query: input => "[[Display_title_of::like:*" + input + "*]]OR[[like:*" + input + "*]]|?Display_title_of=HasDisplayName|?HasDescription", // adding [[!~*QUERY*]] seams incompatible with OR operator
+			minInputLen: 0,
+			filter: (result, input) => {
+				if (result.fulltext.includes("QUERY")) return false; //filter out SMW Query subobjects
+				if (result.printouts['HasDisplayName'][0]) return result.printouts['HasDisplayName'][0].toLowerCase().includes(input.toLowerCase());
+				else return result.fulltext.split(":")[result.fulltext.split(":").length - 1].toLowerCase().includes(input.toLowerCase());
+			},
+			renderMode: "html",
+			renderResult: (result, props) => `
+			<li ${props}>
+				<div class="wiki-title">
+					${result.printouts['HasDisplayName'][0] ? result.printouts['HasDisplayName'][0] + " (" : ""} ${result.fulltext} ${result.printouts['HasDisplayName'][0] ? ")" : ""}
+				</div>
+			</li>
+			<div class="wiki-snippet">
+			${result.printouts['HasDescription'][0] ? result.printouts['HasDescription'][0] : ""}
+			</div>
+			`,
+			getResultValue: result => {
+				if (result.printouts['HasDisplayName'][0]) return result.printouts['HasDisplayName'][0];
+				else return result.fulltext.split(":")[result.fulltext.split(":").length - 1];
+			},
+			onSubmit: result => { _config.template = result.fulltext; console.log(_config.template);}
+		}
+		_config = mwjson.util.mergeDeep(defaultConfig, _config);
+
+		// Make a subclass of ProcessDialog 
+		function Dialog(config) {
+			Dialog.super.call(this, config);
+		}
+		OO.inheritClass(Dialog, OO.ui.ProcessDialog);
+
+		// Specify a name for .addWindows()
+		Dialog.static.name = 'CreatePageDialog';
+		// Specify the static configurations: title and action set
+		Dialog.static.actions = [
+			{
+				flags: 'primary',
+				label: 'Continue',
+				action: 'create'
+			},
+			{
+				flags: 'safe',
+				label: 'Cancel'
+			}
+		];
+
+		// Customize the initialize() function to add content and layouts: 
+		Dialog.prototype.initialize = function () {
+			Dialog.super.prototype.initialize.call(this);
+			this.panel = new OO.ui.PanelLayout({
+				padded: true,
+				expanded: false
+			});
+			this.content = new OO.ui.FieldsetLayout();
+
+			this.templateInput = new OO.ui.TextInputWidget();
+
+			this.templateField = new OO.ui.FieldLayout(this.templateInput, {
+				label: 'Chose a template',
+				align: 'top'
+			});
+
+			//_config.template_autocomplete.onSubmit = (result) => {this.template = result.fulltext; console.log(this.template);};
+			this.content.$element.append( '<p>Here you can select an optional template (any existing site).</p><div style="height: 400px"><div id="autocomplete"><input class="autocomplete-input"></input><ul class="autocomplete-result-list"></ul></div></div>' );
+
+			this.titleInput = new OO.ui.TextInputWidget();
+
+			this.field = new OO.ui.FieldLayout(this.titleInput, {
+				label: 'Click continue to create a page with the given name',
+				align: 'top'
+			});
+
+			this.content.addItems([this.field]);
+			this.panel.$element.append(this.content.$element);
+			this.$body.append(this.panel.$element);
+
+			mwjson.editor.createAutocompleteInput(_config.template_autocomplete);
+
+			this.titleInput.connect(this, { 'change': 'onTitleInputChange' });
+		};
+
+		// Specify any additional functionality required by the window (disable creating an empty URL, in this case)
+		Dialog.prototype.onTitleInputChange = function (value) {
+			this.actions.setAbilities({
+				create: !!value.length
+			});
+		};
+
+		// Specify the dialog height (or don't to use the automatically generated height).
+		Dialog.prototype.getBodyHeight = function () {
+			// Note that "expanded: false" must be set in the panel's configuration for this to work.
+			// When working with a stack layout, you can use:
+			//   return this.panels.getCurrentItem().$element.outerHeight( true );
+			return this.panel.$element.outerHeight(true);
+		};
+
+		// Use getSetupProcess() to set up the window with data passed to it at the time 
+		// of opening (e.g., title: '', in this example). 
+		Dialog.prototype.getSetupProcess = function (data) {
+			data = data || {};
+			return Dialog.super.prototype.getSetupProcess.call(this, data)
+				.next(function () {
+					// Set up contents based on data
+					this.titleInput.setValue(data.title);
+				}, this);
+		};
+
+		// Specify processes to handle the actions.
+		Dialog.prototype.getActionProcess = function (action) {
+			if (action === 'create') {
+				// Create a new process to handle the action
+				return new OO.ui.Process(function () {
+					var title = "";
+					if (_config.namespace) title += _config.namespace + ":";
+					if (_config.superpage) title += _config.superpage + "/";
+					title += this.titleInput.getValue();
+
+					if (_config.template !== "" && !_config.beforeSubmit) _config.beforeSubmit = (targetTitle, template) => {return mwjson.api.copyPage(template, targetTitle)};
+
+					if (_config.beforeSubmit) {
+						_config.beforeSubmit(title, _config.template).then(() => {
+							mwjson.api.getPage(title).then((page) => {
+								var url = "/w/index.php?title=" + title + "&veaction=edit";
+								if (!page.exists) url += "&redlink=1";
+								//window.open(url); //new tab
+								window.location.href = url; //same tab
+							});
+						});
+					}
+					else {
+
+						mwjson.api.getPage(title).then((page) => {
+							var url = "/w/index.php?title=" + title + "&veaction=edit";
+							if (!page.exists) url += "&redlink=1";
+							//window.open(url); //new tab
+							window.location.href = url; //same tab
+						});
+					}
+
+				}, this);
+			}
+			// Fallback to parent handler
+			return Dialog.super.prototype.getActionProcess.call(this, action);
+		};
+
+		// Use the getTeardownProcess() method to perform actions whenever the dialog is closed. 
+		// This method provides access to data passed into the window's close() method 
+		// or the window manager's closeWindow() method.
+		Dialog.prototype.getTeardownProcess = function (data) {
+			return Dialog.super.prototype.getTeardownProcess.call(this, data)
+				.first(function () {
+					// Perform any cleanup as needed
+				}, this);
+		};
+
+		// Create and append a window manager.
+		var windowManager = new OO.ui.WindowManager();
+		$(document.body).append(windowManager.$element);
+
+		// Create a new process dialog window.
+		var dialog = new Dialog();
+
+		// Add the window to window manager using the addWindows() method.
+		windowManager.addWindows([dialog]);
+
+		// Open the window!   
+		windowManager.openWindow(dialog, { title: _config.title });
 	}
 }
