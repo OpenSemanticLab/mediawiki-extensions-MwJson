@@ -75,7 +75,8 @@ mwjson.api = class {
 		);
 	}
 
-	static copyPage(sourceTitle, targetTitle, summary = "") {
+	static copyPage(sourceTitle, targetTitle, summary = "", modify = undefined) { //(p) => { const d = $.Deferred(); d.resolve(p); return d.promise(); }) {
+		if (!modify) modify = (p) => { const d = $.Deferred(); d.resolve(p); return d.promise(); }
 		const deferred = $.Deferred();
 		mwjson.api.getPage(sourceTitle).then((sourcePage) => {
 			mwjson.api.getPage(targetTitle).then((targetPage) => {
@@ -83,24 +84,32 @@ mwjson.api = class {
 					OO.ui.confirm('Page does exist. Overwrite?').done((confirmed) => {
 						if (confirmed) {
 							if (summary === "") summary = "Copy of [[" + sourceTitle + "]]";
-							mwjson.api.editPage(targetTitle, sourcePage.content, summary).then(() => {
-								mw.notify("Copy: [[" + targetTitle + "]]", {
-									title: 'Copy created',
-									type: 'success'
-								});
-								deferred.resolve();
+							targetPage.content = sourcePage.content;
+							targetPage.changed = true;
+							modify(targetPage).then((targetPage) => {
+								mwjson.api.updatePage(targetPage, summary).then(() => {
+									mw.notify(sourceTitle + "\n=> " + targetTitle, {
+										title: 'Copy created',
+										type: 'success'
+									});
+									deferred.resolve();
+								})
 							})
 						}
 					});
 				}
 				else {
 					if (summary === "") summary = "Copy of [[" + sourceTitle + "]]";
-					mwjson.api.createPage(targetTitle, sourcePage.content, summary).then(() => {
-						mw.notify("Copy: [[" + targetTitle + "]]", {
-							title: 'Copy created',
-							type: 'success'
-						});
-						deferred.resolve();
+					targetPage.content = sourcePage.content;
+					targetPage.changed = true;
+					modify(targetPage).then((targetPage) => {
+						mwjson.api.updatePage(targetPage, summary).then(() => {
+							mw.notify(sourceTitle + "\n=> " + targetTitle, {
+								title: 'Copy created',
+								type: 'success'
+							});
+							deferred.resolve();
+						})
 					})
 				}
 			});
