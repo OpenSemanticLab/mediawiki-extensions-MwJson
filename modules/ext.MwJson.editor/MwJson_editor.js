@@ -386,17 +386,10 @@ mwjson.editor = class {
 		});
 	}
 
-	static createCopyTemplateDialog(_config) {
-		var defaultConfig = {"title": "", "sourceTitle": mw.config.get("wgPageName")};
-		_config = {...defaultConfig, ..._config};
-		_config.beforeSubmit = (targetTitle) => {return mwjson.api.copyPage(_config.sourceTitle, targetTitle)};
-		mwjson.editor.createPageDialog(_config);
-	}
-
 	static createCopyPageDialog(_config) {
-		var defaultConfig = {"title": "", "sourceTitle": mw.config.get("wgPageName")};
+		var defaultConfig = {"title": "", "template": mw.config.get("wgPageName"), "hide_template": true, "hide_template_preview": true};
 		_config = {...defaultConfig, ..._config};
-		_config.beforeSubmit = (targetTitle) => {return mwjson.api.copyPage(_config.sourceTitle, targetTitle)};
+		//_config.beforeSubmit = (targetTitle) => {return mwjson.api.copyPage(_config.sourceTitle, targetTitle)};
 		mwjson.editor.createPageDialog(_config);
 	}
 
@@ -407,9 +400,34 @@ mwjson.editor = class {
 	}
 
 	static createPageDialog(_config) {
-		var defaultConfig = {"superpage": "", "namespace": "", "title": "", "template": "", "template_query": ""};
+		var defaultConfig = {
+			"superpage": "", 
+			"namespace": "", 
+			"title": "", 
+			"hide_title": false,
+			"template": "",
+			"hide_template": false, 
+			"hide_template-preview": false, 
+			"template_query": "",
+			msg: {
+				"dialog-title": "Create new page",
+				"continue": "Continue", 
+				"cancel": "Cancel", 
+				"title-label": "Click continue to create a page with the given name", 
+				"template-label": "Here you can select an optional template (any existing site).", 
+				'template-preview-label': "Preview",
+				"page-exists-warning": "Page does exist. Overwrite?"
+			},
+			redirect: (page) => {
+				var params = {"veaction": "edit"};
+				if (!page.exists) params["redlink"] = 1;
+				return new mw.Title( page.title ).getUrl(params);
+			},
+			new_window: false
+		};
 		defaultConfig.template_autocomplete = {
 			div_id : "autocomplete",
+			//preview_div_id: "autocomplete-preview", //static for now
 			query: input => "[[Display_title_of::like:*" + input + "*]]OR[[like:*" + input + "*]]|?Display_title_of=HasDisplayName|?HasDescription", // adding [[!~*QUERY*]] seams incompatible with OR operator
 			minInputLen: 0,
 			filter: (result, input) => {
@@ -432,9 +450,42 @@ mwjson.editor = class {
 				if (result.printouts['HasDisplayName'][0]) return result.printouts['HasDisplayName'][0];
 				else return result.fulltext.split(":")[result.fulltext.split(":").length - 1];
 			},
-			onSubmit: result => { _config.template = result.fulltext; console.log(_config.template);}
+			onSubmit: result => { 
+				_config.template = result.fulltext;
+				var renderUrl = '/w/api.php?action=parse&format=json&page=';
+				renderUrl += encodeURIComponent(result.fulltext);
+				new Promise(resolve => {
+					//console.log("Render-URL: " + renderUrl);
+					fetch(renderUrl)
+						.then(response => response.json())
+						.then(data => {
+							//console.log("Parsed: " + data.parse.text);
+							//console.log("ID = " + props.id);
+							$("#" + 'autocomplete-preview').html($(data.parse.text['*']));
+							$("#" + 'autocomplete-preview').find("a").attr("target", "_blank"); //make all links open in new tab
+							//resolve(data.parse.text);
+						});
+				});
+			}
 		}
 		_config = mwjson.util.mergeDeep(defaultConfig, _config);
+
+		//inject a page modification before safing the new page
+		if (_config.modifications) {
+			_config.modify = (page) => {
+				const deferred = $.Deferred(); 
+				//console.log(page.dict);
+				mwjson.parser.parsePageAsync(page).then((page) => {
+					_config.modifications.forEach(mod => {
+						mwjson.parser.set_template_param(page, mod.template, mod.path, mod.value);
+					});
+					mwjson.parser.updateContent(page);
+					console.log(page.dict);
+					deferred.resolve(page); 
+				});
+				return deferred.promise();
+			}
+		}
 
 		// Make a subclass of ProcessDialog 
 		function Dialog(config) {
@@ -445,15 +496,16 @@ mwjson.editor = class {
 		// Specify a name for .addWindows()
 		Dialog.static.name = 'CreatePageDialog';
 		// Specify the static configurations: title and action set
+		Dialog.static.title = _config.msg["dialog-title"];
 		Dialog.static.actions = [
 			{
 				flags: 'primary',
-				label: 'Continue',
+				label: _config.msg['continue'],
 				action: 'create'
 			},
 			{
 				flags: 'safe',
-				label: 'Cancel'
+				label: _config.msg['cancel']
 			}
 		];
 
@@ -466,22 +518,26 @@ mwjson.editor = class {
 			});
 			this.content = new OO.ui.FieldsetLayout();
 
-			this.templateInput = new OO.ui.TextInputWidget();
+			/*this.templateInput = new OO.ui.TextInputWidget();
 
 			this.templateField = new OO.ui.FieldLayout(this.templateInput, {
 				label: 'Chose a template',
 				align: 'top'
-			});
+			});*/
 
 			//_config.template_autocomplete.onSubmit = (result) => {this.template = result.fulltext; console.log(this.template);};
-			this.content.$element.append( '<p>Here you can select an optional template (any existing site).</p><div style="height: 400px"><div id="autocomplete"><input class="autocomplete-input"></input><ul class="autocomplete-result-list"></ul></div></div>' );
+			var $autocomplete = $('<span>' + _config.msg['template-label'] + '</span><div style="height: auto"><div id="autocomplete"><input class="autocomplete-input"></input><ul class="autocomplete-result-list"></ul></div></div>' );
+			if (_config.hide_template) $autocomplete.hide();
+			this.content.$element.append($autocomplete);
+			if (!_config.hide_template_preview) this.content.$element.append('<span>' + _config.msg['template-preview-label'] + '</span><div id="autocomplete-preview" style="height: 400px; border: 1px solid #ccc; border-radius: 8px;"></div>');
 
 			this.titleInput = new OO.ui.TextInputWidget();
 
 			this.field = new OO.ui.FieldLayout(this.titleInput, {
-				label: 'Click continue to create a page with the given name',
+				label: _config.msg['title-label'],
 				align: 'top'
 			});
+			if (_config.hide_title) this.field.$element.hide();
 
 			this.content.addItems([this.field]);
 			this.panel.$element.append(this.content.$element);
@@ -508,13 +564,13 @@ mwjson.editor = class {
 		};
 
 		// Use getSetupProcess() to set up the window with data passed to it at the time 
-		// of opening (e.g., title: '', in this example). 
+		// of opening (e.g., pageTitle: '', in this example). 
 		Dialog.prototype.getSetupProcess = function (data) {
 			data = data || {};
 			return Dialog.super.prototype.getSetupProcess.call(this, data)
 				.next(function () {
 					// Set up contents based on data
-					this.titleInput.setValue(data.title);
+					this.titleInput.setValue(data.pageTitle);
 				}, this);
 		};
 
@@ -528,25 +584,27 @@ mwjson.editor = class {
 					if (_config.superpage) title += _config.superpage + "/";
 					title += this.titleInput.getValue();
 
-					if (_config.template !== "" && !_config.beforeSubmit) _config.beforeSubmit = (targetTitle, template) => {return mwjson.api.copyPage(template, targetTitle)};
+					if (_config.template !== "" && !_config.beforeSubmit) _config.beforeSubmit = (targetTitle, template) => {return mwjson.api.copyPage(template, targetTitle, "", _config.modify)};
 
 					if (_config.beforeSubmit) {
 						_config.beforeSubmit(title, _config.template).then(() => {
 							mwjson.api.getPage(title).then((page) => {
-								var url = "/w/index.php?title=" + title + "&veaction=edit";
-								if (!page.exists) url += "&redlink=1";
-								//window.open(url); //new tab
-								window.location.href = url; //same tab
+								var url = _config.redirect(page);
+								if (url && url !== "") {
+									if (_config.new_window) window.open(_config.redirect(page)); //new tab
+									else window.location.href = _config.redirect(page); //same tab
+								}
 							});
 						});
 					}
 					else {
-
 						mwjson.api.getPage(title).then((page) => {
-							var url = "/w/index.php?title=" + title + "&veaction=edit";
-							if (!page.exists) url += "&redlink=1";
-							//window.open(url); //new tab
-							window.location.href = url; //same tab
+							var url = _config.redirect(page);
+							console.log(url);
+							if (url && url !== "") {
+								if (_config.new_window) window.open(_config.redirect(page)); //new tab
+								else window.location.href = _config.redirect(page); //same tab
+							}
 						});
 					}
 
@@ -563,6 +621,7 @@ mwjson.editor = class {
 			return Dialog.super.prototype.getTeardownProcess.call(this, data)
 				.first(function () {
 					// Perform any cleanup as needed
+					this.manager.$element.remove(); //delete dialog DOM
 				}, this);
 		};
 
@@ -577,6 +636,6 @@ mwjson.editor = class {
 		windowManager.addWindows([dialog]);
 
 		// Open the window!   
-		windowManager.openWindow(dialog, { title: _config.title });
+		windowManager.openWindow(dialog, { pageTitle: _config.title });
 	}
 }

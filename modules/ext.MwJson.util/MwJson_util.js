@@ -61,7 +61,6 @@ mwjson.util = class {
 			"label": "Link"
 		};
 		var config = { ...defaultConfig, ...config };
-		console.log(config);
 		if ($(defaultConfig.location).length === 0) return; //check if tool bar exists
 
 		var $menu_entry = $(defaultConfig.location).find('ul').children().first().clone(); //find "more" page menu and clone first entry

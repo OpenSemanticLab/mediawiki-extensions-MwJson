@@ -173,7 +173,7 @@ mwjson.parser = class {
 			data = JSON.parse(data_str);
 		}
 		page.dict = data;
-		console.log("parsePage stop");
+		//console.log("parsePage stop");
 		return page;
 	}
 
