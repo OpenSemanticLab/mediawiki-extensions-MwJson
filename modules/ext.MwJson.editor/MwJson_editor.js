@@ -37,6 +37,39 @@ mwjson.editor = class {
 		return wikitext;
 	}
 
+	static getTemplatePropertyMapping(schema) {
+		var mapping = mwjson.editor.getPropertyTemplateMapping(schema);
+		var inverse_mapping = {};
+		for(var key in mapping){
+			inverse_mapping[mapping[key]] = key;
+		}
+		return inverse_mapping;
+	}
+
+	static getPropertyTemplateMapping(schema) {
+		//TODO: use jsonpath on schema
+		var mapping = {
+			"header": "OslTemplate:KB/Term",
+			"footer": "OslTemplate:KB/Term/Footer"
+		}
+	}
+
+	static pagedict2data(pagedict) {
+		var data = {}
+		var textkey = "text";
+		var text_counter = 0;
+		for (var key in pagedict)
+		{
+			var content_element = pagedict[key];
+			if (typeof content_element == "object") wt += mwjson.parser.getWikitextFromWikipageTemplateKeyDict(content_element);
+			else if (typeof content_element == "string") {
+				text_counter += 1;
+				data[textkey + text_counter] = content_element;
+			}
+			else console.log("Error: content element is not dict or string: " + content_element);
+		}
+	}
+
 	createEditor() {
 		//return function(err, config) {
 
@@ -75,6 +108,7 @@ mwjson.editor = class {
 			console.log(JSON.stringify(json));
 			mwjson.api.getPage(this.config.target).then((page) => {
 				page.content = mwjson.editor.data2template(json)
+				//add edit link with base64 encode data
 				page.content = "<noinclude>[" + url + " Edit Template]</noinclude>\n<br\>" + page.content;
 				page.changed = true;
 				console.log(page.content);
@@ -115,9 +149,17 @@ mwjson.editor = class {
 		// listen for loaded
 		this.jsoneditor.on('ready', () => {
 			console.log("Editor loaded");
-			//load data from page if exist
-			//if (this.targetPage.content !== "") this.jsoneditor.setValue(this.targetPage.data);
-			console.log("Queries:");
+			mwjson.api.getPage(this.config.target).then((page) => {
+				return;
+				mwjson.parser.parsePage(page);
+				this.targetPage = page;
+				//load data from page if exist
+				if (this.targetPage.content !== "") {
+					console.log("Load data:", this.targetPage.dict);
+					this.jsoneditor.setValue(this.targetPage.dict);
+				}
+				console.log("Queries:");
+			})
 		});
 
 		// listen for changes
@@ -435,8 +477,8 @@ mwjson.editor = class {
 				if (result.printouts['HasDisplayName'][0]) return result.printouts['HasDisplayName'][0].toLowerCase().includes(input.toLowerCase());
 				else return result.fulltext.split(":")[result.fulltext.split(":").length - 1].toLowerCase().includes(input.toLowerCase());
 			},
-			renderMode: "html",
-			renderResult: (result, props) => `
+			_renderMode: "html",
+			_renderResult: (result, props) => `
 			<li ${props}>
 				<div class="wiki-title">
 					${result.printouts['HasDisplayName'][0] ? result.printouts['HasDisplayName'][0] + " (" : ""} ${result.fulltext} ${result.printouts['HasDisplayName'][0] ? ")" : ""}
@@ -446,6 +488,13 @@ mwjson.editor = class {
 			${result.printouts['HasDescription'][0] ? result.printouts['HasDescription'][0] : ""}
 			</div>
 			`,
+			renderMode: "wikitext",
+            renderResult: (result, props) => {
+                var wikitext = "";
+                wikitext += `[[${result.fulltext}|${mwjson.util.stripNamespace(result.fulltext)}]]`;
+                if (result.printouts['HasDescription'][0]) wikitext += `</br>${result.printouts['HasDescription'][0]}`;
+                return wikitext;
+            },
 			getResultValue: result => {
 				if (result.printouts['HasDisplayName'][0]) return result.printouts['HasDisplayName'][0];
 				else return result.fulltext.split(":")[result.fulltext.split(":").length - 1];
@@ -477,6 +526,7 @@ mwjson.editor = class {
 				//console.log(page.dict);
 				mwjson.parser.parsePageAsync(page).then((page) => {
 					_config.modifications.forEach(mod => {
+						if (typeof mod.value === 'function') mod.value = mod.value(_config);
 						mwjson.parser.set_template_param(page, mod.template, mod.path, mod.value);
 					});
 					mwjson.parser.updateContent(page);
