@@ -709,6 +709,117 @@ var schema2 = {
     }
 }
 
+var schema3 = {
+    "title": "KB/Term",
+    "type": "object",
+    "id": "term",
+    "properties": {
+        "header": {
+            "title": "General Data",
+            "type": "object",
+            "id": "header",
+            "properties": {
+                "_template": {
+                    "type": "string",
+                    "default": "OslTemplate:KB/Term",
+                    "options": {
+                        "hidden": true
+                    }
+                },
+                "label": {
+                    "title": "Label",
+                    "type": "string",
+                    "description": "Human readable name"
+                },
+                "label_lang_code" : {
+                    "title": "Lang code",
+                    "type": "string",
+                    "enum": ["en","de"]
+                }
+            }
+        },
+        "freetext": {
+            "type": "string", "format": "markdown", "options": { "hidden": true }, "default": "=Details=\n"
+        },
+        "footer": {
+            "title": "Footer",
+            "type": "object",
+            "id": "footer",
+            "properties": {
+                "_template": {
+                    "type": "string",
+                    "default": "OslTemplate:KB/Term/Footer",
+                    "options": {
+                        "hidden": true,
+                    }
+                }
+            },
+            "options": {
+                "hidden": true
+            }
+        }
+    }
+}
+
+var schema4 = {
+    "title": "KB/Entity",
+    "type": "object",
+    "id": "term",
+    "properties": {
+        "_template": {
+            "type": "string",
+            "default": "OslTemplate:KB/Entity",
+            "options": { "hidden": true }
+        },
+        "_template_label": {
+            "type": "string",
+            "default": "Entity",
+            "options": { "hidden": true }
+        },
+        "label": {
+            "title": "Label",
+            "type": "string",
+            "description": "Human readable name"
+        },
+        "label_lang_code" : {
+            "title": "Lang code",
+            "type": "string",
+            "enum": ["en","de"]
+        },
+        "extensions": {
+            "title": "Extensions",
+            "type": "array",
+            "format": "tabs",
+            "items": {
+                "title": "Extension",
+                "headerTemplate": "{{i1}} - {{self._template_label}}",
+                "options": {
+                    "keep_oneof_values": false
+                },
+                "oneOf": [
+                    {"$ref": "/wiki/JsonSchema:LIMS/Device?action=raw"}
+                ]
+            }
+        },  
+        "_wikitext": {
+            "type": "string", "format": "markdown", "options": { "hidden": true }, "default": "=Details=\n"
+        },
+        "_footer": {
+            "title": "KB/Entity/Footer",
+            "type": "object",
+            "id": "footer",
+            "options": { "hidden": true },
+            "properties": {
+                "_template": {
+                "type": "string",
+                "default": "OslTemplate:KB/Entity/Footer",
+                "options": { "hidden": true }
+                }
+            }
+        }
+    }
+}
+
 $(document).ready(function () {
 
     $.when(
@@ -732,7 +843,8 @@ $(document).ready(function () {
                 if ((searchParams.has('target') && !(searchParams.get('target') === ""))) config.target = searchParams.get('target');
                 if ((searchParams.has('schema') && !(searchParams.get('schema') === ""))) config.schema = searchParams.get('schema');
                 if ((searchParams.has('data') && !(searchParams.get('data') === ""))) config.data = mwjson.util.objectFromCompressedBase64(decodeURIComponent(searchParams.get('data')));
-                if (!config.schema) config.schema = schema2;
+                if (!config.schema) config.schema = schema4;
+                //config.target = "Term:OSL9c64c51bd5fb4162bc1fa9e60468a09e"
                 var editor = new mwjson.editor(this, config, config.schema);
             });
         });
