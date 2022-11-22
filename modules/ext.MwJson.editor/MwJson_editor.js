@@ -28,7 +28,8 @@ mwjson.editor = class {
 	static wikiJson2SchemaJsonRecursion(wikiJson, footerWikiJson = undefined) {
 		var schemaJson = {}
 		if (footerWikiJson != undefined) { 
-			schemaJson["_footer"] = mwjson.editor.wikiJson2SchemaJsonRecursion(footerWikiJson);
+			schemaJson['osl_footer'] = mwjson.editor.wikiJson2SchemaJsonRecursion(footerWikiJson);
+			delete schemaJson['osl_footer']['extensions']; //not defined in schema
 		}
 		for (var key in wikiJson) {
 			var value = wikiJson[key];
@@ -41,7 +42,7 @@ mwjson.editor = class {
 					if (typeof element === "object") {
 						if (key === "extensions") {
 							if (footerWikiJson != undefined) { //we asume that every extension provides also a footer template
-								var nextFooter = footerWikiJson[schemaJson["_footer"]['_template']]['extensions'][index];
+								var nextFooter = footerWikiJson[schemaJson['osl_footer']['osl_template']]['extensions'][index];
 								schemaJson[key].push(mwjson.editor.wikiJson2SchemaJsonRecursion(element, nextFooter));
 							}
 						}
@@ -55,11 +56,20 @@ mwjson.editor = class {
 			}
 			else if (typeof value === "object") {
 				schemaJson = mwjson.editor.wikiJson2SchemaJsonRecursion(value, footerWikiJson);
-				schemaJson["_template"] = key;
+				schemaJson['osl_template'] = key;
 			}
 			else {
 				schemaJson[key] = value;
 			}
+		}
+
+		for (key in schemaJson) {
+			if (schemaJson[key] === "" && key === 'extensions') schemaJson[key] = [];
+			//if (schemaJson[key] === "") delete schemaJson[key]; //schemaJson[key] = undefined; ////set properties with empty string to none
+        	/*if (Array.isArray(schemaJson[key])) { //wikiJson defaults are lists, even for single or empty values
+            	if (schemaJson[key].length == 0) delete schemaJson[key]
+            	//else if len(schemaJson[key]) == 1: schemaJson[key] = schemaJson[key][0]
+			}*/
 		}
 
 		return schemaJson;
@@ -76,7 +86,7 @@ mwjson.editor = class {
 		var schemaJson = {};
 
 		schemaJson = mwjson.editor.wikiJson2SchemaJsonRecursion(wikiJson[0], wikiJson[2])
-		schemaJson["_wikitext"] = wikiJson[1];
+		schemaJson['osl_wikitext'] = wikiJson[1];
 		return schemaJson;
 	}
 
@@ -84,22 +94,22 @@ mwjson.editor = class {
 		var wikiJson = [{}, "", {}]; //header, freetext, footer
 		var template = "";
 		var footer_template = "";
-		if (Object.hasOwn(schemaJson, '_template')) {
-			template = schemaJson['_template'];
+		if (Object.hasOwn(schemaJson, 'osl_template')) {
+			template = schemaJson['osl_template'];
 			wikiJson[0][template] = {};
 		}
 		else {
-			console.log("Error: Mandatory property '_template' not found in schemaJson", schemaJson);
+			console.log("Error: Mandatory property 'osl_template' not found in schemaJson", schemaJson);
 			return;
 		}
-		if (Object.hasOwn(schemaJson, '_wikitext')) wikiJson[1] = schemaJson['_wikitext'];
-		if (Object.hasOwn(schemaJson, '_footer')) {
-			wikiJson[2] = mwjson.editor.schemaJson2WikiJson(schemaJson['_footer'], false)[0];
-			footer_template = schemaJson['_footer']['_template'];
+		if (Object.hasOwn(schemaJson, 'osl_wikitext')) wikiJson[1] = schemaJson['osl_wikitext'];
+		if (Object.hasOwn(schemaJson, 'osl_footer')) {
+			wikiJson[2] = mwjson.editor.schemaJson2WikiJson(schemaJson['osl_footer'], false)[0];
+			footer_template = schemaJson['osl_footer']['osl_template'];
 			wikiJson[2][footer_template]['extensions'] = [];
 		}
 		for (var key in schemaJson) {
-			if (key.startsWith('_')) continue;
+			if (key.startsWith('_') || key.startsWith('osl_template') || key.startsWith('osl_wikitext') || key.startsWith('osl_footer')) continue;
 			if (schemaJson[key] === undefined) continue;
 			else if (typeof schemaJson[key] === 'string') wikiJson[0][template][key] = schemaJson[key];
 			else if (typeof schemaJson[key] === 'number') wikiJson[0][template][key] = schemaJson[key];
@@ -199,7 +209,9 @@ mwjson.editor = class {
 			disable_properties: true,
 			use_default_values: true,
 			required_by_default: false,
-			//show_errors: 'always',
+			display_required_only: false,
+			show_opt_in: true,
+			show_errors: 'always',
 			disable_array_reorder: false,
 			disable_array_delete_all_rows: false,
 			disable_array_delete_last_row: false,
@@ -208,7 +220,6 @@ mwjson.editor = class {
 			form_name_root: 'form_1'
 		});
 		console.log(this.config.data);
-		this.jsoneditor.on('ready', () => { if (this.config.data) this.jsoneditor.setValue(this.config.data) });
 		$(this.container).append($("<button type='Button' class='btn btn-primary btn-block' id='save-form'>Save</button>"));
 		$("#save-form").click(() => {
 			if (!this.config.target) this.config.target = "LabProcess:" + mwjson.util.OslId()
@@ -231,7 +242,7 @@ mwjson.editor = class {
 				console.log(wikiJson);
 				console.log(page.content);
 				mwjson.api.updatePage(page, "Edited with JsonEditor").then(() => {
-					//window.location.href = "/wiki/" + page.title
+					window.location.href = "/wiki/" + page.title
 				});
 			});
 			//mwjson.parser.parsePage(page)
@@ -269,7 +280,8 @@ mwjson.editor = class {
 		// listen for loaded
 		this.jsoneditor.on('ready', () => {
 			console.log("Editor loaded");
-			mwjson.api.getPage(this.config.target).then((page) => {
+			if (this.config.data) this.jsoneditor.setValue(this.config.data);
+			if (this.config.target) mwjson.api.getPage(this.config.target).then((page) => {
 				//return;
 				mwjson.parser.parsePage(page);
 				this.targetPage = page;
