@@ -196,7 +196,9 @@ mwjson.editor = class {
 	createEditor() {
 		//return function(err, config) {
 
-		console.log(this);
+		//console.log(this);
+
+		//JSONEditor.defaults.language = "de";
 
 		//create editor
 		this.jsoneditor = new JSONEditor(this.container, {
@@ -303,9 +305,20 @@ mwjson.editor = class {
 			console.log(this.jsoneditor.getValue());
 		});
 		//};
+
+		// listen for array changes
+		this.jsoneditor.on('addRow', editor => {
+			//console.log('addRow', editor)
+		});
 	};
 
 	static init() {
+
+		var msgs = [];
+		for (var key of Object.keys(JSONEditor.defaults.languages.en)) {
+			msgs.push("json-editor-" + key);
+		}
+		
 		const deferred = $.Deferred();
 		if (!('ready' in mwjson.editor) || !mwjson.editor.ready) {
 			mw.loader.load('https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css', 'text/css');
@@ -313,10 +326,14 @@ mwjson.editor = class {
 			$.when(
 				//nothing to do
 				$.getScript("https://unpkg.com/imask"),
+				new mw.Api().loadMessagesIfMissing(msgs),
 				$.Deferred(function (deferred) {
 					$(deferred.resolve);
 				})
 			).done(function () {
+				for (var key of Object.keys(JSONEditor.defaults.languages.en)) {
+					JSONEditor.defaults.languages.en[key] = mw.message("json-editor-" + key).text(); //replace with mediawiki i18n
+				}
 				mwjson.editor.setCallbacks();
 				mwjson.editor.setDefaultOptions();
 				console.log("JsonEditor initialized");
