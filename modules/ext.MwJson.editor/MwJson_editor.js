@@ -332,7 +332,8 @@ mwjson.editor = class {
 				})
 			).done(function () {
 				for (var key of Object.keys(JSONEditor.defaults.languages.en)) {
-					JSONEditor.defaults.languages.en[key] = mw.message("json-editor-" + key).text(); //replace with mediawiki i18n
+					//replace with mediawiki i18n
+					JSONEditor.defaults.languages.en[key] = mw.message("json-editor-" + key).text().replaceAll('((','{{').replaceAll('))','}}');
 				}
 				mwjson.editor.setCallbacks();
 				mwjson.editor.setDefaultOptions();
