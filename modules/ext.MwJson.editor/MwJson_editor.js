@@ -116,16 +116,19 @@ mwjson.editor = class {
 			else if (Array.isArray(schemaJson[key])) {
 				wikiJson[0][template][key] = [];
 				schemaJson[key].forEach(subSchemaJson => {
-					var subWikiJson = mwjson.editor.schemaJson2WikiJson(subSchemaJson, false);
-					wikiJson[0][template][key].push(subWikiJson[0]);
-					if (key === "extensions") {
-						wikiJson[2][footer_template]['extensions'].push(subWikiJson[2]);
+					if (mwjson.editor.isObjLiteral(wikiJson[0])) {
+						var subWikiJson = mwjson.editor.schemaJson2WikiJson(subSchemaJson, false);
+						wikiJson[0][template][key].push(subWikiJson[0]);
+						if (key === "extensions") {
+							wikiJson[2][footer_template]['extensions'].push(subWikiJson[2]);
+						}
 					}
+					else wikiJson[0][template][key].push(subWikiJson); //Literal
 				});
 			}
-			else {
-				var subWikiJson = mwjson.editor.schemaJson2WikiJson(subSchemaJson, false);
-				wikiJson[0][template][key] = subWikiJson[0];
+			else { //object
+				var subWikiJson = mwjson.editor.schemaJson2WikiJson(schemaJson[key], false);
+				wikiJson[0][template][key] = [subWikiJson[0]]; //wikiJson defaults to arrays
 			}
 		}
 		return wikiJson;
@@ -219,7 +222,7 @@ mwjson.editor = class {
 			disable_array_delete_last_row: false,
 			keep_oneof_values: false,
 			no_additional_properties: true,
-			form_name_root: 'form_1'
+			form_name_root: 'form' //set to schema id?
 		});
 		console.log(this.config.data);
 		$(this.container).append($("<button type='Button' class='btn btn-primary btn-block' id='save-form'>Save</button>"));
