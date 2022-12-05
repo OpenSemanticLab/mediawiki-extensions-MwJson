@@ -108,16 +108,23 @@ mwjson.parser = class {
 					if (debug) console.log("key " + key + " (plain / template list)");
 					var params = [];
 					var i_template = 0;
-					var i = 0;
 					while (template.parameters[key][i_template]) {
 						//skip empty entries
 						if (Array.isArray(template.parameters[key][i_template])) {
-							//root[key][i] = parseTemplateStructureRecursionFlat(template.parameters[key][i_template]);
-							var res = mwjson.parser.parseTemplateStructureRecursionFlat(page, template.parameters[key][i_template], debug);
-							//if (debug) console.log("res " +  i + " = " + stringifyObject(res));
-							//if (debug) console.log(res);
-							params.push(JSON.parse(JSON.stringify(res))); //clone obj
-							i += 1;
+							if (template.parameters[key][i_template].type && template.parameters[key][i_template].type !== 'transclusion') { //e.g. 'list'
+								if (params.length === 0) params.push("")
+								params[params.length - 1] += template.parameters[key][i_template]; //append plain string
+							}
+							else {
+								var res = mwjson.parser.parseTemplateStructureRecursionFlat(page, template.parameters[key][i_template], debug);
+								//if (debug) console.log("res " +  i + " = " + stringifyObject(res));
+								//if (debug) console.log(res);
+								params.push(JSON.parse(JSON.stringify(res))); //clone obj
+							}
+						}
+						else {
+							if (params.length === 0) params.push("")
+							params[params.length - 1] += template.parameters[key][i_template]; //append plain string
 						}
 						i_template += 1;
 					}
