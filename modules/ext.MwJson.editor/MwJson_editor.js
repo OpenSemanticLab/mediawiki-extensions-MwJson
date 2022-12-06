@@ -1,29 +1,159 @@
 /*@nomin*/
 
 mwjson.editor = class {
-	constructor(container, config, schema) {
-		this.container = container;
-		this.config = config;
-		this.schema = schema;
+	constructor(config) {
+		var defaultConfig = {
+			id: 'json-editor-' + mwjson.util.getShortUid(),
+			onsubmit: this.onsubmit
+		};
+		this.config = mwjson.util.mergeDeep(defaultConfig, config);
+		if (this.config.container) {
+			this.container = this.config.container;
+			this.config.popup = false;
+		}
+		else {
+			this.createPopupDialog(this.config.popupConfig);
+			this.container = document.getElementById(this.config.id);
+			this.config.popup = true;
+		}
+
+		this.schema = this.config.schema;
 		this.createEditor();
 	}
 
+	createPopupDialog(_config) {
+		_config = _config || {}
+		var editor = this;
+		var defaultConfig = {
+			msg: {
+				"dialog-title": "JSONEditor",
+				"continue": "Continue", 
+				"cancel": "Cancel", 
+			},
+			redirect: (page) => {
+				var params = {"veaction": "edit"};
+				if (!page.exists) params["redlink"] = 1;
+				return new mw.Title( page.title ).getUrl(params);
+			},
+			new_window: false
+		};
+
+		_config = mwjson.util.mergeDeep(defaultConfig, _config);
+
+		// Make a subclass of ProcessDialog 
+		function Dialog(config) {
+			Dialog.super.call(this, config);
+		}
+		OO.inheritClass(Dialog, OO.ui.ProcessDialog);
+
+		// Specify a name for .addWindows()
+		Dialog.static.name = 'CreatePageDialog';
+		// Specify the static configurations: title and action set
+		Dialog.static.title = _config.msg["dialog-title"];
+		Dialog.static.actions = [
+			{
+				flags: 'primary',
+				label: _config.msg['continue'],
+				action: 'create'
+			},
+			{
+				flags: 'safe',
+				label: _config.msg['cancel']
+			}
+		];
+
+		// Customize the initialize() function to add content and layouts: 
+		Dialog.prototype.initialize = function () {
+			Dialog.super.prototype.initialize.call(this);
+			this.panel = new OO.ui.PanelLayout({
+				padded: true,
+				expanded: false
+			});
+
+			this.panel.$element.append($('<div id="' + editor.config.id + '"><div>'));
+			this.$body.append(this.panel.$element);
+		};
+
+		// Specify any additional functionality required by the window (disable creating an empty URL, in this case)
+		/*Dialog.prototype.onTitleInputChange = function (value) {
+			this.actions.setAbilities({
+				create: !!value.length
+			});
+		};*/
+
+		// Specify the dialog height (or don't to use the automatically generated height).
+		Dialog.prototype.getBodyHeight = function () {
+			// Note that "expanded: false" must be set in the panel's configuration for this to work.
+			// When working with a stack layout, you can use:
+			//   return this.panels.getCurrentItem().$element.outerHeight( true );
+			return this.panel.$element.outerHeight(true);
+		};
+
+		// Use getSetupProcess() to set up the window with data passed to it at the time 
+		// of opening (e.g., pageTitle: '', in this example). 
+		Dialog.prototype.getSetupProcess = function (data) {
+			data = data || {};
+			return Dialog.super.prototype.getSetupProcess.call(this, data)
+				.next(function () {
+					// Set up contents based on data
+				}, this);
+		};
+
+		// Specify processes to handle the actions.
+		Dialog.prototype.getActionProcess = function (action) {
+			var dialog = this;
+			if (action === 'create') {
+				// Create a new process to handle the action
+				return new OO.ui.Process(function () {
+					dialog.close({action: action})
+					if (editor.config.onsubmit) editor.config.onsubmit(editor.jsoneditor.getValue());
+				}, this);
+			}
+			// Fallback to parent handler
+			return Dialog.super.prototype.getActionProcess.call(this, action);
+		};
+
+		// Use the getTeardownProcess() method to perform actions whenever the dialog is closed. 
+		// This method provides access to data passed into the window's close() method 
+		// or the window manager's closeWindow() method.
+		Dialog.prototype.getTeardownProcess = function (data) {
+			return Dialog.super.prototype.getTeardownProcess.call(this, data)
+				.first(function () {
+					// Perform any cleanup as needed
+					this.manager.$element.remove(); //delete dialog DOM
+				}, this);
+		};
+
+		// Create and append a window manager.
+		var windowManager = new OO.ui.WindowManager();
+		$(document.body).append(windowManager.$element);
+
+		// Create a new process dialog window.
+		var dialog = new Dialog();
+
+		// Add the window to window manager using the addWindows() method.
+		windowManager.addWindows([dialog]);
+
+		// Open the window!   
+		windowManager.openWindow(dialog, { pageTitle: _config.title });
+	}
+
 	static isObjLiteral(_obj) {
-		var _test  = _obj;
-		return (  typeof _obj !== 'object' || _obj === null ?
-					false :  
-					(
-					  (function () {
-						while (!false) {
-						  if (  Object.getPrototypeOf( _test = Object.getPrototypeOf(_test)  ) === null) {
+		var _test = _obj;
+		return (typeof _obj !== 'object' || _obj === null ?
+			false :
+			(
+				(function () {
+					while (!false) {
+						if (Object.getPrototypeOf(_test = Object.getPrototypeOf(_test)) === null) {
 							break;
-						  }      
 						}
-						return Object.getPrototypeOf(_obj) === _test;
-					  })()
-					)
-				);
-	  }
+					}
+					return Object.getPrototypeOf(_obj) === _test;
+				})()
+			)
+		);
+	}
 
 	static wikiJson2SchemaJsonRecursion(wikiJson, footerWikiJson = undefined) {
 		var schemaJson = {}
@@ -202,9 +332,8 @@ mwjson.editor = class {
 		//console.log(this);
 
 		//JSONEditor.defaults.language = "de";
-
-		//create editor
-		this.jsoneditor = new JSONEditor(this.container, {
+		this.config.JSONEditorConfig = this.config.JSONEditorConfig || {};
+		var defaultJSONEditorConfig = {
 			schema: this.schema,
 			theme: 'bootstrap4',
 			ajax: true,
@@ -223,64 +352,20 @@ mwjson.editor = class {
 			keep_oneof_values: false,
 			no_additional_properties: true,
 			form_name_root: 'form' //set to schema id?
-		});
-		console.log(this.config.data);
-		$(this.container).append($("<button type='Button' class='btn btn-primary btn-block' id='save-form'>Save</button>"));
-		$("#save-form").click(() => {
-			if (!this.config.target) this.config.target = "LabProcess:" + mwjson.util.OslId()
-			console.log("Save form");
-			var json = this.jsoneditor.getValue();
-			var url = window.location.href.replace(/\?.*/, '');
-			url += '?target=' + encodeURIComponent(this.config.target);
-			url += '&data=' + encodeURIComponent(mwjson.util.objectToCompressedBase64(json));
+		}
+		this.config.JSONEditorConfig = mwjson.util.mergeDeep(defaultJSONEditorConfig, this.config.JSONEditorConfig);
+		console.log(this.config.JSONEditorConfig);
 
-			console.log(JSON.stringify(json));
-			mwjson.api.getPage(this.config.target).then((page) => {
-				page.content = mwjson.editor.data2template(json)
-				//add edit link with base64 encode data
-				//page.content = "<noinclude>[" + url + " Edit Template]</noinclude>\n<br\>" + page.content;
-				page.changed = true;
-				//console.log(page.content);
-				var wikiJson = mwjson.editor.schemaJson2WikiJson(json)
-				page.dict = wikiJson;
-				mwjson.parser.updateContent(page);
-				console.log(wikiJson);
-				console.log(page.content);
-				mwjson.api.updatePage(page, "Edited with JsonEditor").then(() => {
-					window.location.href = "/wiki/" + page.title
-				});
+		//create editor
+		this.jsoneditor = new JSONEditor(this.container, this.config.JSONEditorConfig);
+		console.log(this.config.data);
+
+		if (!this.config.popup) {
+			$(this.container).append($("<button type='Button' class='btn btn-primary btn-block' id='save-form'>Save</button>"));
+			$("#save-form").click(() => {
+				this.config.onsubmit(this.editor.getValue());
 			});
-			//mwjson.parser.parsePage(page)
-			//console.log(page.dict);
-			return;
-			//console.log(this.targetPage.data);
-			if (Array.isArray(this.targetPage.data)) {
-				this.targetPage.data.forEach((template, index) => {
-					Object.assign(template, this.jsoneditor.getValue()[index]);
-					wikitext = data2template(template);
-					template._token.clear();
-					template._token.push(wikitext);
-				});
-			}
-			else {
-				var template = this.targetPage.data;
-				Object.assign(template, this.jsoneditor.getValue());
-				wikitext = data2template(template);
-				template._token.clear();
-				template._token.push(wikitext);
-			}
-			this.targetPage.content = this.targetPage.parsedContent.toString();
-			console.log(this.targetPage.content);
-			var params = {
-				action: 'edit',
-				title: this.targetPage.name,
-				text: this.targetPage.content,
-				format: 'json'
-			};
-			this.api.postWithToken('csrf', params).done(function (data) {
-				console.log('Saved!');
-			});
-		});
+		}
 
 		// listen for loaded
 		this.jsoneditor.on('ready', () => {
@@ -314,6 +399,61 @@ mwjson.editor = class {
 			//console.log('addRow', editor)
 		});
 	};
+
+	onsubmit(json) {
+		if (!this.config.target) this.config.target = "LabProcess:" + mwjson.util.OslId()
+		console.log("Save form");
+		var url = window.location.href.replace(/\?.*/, '');
+		url += '?target=' + encodeURIComponent(this.config.target);
+		url += '&data=' + encodeURIComponent(mwjson.util.objectToCompressedBase64(json));
+
+		console.log(JSON.stringify(json));
+		mwjson.api.getPage(this.config.target).then((page) => {
+			page.content = mwjson.editor.data2template(json)
+			//add edit link with base64 encode data
+			//page.content = "<noinclude>[" + url + " Edit Template]</noinclude>\n<br\>" + page.content;
+			page.changed = true;
+			//console.log(page.content);
+			var wikiJson = mwjson.editor.schemaJson2WikiJson(json)
+			page.dict = wikiJson;
+			mwjson.parser.updateContent(page);
+			console.log(wikiJson);
+			console.log(page.content);
+			mwjson.api.updatePage(page, "Edited with JsonEditor").then(() => {
+				window.location.href = "/wiki/" + page.title
+			});
+		});
+		//mwjson.parser.parsePage(page)
+		//console.log(page.dict);
+		/*return;
+		console.log(this.targetPage.data);
+		if (Array.isArray(this.targetPage.data)) {
+			this.targetPage.data.forEach((template, index) => {
+				Object.assign(template, this.jsoneditor.getValue()[index]);
+				wikitext = data2template(template);
+				template._token.clear();
+				template._token.push(wikitext);
+			});
+		}
+		else {
+			var template = this.targetPage.data;
+			Object.assign(template, this.jsoneditor.getValue());
+			wikitext = data2template(template);
+			template._token.clear();
+			template._token.push(wikitext);
+		}
+		this.targetPage.content = this.targetPage.parsedContent.toString();
+		console.log(this.targetPage.content);
+		var params = {
+			action: 'edit',
+			title: this.targetPage.name,
+			text: this.targetPage.content,
+			format: 'json'
+		};
+		this.api.postWithToken('csrf', params).done(function (data) {
+			console.log('Saved!');
+		});*/
+	}
 
 	static init() {
 

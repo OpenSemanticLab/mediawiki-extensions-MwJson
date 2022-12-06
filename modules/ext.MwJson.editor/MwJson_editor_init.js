@@ -761,64 +761,64 @@ var schema3 = {
     }
 }
 
-var schema4 = {
-    "title": "KB/Entity",
-    "type": "object",
-    "id": "term",
-    "properties": {
-        "_template": {
-            "type": "string",
-            "default": "OslTemplate:KB/Entity",
-            "options": { "hidden": true }
-        },
-        "_template_label": {
-            "type": "string",
-            "default": "Entity",
-            "options": { "hidden": true }
-        },
-        "label": {
-            "title": "Label",
-            "type": "string",
-            "description": "Human readable name"
-        },
-        "label_lang_code" : {
-            "title": "Lang code",
-            "type": "string",
-            "enum": ["en","de"]
-        },
-        "extensions": {
-            "title": "Extensions",
-            "type": "array",
-            "format": "tabs",
-            "items": {
-                "title": "Extension",
-                "headerTemplate": "{{i1}} - {{self._template_label}}",
-                "options": {
-                    "keep_oneof_values": false
-                },
-                "oneOf": [
-                    {"$ref": "/wiki/JsonSchema:LIMS/Device?action=raw"}
-                ]
-            }
-        },  
-        "_wikitext": {
-            "type": "string", "format": "markdown", "options": { "hidden": true }, "default": "=Details=\n"
-        },
-        "_footer": {
-            "title": "KB/Entity/Footer",
-            "type": "object",
-            "id": "footer",
-            "options": { "hidden": true },
-            "properties": {
-                "_template": {
-                "type": "string",
-                "default": "OslTemplate:KB/Entity/Footer",
-                "options": { "hidden": true }
-                }
-            }
+data1 = {
+    "osl_template": "OslTemplate:KB/Entity",
+    "label": "dffXX",
+    "label_lang_code": "en",
+    "extensions": [
+      {
+        "osl_template": "OslTemplate:LIMS/Device/EntityType",
+        "manufacturer": "dfdf",
+        "extensions": [],
+        "osl_footer": {
+          "osl_template": "OslTemplate:LIMS/Device/EntityType/Footer"
         }
+      },
+      {
+        "osl_template": "OslTemplate:LIMS/Event",
+        "start": "",
+        "end": "",
+        "extensions": [],
+        "osl_footer": {
+          "osl_template": "OslTemplate:LIMS/Event/Footer"
+        }
+      }
+    ],
+    "osl_wikitext": "\n=Details=\n",
+    "osl_footer": {
+      "osl_template": "OslTemplate:KB/Entity/Footer"
     }
-}
+  }
+
+data2 = {
+    "osl_template": "OslTemplate:KB/Entity",
+    "label": "TestE",
+    "label_lang_code": "en",
+    "extensions": [
+      {
+        "osl_template": "OslTemplate:LIMS/Device/EntityType",
+        "osl_footer": {
+          "osl_template": "OslTemplate:LIMS/Device/EntityType/Footer"
+        },
+        "manufacturer": "TestM"
+      },
+      {
+        "osl_template": "OslTemplate:LIMS/Event",
+        "osl_footer": {
+          "osl_template": "OslTemplate:LIMS/Event/Footer"
+        },
+        "start": "",
+        "end": "",
+        "extensions": []
+      }
+    ],
+    "osl_wikitext": "\n=Details=\n",
+    "osl_footer": {
+        "extensions": [],
+        "osl_template": "OslTemplate:KB/Entity/Footer"
+      }
+  }
+
 
 $(document).ready(function () {
 
@@ -841,11 +841,13 @@ $(document).ready(function () {
                 var config = { ...defaultOptions, ...userOptions };
                 searchParams = new URLSearchParams(window.location.search);
                 if ((searchParams.has('target') && !(searchParams.get('target') === ""))) config.target = searchParams.get('target');
-                if ((searchParams.has('schema') && !(searchParams.get('schema') === ""))) config.schema = searchParams.get('schema');
+                if ((searchParams.has('schema') && !(searchParams.get('schema') === ""))) config.schema = JSON.parse(searchParams.get('schema'));
                 if ((searchParams.has('data') && !(searchParams.get('data') === ""))) config.data = mwjson.util.objectFromCompressedBase64(decodeURIComponent(searchParams.get('data')));
-                if (!config.schema) config.schema = schema4;
+                if (!config.schema) config.schema = {"$ref": "/wiki/JsonSchema:KB/Entity?action=raw"}
                 //config.target = "Term:OSL9c64c51bd5fb4162bc1fa9e60468a09e"
-                var editor = new mwjson.editor(this, config, config.schema);
+                //config.data = data2;
+                config.container = this;
+                var editor = new mwjson.editor(config);
             });
         });
     });
