@@ -4,7 +4,7 @@ mwjson.editor = class {
 	constructor(config) {
 		var defaultConfig = {
 			id: 'json-editor-' + mwjson.util.getShortUid(),
-			onsubmit: this.onsubmit
+			onsubmit: (json) => this.onsubmit(json)
 		};
 		this.config = mwjson.util.mergeDeep(defaultConfig, config);
 		if (this.config.container) {
@@ -363,7 +363,7 @@ mwjson.editor = class {
 		if (!this.config.popup) {
 			$(this.container).append($("<button type='Button' class='btn btn-primary btn-block' id='save-form'>Save</button>"));
 			$("#save-form").click(() => {
-				this.config.onsubmit(this.editor.getValue());
+				this.config.onsubmit(this.jsoneditor.getValue());
 			});
 		}
 
