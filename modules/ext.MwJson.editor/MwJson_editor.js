@@ -25,6 +25,7 @@ mwjson.editor = class {
 		_config = _config || {}
 		var editor = this;
 		var defaultConfig = {
+			size: "medium", //small, medium, large, larger or full
 			msg: {
 				"dialog-title": "JSONEditor",
 				"continue": "Continue", 
@@ -129,7 +130,7 @@ mwjson.editor = class {
 		$(document.body).append(windowManager.$element);
 
 		// Create a new process dialog window.
-		var dialog = new Dialog();
+		var dialog = new Dialog({size: _config.size});
 
 		// Add the window to window manager using the addWindows() method.
 		windowManager.addWindows([dialog]);
@@ -391,6 +392,12 @@ mwjson.editor = class {
 			console.log("Editor changed");
 			console.log(this.jsoneditor.schema);
 			console.log(this.jsoneditor.getValue());
+			/*$('.ace_editor').each(function() {
+				//$(this).css({'font-family': 'monospace'});
+				$(this).removeClass('ace_editor');
+				console.log("Toggle class", this);
+				$(this).addClass('ace_editor');
+			})*/
 		});
 		//};
 
@@ -461,27 +468,37 @@ mwjson.editor = class {
 		for (var key of Object.keys(JSONEditor.defaults.languages.en)) {
 			msgs.push("json-editor-" + key);
 		}
-		
+
 		const deferred = $.Deferred();
 		if (!('ready' in mwjson.editor) || !mwjson.editor.ready) {
-			mw.loader.load('https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css', 'text/css');
+			//mw.loader.load('https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css', 'text/css');
 			mwjson.parser.init();
 			$.when(
-				//nothing to do
-				$.getScript("https://unpkg.com/imask"),
+				//$.getScript("https://unpkg.com/imask"),
+				//$.getScript("https://cdn.jsdelivr.net/npm/ace-builds@latest/src-noconflict/ace.min.js"),
+				mw.loader.using('ext.mwjson.editor.ace'),
 				new mw.Api().loadMessagesIfMissing(msgs),
 				$.Deferred(function (deferred) {
 					$(deferred.resolve);
 				})
 			).done(function () {
-				for (var key of Object.keys(JSONEditor.defaults.languages.en)) {
-					//replace with mediawiki i18n
-					JSONEditor.defaults.languages.en[key] = mw.message("json-editor-" + key).text().replaceAll('((','{{').replaceAll('))','}}');
-				}
-				mwjson.editor.setCallbacks();
-				mwjson.editor.setDefaultOptions();
-				console.log("JsonEditor initialized");
-				deferred.resolve();
+				$.when(
+					//$.getScript("https://cdn.jsdelivr.net/npm/ace-builds@latest/src-noconflict/theme-vibrant_ink.js"),  //depends on ace loaded
+					//$.getScript("https://cdn.jsdelivr.net/npm/ace-builds@latest/src-noconflict/mode-json.js"),
+					//$.getScript("https://cdn.jsdelivr.net/npm/ace-builds@latest/src-noconflict/mode-handlebars.js"),
+					$.Deferred(function (deferred) {
+						$(deferred.resolve);
+					})
+				).done(function () {
+					for (var key of Object.keys(JSONEditor.defaults.languages.en)) {
+						//replace with mediawiki i18n
+						JSONEditor.defaults.languages.en[key] = mw.message("json-editor-" + key).text().replaceAll('((', '{{').replaceAll('))', '}}');
+					}
+					mwjson.editor.setCallbacks();
+					mwjson.editor.setDefaultOptions();
+					console.log("JsonEditor initialized");
+					deferred.resolve();
+				});
 			});
 		}
 		else deferred.resolve(); //resolve immediately
@@ -499,6 +516,13 @@ mwjson.editor = class {
 		}
 		window.JSONEditor.defaults.options.labelTemplate = "{{#if result.printouts.label.length}}{{result.printouts.label}}{{else if result.displaytitle}}{{result.displaytitle}}{{else}}{{result.fulltext}}{{/if}}";
 		window.JSONEditor.defaults.options.previewWikiTextTemplate = "[[{{result.fulltext}}]]";
+		window.JSONEditor.defaults.options.ace = {
+			"theme": "ace/theme/vibrant_ink",
+			"tabSize": 2,
+			"useSoftTabs": true,
+			"wrap": true,
+			"useWorker": false
+		};
 	}
 
 	static setCallbacks() {

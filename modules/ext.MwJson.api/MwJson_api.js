@@ -6,21 +6,45 @@ mwjson.api = class {
 
 	static getPage(title) {
 		const deferred = $.Deferred();
-		//$.getJSON(`/w/api.php?action=query&prop=revisions&titles=${title}&rvprop=content&formatversion=2&format=json`, function(data) {
+		//$.getJSON(`/w/api.php?action=query&prop=revisions&titles=${title}&rvprop=content|contentmodel&rvslots="*"&format=json`, function(data) {
 		var api = new mw.Api();
 		api.get({
 			action: 'query',
 			prop: 'revisions',
-			titles: title,
-			rvprop: ['content'],
-			formatversion: 2,
+			titles: title, //only one page
+			rvprop: ['content', 'contentmodel'],
+			rvlimit: 1, //only latest revision
+			rvslots: "*", //all slots
 			format: 'json',
 		}).done(function (data) {
-			var page = { title: title, exists: false, changed: false, content: "" };
-			if (!(data.query.pages[0].hasOwnProperty("missing") && data.query.pages[0].missing === true)) {
-				page.exists = true;
-				page.content = data.query.pages[0].revisions[0].content;
+			var page = {
+				title: title, exists: false, changed: false, content: "", slots: { main: "" }, schema: {
+					"title": title,
+					"type": "object",
+					"properties": {
+						"main": { "type": "string", "format": "handlebars" } //format 'mediawiki' is supported by ace, but not yet by jsoneditor
+					}
+				}
+			};
+			for (var page_id of Object.keys(data.query.pages)) {
+				var page_data = data.query.pages[page_id];
+				if (!(page_data.hasOwnProperty("missing") && page_data.missing === true)) {
+					page.exists = true;
+					page.content = page_data.revisions[0].slots["main"]["*"]; //deprecated main slot content
+					for (var slot_key of Object.keys(page_data.revisions[0].slots)) {
+						var slot = page_data.revisions[0].slots[slot_key];
+						if (slot.contentmodel === 'json') {
+							page.slots[slot_key] = JSON.parse(slot["*"]);
+							page.schema.properties[slot_key] = { "type": "string", "format": "json" };
+						}
+						else {
+							page.slots[slot_key] = slot["*"]; //default: text
+							page.schema.properties[slot_key] = { "type": "string", "format": "handlebars" };
+						}
+					}
+				}
 			}
+			console.log(page);
 			deferred.resolve(page);
 		});
 		return deferred.promise();

@@ -81,7 +81,21 @@
             ],
             "dependencies": [
                 "ext.mwjson.api",
-		"ext.mwjson.parser"
+		        "ext.mwjson.parser"
+            ],
+            "position":"bottom"
+        },
+        "ext.mwjson.editor.ace":{
+            "localBasePath":"modules/ext.MwJson.editor.ace",
+            "remoteExtPath":"MwJson/modules/ext.MwJson.editor.ace",
+            "scripts":[
+                "ace.min.js",
+                "theme-vibrant_ink.js",
+                "mode-handlebars.js",
+                "mode-json.js"
+            ],
+            "dependencies": [
+                "ext.mwjson.editor"
             ],
             "position":"bottom"
         }
