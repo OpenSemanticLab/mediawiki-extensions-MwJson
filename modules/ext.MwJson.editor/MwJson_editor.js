@@ -71,7 +71,7 @@ mwjson.editor = class {
 				expanded: false
 			});
 
-			this.panel.$element.append($('<div id="' + editor.config.id + '"><div>'));
+			this.panel.$element.append($('<div id="' + editor.config.id + '" style="height:500px"><div>'));
 			this.$body.append(this.panel.$element);
 		};
 
@@ -334,6 +334,7 @@ mwjson.editor = class {
 
 		//JSONEditor.defaults.language = "de";
 		this.config.JSONEditorConfig = this.config.JSONEditorConfig || {};
+		this.schema.id = this.schema.id || 'root';
 		var defaultJSONEditorConfig = {
 			schema: this.schema,
 			theme: 'bootstrap4',
@@ -352,7 +353,7 @@ mwjson.editor = class {
 			disable_array_delete_last_row: false,
 			keep_oneof_values: false,
 			no_additional_properties: true,
-			form_name_root: 'form' //set to schema id?
+			form_name_root: this.schema.id
 		}
 		this.config.JSONEditorConfig = mwjson.util.mergeDeep(defaultJSONEditorConfig, this.config.JSONEditorConfig);
 		console.log(this.config.JSONEditorConfig);
@@ -392,14 +393,76 @@ mwjson.editor = class {
 			console.log("Editor changed");
 			console.log(this.jsoneditor.schema);
 			console.log(this.jsoneditor.getValue());
-			/*$('.ace_editor').each(function() {
-				//$(this).css({'font-family': 'monospace'});
-				$(this).removeClass('ace_editor');
-				console.log("Toggle class", this);
-				$(this).addClass('ace_editor');
-			})*/
+			//console.log(this.jsoneditor.editors);
+			for (var subeditor_path of Object.keys(this.jsoneditor.editors)) {
+				var subeditor = this.jsoneditor.editors[subeditor_path];
+				var input = subeditor.input
+				var $input = $(input);
+
+				//BUG: Does not save value in original text field (only if source mode is toggled). See PageForms extension
+				if (subeditor.options && subeditor.options.wikieditor === 'visualeditor') {
+					if (!subeditor.visualEditor) {
+						console.log("Create VisualEditor for ", input);
+						$input.attr('type', 'textarea');
+						$input.addClass('toolbarOnTop');
+						if ( $.fn.applyVisualEditor ) subeditor.visualEditor = $input.applyVisualEditor();
+						else $(document).on('VEForAllLoaded', function(e) { 
+							subeditor.visualEditor = $input.applyVisualEditor(); 
+						});
+						//$('.ve-ui-surface-visual').addClass('form-control');
+					}
+					console.log("Original field value: ", subeditor.input.value);
+				}
+				//BUG: Text is hidden until user clicks in textarea. Does not save value in original text field.
+				if (subeditor.options && subeditor.options.wikieditor === 'codemirror') {
+
+					if (!subeditor.codeMirror) {
+						console.log("Create CodeMirror for ", input);
+						$input.attr('type', 'textarea');
+						$input.attr('data-ve-loaded', true);
+
+						//from https://phabricator.wikimedia.org/diffusion/ECMI/browse/master/resources/ext.CodeMirror.js$210
+						var cmOptions = {
+							mwConfig: mw.config.get('extCodeMirrorConfig'),
+							// styleActiveLine: true, // disabled since Bug: T162204, maybe should be optional
+							lineWrapping: true,
+							lineNumbers: true,
+							readOnly: false,
+							// select mediawiki as text input mode
+							mode: 'text/mediawiki',
+							extraKeys: {
+								Tab: false,
+								'Shift-Tab': false,
+								// T174514: Move the cursor at the beginning/end of the current wrapped line
+								Home: 'goLineLeft',
+								End: 'goLineRight'
+							},
+							inputStyle: 'contenteditable',
+							spellcheck: true,
+							viewportMargin: Infinity
+						};
+						var codeMirror = CodeMirror.fromTextArea(input, cmOptions);
+						var $codeMirror = $(codeMirror.getWrapperElement());
+
+						//codeMirror.scrollTo( null, $input.scrollTop(), );
+						$(codeMirror.getInputField())
+							// T259347: Use accesskey of the original textbox
+							.attr('accesskey', $input.attr('accesskey'))
+							// T194102: UniversalLanguageSelector integration is buggy, disabling it completely
+							.addClass('noime');
+
+						codeMirror.refresh();
+						//mw.hook('ext.CodeMirror.switch').fire(true, $codeMirror);
+						subeditor.codeMirror = codeMirror;
+					}
+					else {
+						subeditor.codeMirror.save(); //update original input field
+					}
+					//$('.CodeMirror-scroll').each(function() {console.log(this); this.dispatchEvent(new Event('click')) });
+					//$('.CodeMirror-wrap').each(function() {this.dispatchEvent(new Event('click')) });
+				}
+			}
 		});
-		//};
 
 		// listen for array changes
 		this.jsoneditor.on('addRow', editor => {
@@ -471,18 +534,25 @@ mwjson.editor = class {
 
 		const deferred = $.Deferred();
 		if (!('ready' in mwjson.editor) || !mwjson.editor.ready) {
-			//mw.loader.load('https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css', 'text/css');
+			mw.loader.load('https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css', 'text/css');
 			mwjson.parser.init();
 			$.when(
 				//$.getScript("https://unpkg.com/imask"),
 				//$.getScript("https://cdn.jsdelivr.net/npm/ace-builds@latest/src-noconflict/ace.min.js"),
-				mw.loader.using('ext.mwjson.editor.ace'),
+				mw.loader.using('ext.codeEditor.ace'),
+				mw.loader.using('ext.veforall.main'),
+				mw.loader.using('ext.geshi.visualEditor'),
+				mw.loader.using('ext.CodeMirror.lib'),
+				mw.loader.using('ext.CodeMirror.mode.mediawiki'),
+				mw.loader.using('ext.CodeMirror'),
+				//mw.loader.using('ext.wikiEditor'),
 				new mw.Api().loadMessagesIfMissing(msgs),
 				$.Deferred(function (deferred) {
 					$(deferred.resolve);
 				})
 			).done(function () {
 				$.when(
+					mw.loader.using('ext.mwjson.editor.ace'),
 					//$.getScript("https://cdn.jsdelivr.net/npm/ace-builds@latest/src-noconflict/theme-vibrant_ink.js"),  //depends on ace loaded
 					//$.getScript("https://cdn.jsdelivr.net/npm/ace-builds@latest/src-noconflict/mode-json.js"),
 					//$.getScript("https://cdn.jsdelivr.net/npm/ace-builds@latest/src-noconflict/mode-handlebars.js"),
@@ -517,7 +587,7 @@ mwjson.editor = class {
 		window.JSONEditor.defaults.options.labelTemplate = "{{#if result.printouts.label.length}}{{result.printouts.label}}{{else if result.displaytitle}}{{result.displaytitle}}{{else}}{{result.fulltext}}{{/if}}";
 		window.JSONEditor.defaults.options.previewWikiTextTemplate = "[[{{result.fulltext}}]]";
 		window.JSONEditor.defaults.options.ace = {
-			"theme": "ace/theme/vibrant_ink",
+			//"theme": "ace/theme/vibrant_ink",
 			"tabSize": 2,
 			"useSoftTabs": true,
 			"wrap": true,

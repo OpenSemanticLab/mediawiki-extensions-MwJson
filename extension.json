@@ -1,7 +1,7 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.0.1",
+    "version":"0.1.0",
     "author":[
         "[https://github.com/simontaurus Simon Stier]"
     ],
@@ -11,7 +11,10 @@
     "license-name":"AGPL-3.0-or-later",
     "type":"editor",
     "requires":{
-        "MediaWiki":">= 1.31"
+        "MediaWiki":">= 1.35",
+        "extensions": {
+			"CodeEditor": "*"
+		}
     },
     "MessagesDirs":{
         "MwJson":[
@@ -89,10 +92,8 @@
             "localBasePath":"modules/ext.MwJson.editor.ace",
             "remoteExtPath":"MwJson/modules/ext.MwJson.editor.ace",
             "scripts":[
-                "ace.min.js",
                 "theme-vibrant_ink.js",
-                "mode-handlebars.js",
-                "mode-json.js"
+                "mode-handlebars.js"
             ],
             "dependencies": [
                 "ext.mwjson.editor"
