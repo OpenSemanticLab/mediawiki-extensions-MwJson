@@ -18,28 +18,37 @@ mwjson.api = class {
 			format: 'json',
 		}).done(function (data) {
 			var page = {
-				title: title, exists: false, changed: false, content: "", slots: { main: "" }, schema: {
+				title: title, exists: false, changed: false, content: "", 
+				slots: { main: "" }, slots_changed: { main: false}, content_model: {main: "wikitext"},
+				schema: {
 					"title": title,
 					"type": "object",
 					"properties": {
-						"main": { "type": "string", "format": "handlebars" } //format 'mediawiki' is supported by ace, but not yet by jsoneditor
+						"main": { "type": "string", "format": "handlebars", "options": {"wikieditor": ""}} //format 'mediawiki' is supported by ace, but not yet by jsoneditor
 					}
 				}
 			};
 			for (var page_id of Object.keys(data.query.pages)) {
 				var page_data = data.query.pages[page_id];
-				if (!(page_data.hasOwnProperty("missing") && page_data.missing === true)) {
+				//if (!(page_data.hasOwnProperty("missing") && page_data.missing === true)) {
+				if (page_data.hasOwnProperty("missing") || page_id === -1) { //non exitings page may contain missing=""
+					page.exists = false;
+				}
+				else {
 					page.exists = true;
 					page.content = page_data.revisions[0].slots["main"]["*"]; //deprecated main slot content
 					for (var slot_key of Object.keys(page_data.revisions[0].slots)) {
 						var slot = page_data.revisions[0].slots[slot_key];
+						page.slots_changed[slot_key] = false;
+						page.content_model[slot_key] = slot.contentmodel;
 						if (slot.contentmodel === 'json') {
 							page.slots[slot_key] = JSON.parse(slot["*"]);
 							page.schema.properties[slot_key] = { "type": "string", "format": "json" };
 						}
 						else {
 							page.slots[slot_key] = slot["*"]; //default: text
-							page.schema.properties[slot_key] = { "type": "string", "format": "handlebars" };
+							if (slot_key === 'main') page.schema.properties[slot_key] = { "type": "string", "format": "textarea", "options": {"wikieditor": "visualeditor"} };
+							else page.schema.properties[slot_key] = { "type": "string", "format": "handlebars", "options": {"wikieditor": ""} };
 						}
 					}
 				}
@@ -99,6 +108,50 @@ mwjson.api = class {
 		);
 	}
 
+	static editSlot(title, slot, content, summary = "") {
+		var api = new mw.Api();
+		return api.postWithToken("csrf",
+			{
+				action: 'editslot',
+				title: title,
+				slot: slot,
+				text: content,
+				summary: summary
+			}
+		);
+	}
+
+	static editSlots(page, summary = ""){
+		const deferred = $.Deferred();
+		var slot_list = []
+		for (var slot_key of Object.keys(page.slots)) {
+			if (page.slots_changed[slot_key]) slot_list.push(slot_key)
+			//mwjson.api.editSlot(page.title, slot_key, page.slots[slot_key], summary); //parallel edit does not work
+		}
+
+		function do_edit() {
+			const slot_key = slot_list.pop();
+			if (slot_key) {
+				console.log("Edit slot " + slot_key);
+				page.slots_changed[slot_key] = false;
+				var content = page.slots[slot_key];
+				if (page.content_model[slot_key] === 'json') content = JSON.stringify(content);
+				mwjson.api.editSlot(page.title, slot_key, content, summary).done(do_edit);
+			}
+			else deferred.resolve(page);
+		}
+		do_edit();
+		return deferred.promise();
+	}
+
+	static copyPageContent(sourcePage, targetPage){
+		for (var slot_key of Object.keys(sourcePage.slots)) {
+			targetPage.slots[slot_key] = sourcePage.slots[slot_key];
+			targetPage.content_model[slot_key] = sourcePage.content_model[slot_key];
+			targetPage.slots_changed[slot_key] = true;
+		}
+	}
+
 	static copyPage(sourceTitle, targetTitle, summary = "", modify = undefined) { //(p) => { const d = $.Deferred(); d.resolve(p); return d.promise(); }) {
 		if (!modify) modify = (p) => { const d = $.Deferred(); d.resolve(p); return d.promise(); }
 		const deferred = $.Deferred();
@@ -108,7 +161,7 @@ mwjson.api = class {
 					OO.ui.confirm('Page does exist. Overwrite?').done((confirmed) => {
 						if (confirmed) {
 							if (summary === "") summary = "Copy of [[" + sourceTitle + "]]";
-							targetPage.content = sourcePage.content;
+							mwjson.api.copyPageContent(sourcePage, targetPage);
 							targetPage.changed = true;
 							modify(targetPage).then((targetPage) => {
 								mwjson.api.updatePage(targetPage, summary).then(() => {
@@ -124,7 +177,7 @@ mwjson.api = class {
 				}
 				else {
 					if (summary === "") summary = "Copy of [[" + sourceTitle + "]]";
-					targetPage.content = sourcePage.content;
+					mwjson.api.copyPageContent(sourcePage, targetPage);
 					targetPage.changed = true;
 					modify(targetPage).then((targetPage) => {
 						mwjson.api.updatePage(targetPage, summary).then(() => {
@@ -188,26 +241,37 @@ mwjson.api = class {
 	static updatePage(page, summary = "") {
 		const deferred = $.Deferred();
 		const hasChangedFile = ('file' in page && page.file.changed);
-		if (!page.exists && page.title && page.content) {
+		var slots_changed = false;
+		for (var slot_key of Object.keys(page.slots)) { if (page.slots_changed[slot_key]) slots_changed = true; }
+		if (!page.exists && page.title && (page.content || page.slots['main'])) {
 			mwjson.api.createPage(page.title, page.content, summary).then((data) => {
 				page.changed = false;
 				page.exists = true;
-				if (hasChangedFile) {
-					mwjson.api.uploadFile(page.file.contentBlob, page.file.name, summary).then((data) => {
-						page.file.changed = false;
-						page.file.exists = true;
-						deferred.resolve(page);
-					}, (error) => {
-						deferred.reject(error);
-					});
-				}
-				else deferred.resolve(page);
+				mwjson.api.editSlots(page, summary).then((data) => { //will only edit changed slots
+					if (hasChangedFile) {
+						mwjson.api.uploadFile(page.file.contentBlob, page.file.name, summary).then((data) => {
+							page.file.changed = false;
+							page.file.exists = true;
+							deferred.resolve(page);
+						}, (error) => {
+							deferred.reject(error);
+						});
+					}
+					else deferred.resolve(page);
+				}, (error) => {
+					deferred.reject(error);
+				});
 			}, (error) => {
 				deferred.reject(error);
 			});
 		}
-		else if (page.changed) {
-			mwjson.api.editPage(page.title, page.content, summary).then((data) => {
+		else if (page.changed || slots_changed) {
+			if (page.changed) {
+				page.slots['main'] = page.content; //legacy support
+				page.slots_changed['main'] = true;
+				page.changed = false;
+			}
+			mwjson.api.editSlots(page, summary).then((data) => {
 				page.changed = false;
 				page.exists = true;
 				if (hasChangedFile) {
