@@ -841,10 +841,11 @@ $(document).ready(function () {
                 var config = { ...defaultOptions, ...userOptions };
                 searchParams = new URLSearchParams(window.location.search);
                 if ((searchParams.has('target') && !(searchParams.get('target') === ""))) config.target = searchParams.get('target');
+                if ((searchParams.has('slot') && !(searchParams.get('slot') === ""))) config.target_slot = searchParams.get('slot');
                 if ((searchParams.has('schema') && !(searchParams.get('schema') === ""))) config.schema = JSON.parse(searchParams.get('schema'));
                 if ((searchParams.has('data') && !(searchParams.get('data') === ""))) config.data = mwjson.util.objectFromCompressedBase64(decodeURIComponent(searchParams.get('data')));
                 if (!config.schema) config.schema = {"$ref": "/wiki/JsonSchema:KB/Entity?action=raw"}
-                //config.target = "Term:OSL9c64c51bd5fb4162bc1fa9e60468a09e"
+                //config.target = "VisualTest:Extension/WSSlots/MultiSlotPage"
                 //config.data = data2;
                 config.container = this;
                 var editor = new mwjson.editor(config);

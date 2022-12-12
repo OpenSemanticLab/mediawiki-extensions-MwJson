@@ -3,6 +3,7 @@
 mwjson.editor = class {
 	constructor(config) {
 		var defaultConfig = {
+			target_slot: 'main',
 			id: 'json-editor-' + mwjson.util.getShortUid(),
 			onsubmit: (json) => this.onsubmit(json)
 		};
@@ -375,16 +376,21 @@ mwjson.editor = class {
 			if (this.config.data) this.jsoneditor.setValue(this.config.data);
 			if (this.config.target) mwjson.api.getPage(this.config.target).then((page) => {
 				//return;
-				mwjson.parser.parsePage(page);
-				this.targetPage = page;
-				//load data from page if exist
-				if (this.targetPage.content !== "") {
-					console.log("Load data:", this.targetPage.dict);
-					var schemaJson = mwjson.editor.wikiJson2SchemaJson(this.targetPage.dict);
-					console.log(schemaJson);
-					this.jsoneditor.setValue(schemaJson);
+				if (page.content_model[this.config.target_slot] === 'wikitext') {
+					mwjson.parser.parsePage(page);
+					this.targetPage = page;
+					//load data from page if exist
+					if (this.targetPage.content !== "") {
+						console.log("Load data:", this.targetPage.dict);
+						var schemaJson = mwjson.editor.wikiJson2SchemaJson(this.targetPage.dict);
+						console.log(schemaJson);
+						this.jsoneditor.setValue(schemaJson);
+					}
 				}
-				console.log("Queries:");
+				if (page.content_model[this.config.target_slot] === 'json') {
+					console.log(page.slots[this.config.target_slot]);
+					this.jsoneditor.setValue(page.slots[this.config.target_slot]);
+				}
 			})
 		});
 
@@ -396,6 +402,8 @@ mwjson.editor = class {
 			//console.log(this.jsoneditor.editors);
 			for (var subeditor_path of Object.keys(this.jsoneditor.editors)) {
 				var subeditor = this.jsoneditor.editors[subeditor_path];
+				if (!subeditor) continue;
+
 				var input = subeditor.input
 				var $input = $(input);
 
@@ -471,7 +479,7 @@ mwjson.editor = class {
 	};
 
 	onsubmit(json) {
-		if (!this.config.target) this.config.target = "LabProcess:" + mwjson.util.OslId()
+		if (!this.config.target) this.config.target = "Term:" + mwjson.util.OslId()
 		console.log("Save form");
 		var url = window.location.href.replace(/\?.*/, '');
 		url += '?target=' + encodeURIComponent(this.config.target);
@@ -479,16 +487,22 @@ mwjson.editor = class {
 
 		console.log(JSON.stringify(json));
 		mwjson.api.getPage(this.config.target).then((page) => {
-			page.content = mwjson.editor.data2template(json)
-			//add edit link with base64 encode data
-			//page.content = "<noinclude>[" + url + " Edit Template]</noinclude>\n<br\>" + page.content;
-			page.changed = true;
-			//console.log(page.content);
-			var wikiJson = mwjson.editor.schemaJson2WikiJson(json)
-			page.dict = wikiJson;
-			mwjson.parser.updateContent(page);
-			console.log(wikiJson);
-			console.log(page.content);
+			if (page.content_model[this.config.target_slot] === 'wikitext') {
+				page.content = mwjson.editor.data2template(json)
+				//add edit link with base64 encode data
+				//page.content = "<noinclude>[" + url + " Edit Template]</noinclude>\n<br\>" + page.content;
+				page.changed = true;
+				//console.log(page.content);
+				var wikiJson = mwjson.editor.schemaJson2WikiJson(json)
+				page.dict = wikiJson;
+				mwjson.parser.updateContent(page);
+				console.log(wikiJson);
+				console.log(page.content);
+			}
+			if (page.content_model[this.config.target_slot] === 'json') {
+				page.slots[this.config.target_slot] = json;
+				page.slots_changed[this.config.target_slot] = true;
+			}
 			mwjson.api.updatePage(page, "Edited with JsonEditor").then(() => {
 				window.location.href = "/wiki/" + page.title
 			});
