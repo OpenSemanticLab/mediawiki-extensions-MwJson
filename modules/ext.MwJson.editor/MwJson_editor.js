@@ -26,11 +26,13 @@ mwjson.editor = class {
 		_config = _config || {}
 		var editor = this;
 		var defaultConfig = {
-			size: "medium", //small, medium, large, larger or full
+			size: "medium", //small, medium, large, larger or full,
+			toggle_fullscreen: false, //enable toggle fullscreen button
 			msg: {
 				"dialog-title": "JSONEditor",
 				"continue": "Continue", 
 				"cancel": "Cancel", 
+				"toggle-fullscreen": "Leave / enter fullscreen"
 			},
 			redirect: (page) => {
 				var params = {"veaction": "edit"};
@@ -63,6 +65,14 @@ mwjson.editor = class {
 				label: _config.msg['cancel']
 			}
 		];
+		if (_config.toggle_fullscreen) {
+			Dialog.static.actions.push(
+				{ 
+					action: 'toggle-fullscreen', 
+					label: _config.msg['toggle-fullscreen'],
+				}
+			);
+		}
 
 		// Customize the initialize() function to add content and layouts: 
 		Dialog.prototype.initialize = function () {
@@ -107,8 +117,15 @@ mwjson.editor = class {
 			if (action === 'create') {
 				// Create a new process to handle the action
 				return new OO.ui.Process(function () {
-					dialog.close({action: action})
+					dialog.close({action: action});
 					if (editor.config.onsubmit) editor.config.onsubmit(editor.jsoneditor.getValue());
+				}, this);
+			}
+			if (action === 'toggle-fullscreen') {
+				// Toggle fullscreen mode
+				return new OO.ui.Process(function () {
+					if (dialog.getSize() === _config.size) dialog.setSize('full');
+					else dialog.setSize(_config.size);
 				}, this);
 			}
 			// Fallback to parent handler
