@@ -33,24 +33,35 @@ mwjson.api = class {
 				//if (!(page_data.hasOwnProperty("missing") && page_data.missing === true)) {
 				if (page_data.hasOwnProperty("missing") || page_id === -1) { //non exitings page may contain missing=""
 					page.exists = false;
+					page.slots_changed['main'] = true; //to create an empty page
 				}
 				else {
 					page.exists = true;
 					page.content = page_data.revisions[0].slots["main"]["*"]; //deprecated main slot content
-					for (var slot_key of Object.keys(page_data.revisions[0].slots)) {
+					var page_slots = page_data.revisions[0].slots;
+					for (var slot_key of Object.keys(page_slots)) {
 						var slot = page_data.revisions[0].slots[slot_key];
 						page.slots_changed[slot_key] = false;
 						page.content_model[slot_key] = slot.contentmodel;
 						if (slot.contentmodel === 'json') {
-							page.slots[slot_key] = JSON.parse(slot["*"]);
+							//page.slots[slot_key] = JSON.parse(slot["*"]);
+							page.slots[slot_key] = slot["*"];
 							page.schema.properties[slot_key] = { "type": "string", "format": "json" };
 						}
 						else {
 							page.slots[slot_key] = slot["*"]; //default: text
-							if (slot_key === 'main') page.schema.properties[slot_key] = { "type": "string", "format": "textarea", "options": {"wikieditor": "visualeditor"} };
+							if (slot_key === 'main') page.schema.properties[slot_key] = { "type": "string", "format": "textarea", "options": {"wikieditor": "novisualeditor"} };
 							else page.schema.properties[slot_key] = { "type": "string", "format": "handlebars", "options": {"wikieditor": ""} };
 						}
 					}
+
+				}
+				var site_slots = mw.config.get('wgWSSlotsDefinedSlots');
+				for (var slot_key of Object.keys(site_slots)) {
+					var slot_schema = { "type": "string", "format": "handlebars" };
+					page.content_model[slot_key] = site_slots[slot_key]['content_model'];
+					if (site_slots[slot_key]['content_model'] == 'json') slot_schema['format'] = 'json';
+					if (!page.schema.properties[slot_key]) page.schema.properties[slot_key] = slot_schema;
 				}
 			}
 			console.log(page);
@@ -135,7 +146,7 @@ mwjson.api = class {
 				console.log("Edit slot " + slot_key);
 				page.slots_changed[slot_key] = false;
 				var content = page.slots[slot_key];
-				if (page.content_model[slot_key] === 'json') content = JSON.stringify(content);
+				if (page.content_model[slot_key] === 'json' && !(typeof content === 'string')) content = JSON.stringify(content);
 				mwjson.api.editSlot(page.title, slot_key, content, summary).done(do_edit);
 			}
 			else deferred.resolve(page);
