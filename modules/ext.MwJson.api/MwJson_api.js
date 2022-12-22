@@ -24,7 +24,7 @@ mwjson.api = class {
 					"title": title,
 					"type": "object",
 					"properties": {
-						"main": { "type": "string", "format": "handlebars", "options": {"wikieditor": ""}} //format 'mediawiki' is supported by ace, but not yet by jsoneditor
+						"main": { "type": "string", "format": "handlebars", "options": {"wikieditor": "novisualeditor"}} //format 'mediawiki' is supported by ace, but not yet by jsoneditor
 					}
 				}
 			};
@@ -44,8 +44,8 @@ mwjson.api = class {
 						page.slots_changed[slot_key] = false;
 						page.content_model[slot_key] = slot.contentmodel;
 						if (slot.contentmodel === 'json') {
-							//page.slots[slot_key] = JSON.parse(slot["*"]);
-							page.slots[slot_key] = slot["*"];
+							page.slots[slot_key] = JSON.parse(slot["*"]);
+							//page.slots[slot_key] = slot["*"];
 							page.schema.properties[slot_key] = { "type": "string", "format": "json" };
 						}
 						else {
@@ -53,15 +53,19 @@ mwjson.api = class {
 							if (slot_key === 'main') page.schema.properties[slot_key] = { "type": "string", "format": "textarea", "options": {"wikieditor": "novisualeditor"} };
 							else page.schema.properties[slot_key] = { "type": "string", "format": "handlebars", "options": {"wikieditor": ""} };
 						}
+						//if (slot_key === 'jsondata') page.schema.properties[slot_key] = { "$ref": "/wiki/MediaWiki:Slot-jsonschema-jsondata.json?action=raw" };
 					}
 
 				}
 				var site_slots = mw.config.get('wgWSSlotsDefinedSlots');
-				for (var slot_key of Object.keys(site_slots)) {
-					var slot_schema = { "type": "string", "format": "handlebars" };
-					page.content_model[slot_key] = site_slots[slot_key]['content_model'];
-					if (site_slots[slot_key]['content_model'] == 'json') slot_schema['format'] = 'json';
-					if (!page.schema.properties[slot_key]) page.schema.properties[slot_key] = slot_schema;
+				if (site_slots) {
+					for (var slot_key of Object.keys(site_slots)) {
+						var slot_schema = { "type": "string", "format": "handlebars" };
+						page.content_model[slot_key] = site_slots[slot_key]['content_model'];
+						if (site_slots[slot_key]['content_model'] == 'json') slot_schema['format'] = 'json';
+						if (!page.schema.properties[slot_key]) page.schema.properties[slot_key] = slot_schema;
+						//if (slot_key === 'jsondata') page.schema.properties[slot_key] = { "$ref": "/wiki/MediaWiki:Slot-jsonschema-jsondata.json?action=raw" };
+					}
 				}
 			}
 			console.log(page);
