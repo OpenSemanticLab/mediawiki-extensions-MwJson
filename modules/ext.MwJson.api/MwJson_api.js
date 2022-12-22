@@ -165,6 +165,9 @@ mwjson.api = class {
 			targetPage.content_model[slot_key] = sourcePage.content_model[slot_key];
 			targetPage.slots_changed[slot_key] = true;
 		}
+		targetPage.content = sourcePage.content; //legacy support
+		targetPage.changed = true;
+		targetPage.slots_changed['main'] = false;
 	}
 
 	static copyPage(sourceTitle, targetTitle, summary = "", modify = undefined) { //(p) => { const d = $.Deferred(); d.resolve(p); return d.promise(); }) {
