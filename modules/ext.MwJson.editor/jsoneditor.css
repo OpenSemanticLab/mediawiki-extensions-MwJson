@@ -24,3 +24,9 @@
     border-radius: .25rem;
     transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
 }
+
+/* fix styling issue with skin 'timeless': 
+overwrite margin with more specific selector */
+.form-check input[type='checkbox'] {
+    margin: 0.3em 0em 0em -1.25em;
+}
