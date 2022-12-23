@@ -558,10 +558,20 @@ mwjson.editor = class {
 
 	static init() {
 
+		//fetch all i18n msgs
+		var msg_promises = [];
+		var msg_counter = 0;
 		var msgs = [];
 		for (var key of Object.keys(JSONEditor.defaults.languages.en)) {
 			msgs.push("json-editor-" + key);
+			msg_counter += 1;
+			if (msg_counter >= 50) { //split in packages of max 50 msgs due to api limit for standard users
+				msg_promises.push(new mw.Api().loadMessagesIfMissing(msgs));
+				msgs = [];
+				msg_counter = 0;
+			}
 		}
+		if (msgs.length > 0) msg_promises.push(new mw.Api().loadMessagesIfMissing(msgs)); //fetch remaining msgs
 
 		const deferred = $.Deferred();
 		if (!('ready' in mwjson.editor) || !mwjson.editor.ready) {
@@ -577,7 +587,7 @@ mwjson.editor = class {
 				mw.loader.using('ext.CodeMirror.mode.mediawiki'),
 				mw.loader.using('ext.CodeMirror'),
 				//mw.loader.using('ext.wikiEditor'),
-				new mw.Api().loadMessagesIfMissing(msgs),
+				Promise.allSettled(msg_promises),
 				$.Deferred(function (deferred) {
 					$(deferred.resolve);
 				})
