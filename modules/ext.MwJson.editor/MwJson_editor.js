@@ -4,6 +4,7 @@ mwjson.editor = class {
 	constructor(config) {
 		var defaultConfig = {
 			target_slot: 'main',
+			target_namespace: 'Term',
 			id: 'json-editor-' + mwjson.util.getShortUid(),
 			onsubmit: (json) => this.onsubmit(json)
 		};
@@ -496,7 +497,11 @@ mwjson.editor = class {
 	};
 
 	onsubmit(json) {
-		if (!this.config.target) this.config.target = "Term:" + mwjson.util.OslId()
+		if (!this.config.target) {
+			this.config.target = "";
+			if (this.config.target_namespace !== "") this.config.target += this.config.target_namespace + ":";
+			this.config.target += mwjson.util.OslId();
+		}
 		console.log("Save form");
 		var url = window.location.href.replace(/\?.*/, '');
 		url += '?target=' + encodeURIComponent(this.config.target);
@@ -558,26 +563,12 @@ mwjson.editor = class {
 
 	static init() {
 
-		//fetch all i18n msgs
-		var msg_promises = [];
-		var msg_counter = 0;
-		var msgs = [];
-		for (var key of Object.keys(JSONEditor.defaults.languages.en)) {
-			msgs.push("json-editor-" + key);
-			msg_counter += 1;
-			if (msg_counter >= 50) { //split in packages of max 50 msgs due to api limit for standard users
-				msg_promises.push(new mw.Api().loadMessagesIfMissing(msgs));
-				msgs = [];
-				msg_counter = 0;
-			}
-		}
-		if (msgs.length > 0) msg_promises.push(new mw.Api().loadMessagesIfMissing(msgs)); //fetch remaining msgs
-
 		const deferred = $.Deferred();
 		if (!('ready' in mwjson.editor) || !mwjson.editor.ready) {
 			mw.loader.load('https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css', 'text/css');
 			mwjson.parser.init();
 			$.when(
+				//$.getScript("https://cdn.jsdelivr.net/npm/@json-editor/json-editor@latest/dist/jsoneditor.js"),
 				//$.getScript("https://unpkg.com/imask"),
 				//$.getScript("https://cdn.jsdelivr.net/npm/ace-builds@latest/src-noconflict/ace.min.js"),
 				mw.loader.using('ext.codeEditor.ace'),
@@ -587,16 +578,32 @@ mwjson.editor = class {
 				mw.loader.using('ext.CodeMirror.mode.mediawiki'),
 				mw.loader.using('ext.CodeMirror'),
 				//mw.loader.using('ext.wikiEditor'),
-				Promise.allSettled(msg_promises),
 				$.Deferred(function (deferred) {
 					$(deferred.resolve);
 				})
 			).done(function () {
+
+				//fetch all i18n msgs
+				var msg_promises = [];
+				var msg_counter = 0;
+				var msgs = [];
+				for (var key of Object.keys(JSONEditor.defaults.languages.en)) {
+					msgs.push("json-editor-" + key);
+					msg_counter += 1;
+					if (msg_counter >= 50) { //split in packages of max 50 msgs due to api limit for standard users
+						msg_promises.push(new mw.Api().loadMessagesIfMissing(msgs));
+						msgs = [];
+						msg_counter = 0;
+					}
+				}
+				if (msgs.length > 0) msg_promises.push(new mw.Api().loadMessagesIfMissing(msgs)); //fetch remaining msgs
+
 				$.when(
 					mw.loader.using('ext.mwjson.editor.ace'),
 					//$.getScript("https://cdn.jsdelivr.net/npm/ace-builds@latest/src-noconflict/theme-vibrant_ink.js"),  //depends on ace loaded
 					//$.getScript("https://cdn.jsdelivr.net/npm/ace-builds@latest/src-noconflict/mode-json.js"),
 					//$.getScript("https://cdn.jsdelivr.net/npm/ace-builds@latest/src-noconflict/mode-handlebars.js"),
+					Promise.allSettled(msg_promises),
 					$.Deferred(function (deferred) {
 						$(deferred.resolve);
 					})

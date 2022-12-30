@@ -841,6 +841,7 @@ $(document).ready(function () {
                 var config = { ...defaultOptions, ...userOptions };
                 searchParams = new URLSearchParams(window.location.search);
                 if ((searchParams.has('target') && !(searchParams.get('target') === ""))) config.target = searchParams.get('target');
+                if ((searchParams.has('target_namespace') && !(searchParams.get('target_namespace') === ""))) config.target_namespace = searchParams.get('target_namespace');
                 if ((searchParams.has('slot') && !(searchParams.get('slot') === ""))) config.target_slot = searchParams.get('slot');
                 if ((searchParams.has('schema') && !(searchParams.get('schema') === ""))) config.schema = JSON.parse(searchParams.get('schema'));
                 if ((searchParams.has('data') && !(searchParams.get('data') === ""))) config.data = mwjson.util.objectFromCompressedBase64(decodeURIComponent(searchParams.get('data')));
