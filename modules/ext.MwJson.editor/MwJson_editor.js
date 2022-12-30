@@ -631,7 +631,7 @@ mwjson.editor = class {
 			"renderResult": "renderResult_smw",
 			"onSubmit": "onSubmit_smw",
 			"autoSelect": "true"
-		}
+		};
 		window.JSONEditor.defaults.options.labelTemplate = "{{#if result.printouts.label.length}}{{result.printouts.label}}{{else if result.displaytitle}}{{result.displaytitle}}{{else}}{{result.fulltext}}{{/if}}";
 		window.JSONEditor.defaults.options.previewWikiTextTemplate = "[[{{result.fulltext}}]]";
 		window.JSONEditor.defaults.options.ace = {
@@ -641,6 +641,7 @@ mwjson.editor = class {
 			"wrap": true,
 			"useWorker": false
 		};
+		window.JSONEditor.defaults.options.upload.upload_handler = "fileUpload";
 	}
 
 	static setCallbacks() {
@@ -747,8 +748,44 @@ mwjson.editor = class {
 					//jseditor_editor.jsoneditor.trigger('change',jseditor_editor);
 					//window.JSONEditor.trigger('change',jseditor_editor);
 					console.log("Selected: " + result.displaytitle + " / " + result.fulltext);
+				},
+			},
+			upload: {
+				fileUpload: (jseditor, type, file, cbs) => {
+					console.log("Upload file", file);
+					var target = mwjson.util.OslId() + "." + file.name.split('.').pop();
+					Object.defineProperty(file, 'name', {writable: true, value: target}); //name is readonly, so file.name = target does not work
+					mwjson.api.getFilePage(target).done((page) => {
+						console.log("File does exists");
+						page.file = file;
+						page.file.contentBlob = file;
+						page.file.changed = true;
+						mwjson.api.updatePage(page).done((page) => {
+							console.log("Upload succesful");
+							cbs.success('File:' + target);
+						}).fail(function (error) {
+							console.log("Upload failed:", error);
+							cbs.failure('Upload failed:' + error);
+						});
+					}).fail(function (error) {
+						console.log("File does not exists");
+						mwjson.api.getPage("File:" + target).done((page) => {
+							page.file = file;
+							page.file.contentBlob = file;
+							page.file.changed = true;
+							mwjson.api.updatePage(page).done((page) => {
+								console.log("Upload succesful");
+								cbs.success('File:' + target);
+							}).fail(function (error) {
+								console.log("Upload failed:", error);
+								cbs.failure('Upload failed:' + error);
+							});
+						});
+					});
+					
 				}
 			}
+			
 		};
 
 		//  register compare operator 
