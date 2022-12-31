@@ -5,6 +5,8 @@ mwjson.editor = class {
 		var defaultConfig = {
 			target_slot: 'main',
 			target_namespace: 'Term',
+			mode: "default", // options: default, query
+			lang: "en",
 			id: 'json-editor-' + mwjson.util.getShortUid(),
 			onsubmit: (json) => this.onsubmit(json)
 		};
@@ -20,7 +22,20 @@ mwjson.editor = class {
 		}
 
 		this.schema = this.config.schema;
-		this.createEditor();
+		if (this.schema) {
+			$RefParser.bundle(this.schema, (err, schema) => {
+				if (err) { console.error(err); }
+				else {
+					console.log("dereference schema")
+					console.log(schema);
+					//ToDo: Fetch translations from property definitions: [[Property:SomeProperty]]|?HasLabel@en|?HasDescription@en, see https://github.com/json-schema-org/json-schema-spec/issues/53
+					//Fallback: Fetch i18n from title* and description*, see https://github.com/json-schema-org/json-schema-vocabularies/issues/10
+					this.schema = this.preprocessSchema(schema);
+					this.createEditor();
+				}
+			})
+		}
+		else this.createEditor();
 	}
 
 	createPopupDialog(_config) {
@@ -346,6 +361,41 @@ mwjson.editor = class {
 		}
 	}
 
+	preprocessSchema(schema) {
+		const translateables = ["title", "description"];
+		if (schema.properties) {
+			for (const property of Object.keys(schema.properties)) {
+				
+				for (const attr of translateables) {
+					if (schema.properties[property][attr+"*"]) {
+						if (schema.properties[property][attr+"*"][this.config.lang]) schema.properties[property][attr] = schema.properties[property][attr+"*"][this.config.lang];
+					}
+				}
+				if (this.config.mode !== "default") {
+					if (schema.properties[property].options) {
+						if (schema.properties[property].options.conditional_visible && schema.properties[property].options.conditional_visible.modes) {
+							if (!schema.properties[property].options.conditional_visible.modes.includes(this.config.mode)) schema.properties[property].options.hidden = true;
+							else schema.properties[property].options.hidden = false;
+						}
+						else schema.properties[property].options.hidden = true;
+					}
+					else schema.properties[property].options = {hidden: true};
+				}
+			}
+		}
+		if (schema.allOf) {
+			if (Array.isArray(schema.allOf)) {
+				for (const subschema of schema.allOf) {
+					this.preprocessSchema(subschema)
+				}
+			}
+			else {
+				this.preprocessSchema(subschema)
+			}
+		}
+		return schema;
+	}
+
 	createEditor() {
 		//return function(err, config) {
 
@@ -391,6 +441,7 @@ mwjson.editor = class {
 		// listen for loaded
 		this.jsoneditor.on('ready', () => {
 			console.log("Editor loaded");
+			console.log(this.jsoneditor);
 			if (this.config.data) this.jsoneditor.setValue(this.config.data);
 			if (this.config.target) mwjson.api.getPage(this.config.target).then((page) => {
 				//return;
@@ -578,6 +629,7 @@ mwjson.editor = class {
 				mw.loader.using('ext.CodeMirror.mode.mediawiki'),
 				mw.loader.using('ext.CodeMirror'),
 				//mw.loader.using('ext.wikiEditor'),
+				//$.getScript("/w/extensions/MwJson/modules/ext.MwJson.editor/json-schema-ref-parser.js"),
 				$.Deferred(function (deferred) {
 					$(deferred.resolve);
 				})

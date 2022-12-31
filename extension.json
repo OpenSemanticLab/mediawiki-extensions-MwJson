@@ -76,6 +76,7 @@
                 "jsoneditor.css"
             ],
             "scripts":[
+                "json-schema-ref-parser.js",
                 "handlebars.min.js",
                 "autocomplete.min.js",
                 "jsoneditor.min.js",
