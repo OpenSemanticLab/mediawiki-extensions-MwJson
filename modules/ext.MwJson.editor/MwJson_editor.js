@@ -21,21 +21,17 @@ mwjson.editor = class {
 			this.config.popup = true;
 		}
 
-		this.schema = this.config.schema;
-		if (this.schema) {
-			$RefParser.bundle(this.schema, (err, schema) => {
-				if (err) { console.error(err); }
-				else {
-					console.log("dereference schema")
-					console.log(schema);
-					//ToDo: Fetch translations from property definitions: [[Property:SomeProperty]]|?HasLabel@en|?HasDescription@en, see https://github.com/json-schema-org/json-schema-spec/issues/53
-					//Fallback: Fetch i18n from title* and description*, see https://github.com/json-schema-org/json-schema-vocabularies/issues/10
-					this.schema = this.preprocessSchema(schema);
-					this.createEditor();
-				}
+		this.jsonschema = new mwjson.schema({jsonschema: this.config.schema, config: {mode: this.config.mode, lang: this.config.lang}, debug: true});
+		this.jsonschema.bundle()
+			.then(() => this.jsonschema.preprocess())
+			.then(() => {
+				console.log("create editor");
+				this.createEditor();
 			})
-		}
-		else this.createEditor();
+			.catch((err) => {
+				console.error(err);
+			});
+		console.log("constructor done");
 	}
 
 	createPopupDialog(_config) {
@@ -361,41 +357,6 @@ mwjson.editor = class {
 		}
 	}
 
-	preprocessSchema(schema) {
-		const translateables = ["title", "description"];
-		if (schema.properties) {
-			for (const property of Object.keys(schema.properties)) {
-				
-				for (const attr of translateables) {
-					if (schema.properties[property][attr+"*"]) {
-						if (schema.properties[property][attr+"*"][this.config.lang]) schema.properties[property][attr] = schema.properties[property][attr+"*"][this.config.lang];
-					}
-				}
-				if (this.config.mode !== "default") {
-					if (schema.properties[property].options) {
-						if (schema.properties[property].options.conditional_visible && schema.properties[property].options.conditional_visible.modes) {
-							if (!schema.properties[property].options.conditional_visible.modes.includes(this.config.mode)) schema.properties[property].options.hidden = true;
-							else schema.properties[property].options.hidden = false;
-						}
-						else schema.properties[property].options.hidden = true;
-					}
-					else schema.properties[property].options = {hidden: true};
-				}
-			}
-		}
-		if (schema.allOf) {
-			if (Array.isArray(schema.allOf)) {
-				for (const subschema of schema.allOf) {
-					this.preprocessSchema(subschema)
-				}
-			}
-			else {
-				this.preprocessSchema(subschema)
-			}
-		}
-		return schema;
-	}
-
 	createEditor() {
 		//return function(err, config) {
 
@@ -403,9 +364,9 @@ mwjson.editor = class {
 
 		//JSONEditor.defaults.language = "de";
 		this.config.JSONEditorConfig = this.config.JSONEditorConfig || {};
-		this.schema.id = this.schema.id || 'root';
+		
 		var defaultJSONEditorConfig = {
-			schema: this.schema,
+			schema: this.jsonschema.getSchema(),
 			theme: 'bootstrap4',
 			ajax: true,
 			ajax_cache_responses: false,
@@ -422,7 +383,7 @@ mwjson.editor = class {
 			disable_array_delete_last_row: false,
 			keep_oneof_values: false,
 			no_additional_properties: true,
-			form_name_root: this.schema.id
+			form_name_root: this.jsonschema.getSchema().id
 		}
 		this.config.JSONEditorConfig = mwjson.util.mergeDeep(defaultJSONEditorConfig, this.config.JSONEditorConfig);
 		console.log(this.config.JSONEditorConfig);
@@ -548,6 +509,11 @@ mwjson.editor = class {
 	};
 
 	onsubmit(json) {
+		if (this.config.mode === 'default') return this.onsubmitPage(json);
+		else if (this.config.mode === 'query') return this.onsubmitQuery(json);
+	}
+
+	onsubmitPage(json) {
 		if (!this.config.target) {
 			this.config.target = "";
 			if (this.config.target_namespace !== "") this.config.target += this.config.target_namespace + ":";
@@ -610,6 +576,25 @@ mwjson.editor = class {
 		this.api.postWithToken('csrf', params).done(function (data) {
 			console.log('Saved!');
 		});*/
+	}
+
+	onsubmitQuery(json) {
+		const $result_container = $('#' + this.config.result_container_id);
+		$result_container.html("");
+		var wikitext = this.jsonschema.getSemanticQuery({jsondata: json}).wikitext;
+		console.log("wikitext", wikitext);
+		var renderUrl = '/w/api.php?action=parse&format=json&text=';
+		renderUrl += encodeURIComponent(wikitext);
+		new Promise(resolve => {
+			//console.log("Render-URL: " + renderUrl);
+			fetch(renderUrl)
+				.then(response => response.json())
+				.then(data => {
+					//console.log("Parsed: " + data.parse.text);
+					$result_container.html($(data.parse.text['*']));
+					//$result_container.find("a").attr("target", "_blank"); //make all links open in new tab
+				});
+		});
 	}
 
 	static init() {

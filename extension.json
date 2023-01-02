@@ -38,7 +38,9 @@
             "remoteExtPath":"MwJson/modules/ext.MwJson.util",
             "scripts":[
                 "lz-string.min.js",
-                "MwJson_util.js"
+                "json-schema-ref-parser.js",
+                "MwJson_util.js",
+                "MwJson_schema.js"
             ],
             "dependencies": [
                 "ext.mwjson"
@@ -76,7 +78,6 @@
                 "jsoneditor.css"
             ],
             "scripts":[
-                "json-schema-ref-parser.js",
                 "handlebars.min.js",
                 "autocomplete.min.js",
                 "jsoneditor.min.js",

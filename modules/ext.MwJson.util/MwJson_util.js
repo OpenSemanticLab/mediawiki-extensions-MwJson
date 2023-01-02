@@ -37,6 +37,14 @@ mwjson.util = class {
 		return (item && typeof item === 'object' && !Array.isArray(item));
 	}
 
+	static isArray(item) {
+		return Array.isArray(item);
+	}
+
+	static isString(item) {
+		return (typeof item === 'string' || item instanceof String)
+	}
+
 	//from https://stackoverflow.com/questions/27936772/how-to-deep-merge-instead-of-shallow-merge
 	static mergeDeep(target, source) {
 		let output = Object.assign({}, target);
@@ -53,6 +61,30 @@ mwjson.util = class {
 			});
 		}
 		return output;
+	}
+
+	static isUndefined(arg) {
+		return (arg === undefined || arg === null);
+	}
+
+	static isDefined(arg) {
+		return !mwjson.util.isUndefined(arg);
+	}
+
+	static defaultArg(arg, default_value) {
+		if (mwjson.util.isDefined(arg)) return arg; //special case: boolean false
+		else return default_value;
+	}
+
+	// returns the value of a table (dict) path or default, if the path is not defined
+	static defaultArgPath(arg, path, default_value) {
+		if (mwjson.util.isUndefined(arg)) return default_value;
+		else if (mwjson.util.isUndefined(path)) return arg;
+		else {
+			var key = path.shift();
+			if (mwjson.util.isUndefined(key)) return arg;  //end of path
+			return mwjson.util.defaultArgPath(arg[key], path, default_value);
+		}
 	}
 
 	static addBarLink(config) {
