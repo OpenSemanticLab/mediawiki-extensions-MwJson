@@ -44,16 +44,31 @@ mwjson.api = class {
 						page.slots_changed[slot_key] = false;
 						page.content_model[slot_key] = slot.contentmodel;
 						if (slot.contentmodel === 'json') {
-							page.slots[slot_key] = JSON.parse(slot["*"]);
-							//page.slots[slot_key] = slot["*"];
-							page.schema.properties[slot_key] = { "type": "string", "format": "json" };
+							if (slot_key == 'jsondata') {
+								page.slots[slot_key] = JSON.parse(slot["*"]);
+								page.schema.properties[slot_key] = { "type": "string", "format": "json" }; //Todo: Fetch schema from categories
+								//page.schema.properties[slot_key] = { "$ref": "/wiki/MediaWiki:Slot-jsonschema-jsondata.json?action=raw" };
+							}
+							else if (slot_key == 'jsonschema') {
+								page.slots[slot_key] = slot["*"];
+								page.schema.properties[slot_key] = { "type": "string", "format": "json" }; //Todo: Fetch schema from categories
+								/*page.slots[slot_key] = JSON.parse(slot["*"]);
+								//page.schema.properties[slot_key] = { "$ref": "/wiki/MediaWiki:Slot-jsonschema-jsonschema.json?action=raw" };
+								//page.schema.properties[slot_key] = { "$ref": "/w/extensions/MwJson/modules/ext.MwJson.editor/jsonschema-jsonschema.json" }; //from https://github.com/wclssdn/JSONSchemaCreator/blob/0544223fb43ebd4c8614ea97b275cae38f2c015c/dist/en.js
+								page.schema.definitions = window.jsonschema_jsonschema_definitions;
+								page.schema.properties[slot_key] = window.jsonschema_jsonschema;
+								*/
+							}
+							else {
+								page.slots[slot_key] = slot["*"];
+								page.schema.properties[slot_key] = { "type": "string", "format": "json" };
+							}
 						}
 						else {
 							page.slots[slot_key] = slot["*"]; //default: text
 							if (slot_key === 'main') page.schema.properties[slot_key] = { "type": "string", "format": "textarea", "options": {"wikieditor": "novisualeditor"} };
 							else page.schema.properties[slot_key] = { "type": "string", "format": "handlebars", "options": {"wikieditor": ""} };
 						}
-						//if (slot_key === 'jsondata') page.schema.properties[slot_key] = { "$ref": "/wiki/MediaWiki:Slot-jsonschema-jsondata.json?action=raw" };
 					}
 
 				}
@@ -139,6 +154,7 @@ mwjson.api = class {
 	static editSlots(page, summary = ""){
 		const deferred = $.Deferred();
 		var slot_list = []
+		//mwjson.api.autoEditSlots(page); solved by modified RevisionRecord.php
 		for (var slot_key of Object.keys(page.slots)) {
 			if (page.slots_changed[slot_key]) slot_list.push(slot_key)
 			//mwjson.api.editSlot(page.title, slot_key, page.slots[slot_key], summary); //parallel edit does not work
@@ -157,6 +173,31 @@ mwjson.api = class {
 		}
 		do_edit();
 		return deferred.promise();
+	}
+
+	static autoEditSlots(page) {
+		var namespace_prefix = new mw.Title(page.title).getNamespacePrefix();
+		if (namespace_prefix === "Category:") {
+			if (page.slots['header'] !== "{{#invoke:Category|header}}") {
+				page.slots['header'] = "{{#invoke:Category|header}}"
+				page.slots_changed['header'] = true;
+			}
+			if (page.slots['footer'] !== "{{#invoke:Category|footer}}") {
+				page.slots['footer'] = "{{#invoke:Category|footer}}"
+				page.slots_changed['footer'] = true;
+			}
+		}
+		if (namespace_prefix === "Item:") {
+			if (page.slots['header'] !== "{{#invoke:Entity2|header}}") {
+				page.slots['header'] = "{{#invoke:Entity2|header}}"
+				page.slots_changed['header'] = true;
+			}
+			if (page.slots['footer'] !== "{{#invoke:Entity2|footer}}") {
+				page.slots['footer'] = "{{#invoke:Entity2|footer}}"
+				page.slots_changed['footer'] = true;
+			}
+		}
+		
 	}
 
 	static copyPageContent(sourcePage, targetPage){
@@ -233,13 +274,14 @@ mwjson.api = class {
 			format: 'json',
 			ignorewarnings: 1
 		};
+		//todo: chunked upload of large files: https://doc.wikimedia.org/mediawiki-core/master/js/#!/api/mw.Api.plugin.upload
 		new mw.Api().upload(blob, param).done(function (data) {
 			mw.notify('Saved', {
 				type: 'success'
 			});
 			deferred.resolve(data);
 		}).fail(function (data) {
-			if (data === 'exists' || data === 'was-deleted') { //only warning, upload was successful anyway
+			if (data === 'exists' || data === 'was-deleted' || data === 'duplicate' || data == 'duplicate-archive' || data === 'page-exists') { //only warning, upload was successful anyway
 				mw.notify('Saved', {
 					type: 'success'
 				});

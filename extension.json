@@ -51,6 +51,7 @@
             "localBasePath":"modules/ext.MwJson.api",
             "remoteExtPath":"MwJson/modules/ext.MwJson.api",
             "scripts":[
+                "jsonschema-jsonschema.js",
                 "MwJson_api.js"
             ],
             "dependencies": [
