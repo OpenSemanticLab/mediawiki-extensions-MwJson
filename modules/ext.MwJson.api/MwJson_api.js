@@ -151,28 +151,45 @@ mwjson.api = class {
 		);
 	}
 
-	static editSlots(page, summary = ""){
-		const deferred = $.Deferred();
-		var slot_list = []
-		//mwjson.api.autoEditSlots(page); solved by modified RevisionRecord.php
-		for (var slot_key of Object.keys(page.slots)) {
-			if (page.slots_changed[slot_key]) slot_list.push(slot_key)
-			//mwjson.api.editSlot(page.title, slot_key, page.slots[slot_key], summary); //parallel edit does not work
-		}
-
-		function do_edit() {
-			const slot_key = slot_list.pop();
-			if (slot_key) {
+	static editSlots(page, summary = "", mode = 'action-multislot'){
+		if (mode === 'action-multislot') {
+			var params = {
+				action: 'editslots',
+				title: page.title,
+				summary: summary
+			};
+			for (var slot_key of Object.keys(page.slots)) {
 				console.log("Edit slot " + slot_key);
 				page.slots_changed[slot_key] = false;
 				var content = page.slots[slot_key];
 				if (page.content_model[slot_key] === 'json' && !(typeof content === 'string')) content = JSON.stringify(content);
-				mwjson.api.editSlot(page.title, slot_key, content, summary).done(do_edit);
+				params['slot_' + slot_key] = content;
 			}
-			else deferred.resolve(page);
+			return new mw.Api().postWithToken("csrf", params);
 		}
-		do_edit();
-		return deferred.promise();
+		else {
+			const deferred = $.Deferred();
+			var slot_list = []
+			//mwjson.api.autoEditSlots(page); solved by modified RevisionRecord.php
+			for (var slot_key of Object.keys(page.slots)) {
+				if (page.slots_changed[slot_key]) slot_list.push(slot_key)
+				//mwjson.api.editSlot(page.title, slot_key, page.slots[slot_key], summary); //parallel edit does not work
+			}
+
+			function do_edit() {
+				const slot_key = slot_list.pop();
+				if (slot_key) {
+					console.log("Edit slot " + slot_key);
+					page.slots_changed[slot_key] = false;
+					var content = page.slots[slot_key];
+					if (page.content_model[slot_key] === 'json' && !(typeof content === 'string')) content = JSON.stringify(content);
+					mwjson.api.editSlot(page.title, slot_key, content, summary).done(do_edit);
+				}
+				else deferred.resolve(page);
+			}
+			do_edit();
+			return deferred.promise();
+		}
 	}
 
 	static autoEditSlots(page) {
