@@ -11,6 +11,7 @@ mwjson.editor = class {
 			onsubmit: (json) => this.onsubmit(json)
 		};
 		this.config = mwjson.util.mergeDeep(defaultConfig, config);
+		this.flags = {'change-after-load': false};
 		if (this.config.container) {
 			this.container = this.config.container;
 			this.config.popup = false;
@@ -402,6 +403,7 @@ mwjson.editor = class {
 		// listen for loaded
 		this.jsoneditor.on('ready', () => {
 			console.log("Editor loaded");
+			this.flags["change-after-load"] = true;
 			console.log(this.jsoneditor);
 			if (this.config.data) this.jsoneditor.setValue(this.config.data);
 			if (this.config.target) mwjson.api.getPage(this.config.target).then((page) => {
@@ -430,12 +432,31 @@ mwjson.editor = class {
 			console.log(this.jsoneditor.schema);
 			console.log(this.jsoneditor.getValue());
 			//console.log(this.jsoneditor.editors);
+
+			var labeled_inputs = [];
+			var label_requests = [];
+
 			for (var subeditor_path of Object.keys(this.jsoneditor.editors)) {
 				var subeditor = this.jsoneditor.editors[subeditor_path];
 				if (!subeditor) continue;
 
 				var input = subeditor.input
 				var $input = $(input);
+
+				//collect autocomplete field values to fetch labels
+				if (subeditor.format === 'autocomplete') {// && this.flags["change-after-load"]) {
+					//console.log("Autocomplete Editor:", subeditor);
+					//console.log("Dirty: ", subeditor.is_dirty);
+					if (input.value_id && input.value_label) { //label already fetched 
+						input.value = input.value_label;
+						subeditor.value = input.value_id; //will be applied on the next .getValue() call
+						subeditor.is_dirty = false;
+					}
+					else if (subeditor.value !== ""){
+						labeled_inputs.push({input: input, value_id: subeditor.value});
+						label_requests.push(subeditor.value);
+					}
+				}
 
 				//BUG: Does not save value in original text field (only if source mode is toggled). See PageForms extension
 				if (subeditor.options && subeditor.options.wikieditor === 'visualeditor') {
@@ -500,6 +521,18 @@ mwjson.editor = class {
 					//$('.CodeMirror-wrap').each(function() {this.dispatchEvent(new Event('click')) });
 				}
 			}
+
+			//fetch labels
+			if (label_requests.length) mwjson.api.getLabels(label_requests).then((label_dict) => {
+				for (const labeled_input of labeled_inputs) {
+					console.log("Set label " + label_dict[labeled_input.value_id] + " for " + labeled_input.input.value);
+					labeled_input.input.value_id = labeled_input.value_id;
+					labeled_input.input.value_label = label_dict[labeled_input.value_id];
+					labeled_input.input.value = labeled_input.input.value_label;
+				}
+			});
+
+			this.flags["change-after-load"] = false;
 		});
 
 		// listen for array changes
@@ -776,15 +809,15 @@ mwjson.editor = class {
 					if (labelTemplate) {
 						label = Handlebars.compile(labelTemplate)({ result: result });
 					}
+					jseditor_editor.input.value_label = label;
 					return label;
 				},
 				//... but store the fulltext / id
 				onSubmit_smw: (jseditor_editor, result) => {
-					jseditor_editor.value = result.fulltext;
-					jseditor_editor.onChange(true);
-					//jseditor_editor.jsoneditor.trigger('change',jseditor_editor);
-					//window.JSONEditor.trigger('change',jseditor_editor);
 					console.log("Selected: " + result.displaytitle + " / " + result.fulltext);
+					jseditor_editor.value = result.fulltext;
+					jseditor_editor.input.value_id = result.fulltext;
+					jseditor_editor.onChange(true);
 				},
 			},
 			upload: {

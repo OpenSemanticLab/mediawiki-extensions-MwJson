@@ -472,4 +472,48 @@ mwjson.api = class {
 
 		return deferred.promise();
 	}
+
+	static getLabels(titles) {
+		const deferred = $.Deferred();
+
+		var titles = [...new Set(titles)]; //filter duplicates
+
+		var query = "/w/api.php?action=ask&query=";
+		var first = true;
+		for (const title of titles) {
+			if (!first) query += "OR";
+			query += "[[";
+			if (title.startsWith("Category:")) query += ":";
+			query += title + "]]";
+			first = false;
+		}
+		query += "|?HasLabel=label&format=json"
+
+		fetch(query)
+			.then(response => response.json())
+			.then(data => {
+				console.log(data);
+				var label_dict = {};
+
+				for (const title of titles) {
+					var result = data.query.results[title];
+					var label = title;
+					if (result) 
+						if (result.printouts.label)
+							if (result.printouts.label[0])
+								if (result.printouts.label[0].Text)
+									if (result.printouts.label[0].Text.item)
+										if (result.printouts.label[0].Text.item[0])
+											label = result.printouts.label[0].Text.item[0];
+											label_dict[title] = label;
+				}
+				
+				deferred.resolve(label_dict);
+			},
+			(error) => {
+				deferred.reject(error);
+			});
+
+		return deferred.promise();
+	}
 }
