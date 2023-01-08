@@ -4,7 +4,7 @@ mwjson.editor = class {
 	constructor(config) {
 		var defaultConfig = {
 			target_slot: 'main',
-			target_namespace: 'Term',
+			target_namespace: 'Item',
 			mode: "default", // options: default, query
 			lang: "en",
 			id: 'json-editor-' + mwjson.util.getShortUid(),
@@ -130,8 +130,9 @@ mwjson.editor = class {
 			if (action === 'create') {
 				// Create a new process to handle the action
 				return new OO.ui.Process(function () {
-					dialog.close({action: action});
-					if (editor.config.onsubmit) editor.config.onsubmit(editor.jsoneditor.getValue());
+					editor._onsubmit(editor.jsoneditor.getValue())
+						.then(() => dialog.close({action: action}))
+						.catch();
 				}, this);
 			}
 			if (action === 'toggle-fullscreen') {
@@ -396,7 +397,7 @@ mwjson.editor = class {
 		if (!this.config.popup) {
 			$(this.container).append($("<button type='Button' class='btn btn-primary btn-block' id='save-form'>Save</button>"));
 			$("#save-form").click(() => {
-				this.config.onsubmit(this.jsoneditor.getValue());
+				this._onsubmit(this.jsoneditor.getValue());
 			});
 		}
 
@@ -541,44 +542,95 @@ mwjson.editor = class {
 		});
 	};
 
+	getSyntaxErrors() {
+		var errors = []
+		for (var subeditor_path of Object.keys(this.jsoneditor.editors)) {
+			var subeditor = this.jsoneditor.editors[subeditor_path];
+			if (!subeditor) continue;
+			if(subeditor.ace_editor_instance) {
+				for (var error of subeditor.ace_editor_instance.getSession().getAnnotations()) {
+					if (error.type == 'error') {
+						error.editor_path = subeditor.path;
+						error.editor_label = subeditor.label.innerText;
+						errors.push(error)
+					}
+				}
+			}
+		}
+		return errors;
+	}
+
+	_onsubmit(json) {
+		const promise = new Promise((resolve, reject) => {
+			if(this.getSyntaxErrors().length) {
+				OO.ui.confirm( 
+					mw.message("mwjson-editor-fields-contain-syntax-error").text() 
+					+ ". " + mw.message("mwjson-editor-save-anyway").text() 
+					).done( ( confirmed ) => {
+					if ( confirmed ) {
+						mw.notify(mw.message("mwjson-editor-do-not-close-window").text(), { title: mw.message("mwjson-editor-saving").text() + "...", type: 'warn'});
+						const submit_promise = this.config.onsubmit(json);
+						if (submit_promise) submit_promise.then(() => resolve()).catch();
+						else resolve();
+						mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success'});
+					} else {
+						reject();
+					}
+				} );
+			}
+			else {
+				mw.notify(mw.message("mwjson-editor-do-not-close-window").text(), { title: mw.message("mwjson-editor-saving").text() + "...", type: 'warn'});
+				const submit_promise = this.config.onsubmit(json);
+				if (submit_promise) submit_promise.then(() => resolve()).catch();
+				else resolve();
+				mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success'});
+			}
+		});
+		return promise;
+	}
+
 	onsubmit(json) {
 		if (this.config.mode === 'default') return this.onsubmitPage(json);
 		else if (this.config.mode === 'query') return this.onsubmitQuery(json);
 	}
 
 	onsubmitPage(json) {
-		if (!this.config.target) {
-			this.config.target = "";
-			if (this.config.target_namespace !== "") this.config.target += this.config.target_namespace + ":";
-			this.config.target += mwjson.util.OslId();
-		}
-		console.log("Save form");
-		var url = window.location.href.replace(/\?.*/, '');
-		url += '?target=' + encodeURIComponent(this.config.target);
-		url += '&data=' + encodeURIComponent(mwjson.util.objectToCompressedBase64(json));
+		const promise = new Promise((resolve, reject) => {
+			if (!this.config.target) {
+				this.config.target = "";
+				if (this.config.target_namespace !== "") this.config.target += this.config.target_namespace + ":";
+				this.config.target += mwjson.util.OslId(json.uuid);
+			}
+			console.log("Save form");
+			var url = window.location.href.replace(/\?.*/, '');
+			url += '?target=' + encodeURIComponent(this.config.target);
+			url += '&data=' + encodeURIComponent(mwjson.util.objectToCompressedBase64(json));
 
-		console.log(JSON.stringify(json));
-		mwjson.api.getPage(this.config.target).then((page) => {
-			if (page.content_model[this.config.target_slot] === 'wikitext') {
-				page.content = mwjson.editor.data2template(json)
-				//add edit link with base64 encode data
-				//page.content = "<noinclude>[" + url + " Edit Template]</noinclude>\n<br\>" + page.content;
-				page.changed = true;
-				//console.log(page.content);
-				var wikiJson = mwjson.editor.schemaJson2WikiJson(json)
-				page.dict = wikiJson;
-				mwjson.parser.updateContent(page);
-				console.log(wikiJson);
-				console.log(page.content);
-			}
-			if (page.content_model[this.config.target_slot] === 'json') {
-				page.slots[this.config.target_slot] = json;
-				page.slots_changed[this.config.target_slot] = true;
-			}
-			mwjson.api.updatePage(page, "Edited with JsonEditor").then(() => {
-				window.location.href = "/wiki/" + page.title
-			});
+			console.log(JSON.stringify(json));
+			mwjson.api.getPage(this.config.target).then((page) => {
+				if (page.content_model[this.config.target_slot] === 'wikitext') {
+					page.content = mwjson.editor.data2template(json)
+					//add edit link with base64 encode data
+					//page.content = "<noinclude>[" + url + " Edit Template]</noinclude>\n<br\>" + page.content;
+					page.changed = true;
+					//console.log(page.content);
+					var wikiJson = mwjson.editor.schemaJson2WikiJson(json)
+					page.dict = wikiJson;
+					mwjson.parser.updateContent(page);
+					console.log(wikiJson);
+					console.log(page.content);
+				}
+				if (page.content_model[this.config.target_slot] === 'json') {
+					page.slots[this.config.target_slot] = json;
+					page.slots_changed[this.config.target_slot] = true;
+				}
+				mwjson.api.updatePage(page, "Edited with JsonEditor").then(() => {
+					resolve();
+					window.location.href = "/wiki/" + page.title
+				});
+			}).catch();
 		});
+		return promise;
 		//mwjson.parser.parsePage(page)
 		//console.log(page.dict);
 		/*return;
@@ -640,7 +692,7 @@ mwjson.editor = class {
 				//$.getScript("https://cdn.jsdelivr.net/npm/@json-editor/json-editor@latest/dist/jsoneditor.js"),
 				//$.getScript("https://unpkg.com/imask"),
 				//$.getScript("https://cdn.jsdelivr.net/npm/ace-builds@latest/src-noconflict/ace.min.js"),
-				mw.loader.using('ext.codeEditor.ace'),
+				mw.loader.using('ext.codeEditor.ace'), //loading ace.min.js leads to styling issues (css conflict with codeEditor?)
 				mw.loader.using('ext.veforall.main'),
 				mw.loader.using('ext.geshi.visualEditor'),
 				mw.loader.using('ext.CodeMirror.lib'),
@@ -656,7 +708,15 @@ mwjson.editor = class {
 				//fetch all i18n msgs
 				var msg_promises = [];
 				var msg_counter = 0;
-				var msgs = [];
+				var msgs = [
+					"mwjson-editor-saving",
+					"mwjson-editor-fields-contain-syntax-error",
+					"mwjson-editor-save-anyway",
+					"mwjson-editor-do-not-close-window",
+					"mwjson-editor-saved",
+					"mwjson-editor-error",
+					"mwjson-editor-error-occured-while-saving",
+				];
 				for (var key of Object.keys(JSONEditor.defaults.languages.en)) {
 					msgs.push("json-editor-" + key);
 					msg_counter += 1;
@@ -706,11 +766,14 @@ mwjson.editor = class {
 		window.JSONEditor.defaults.options.previewWikiTextTemplate = "[[{{result.fulltext}}]]";
 		window.JSONEditor.defaults.options.ace = {
 			//"theme": "ace/theme/vibrant_ink",
-			"tabSize": 2,
+			"tabSize": 4,
 			"useSoftTabs": true,
 			"wrap": true,
-			"useWorker": false
+			"useWorker": true
 		};
+		ace.config.set("basePath", "/w/extensions/MwJson/modules/ext.MwJson.editor.ace");
+		ace.config.set("workerPath", "/w/extensions/MwJson/modules/ext.MwJson.editor.ace");
+		ace.config.setModuleUrl('ace/mode/json_worker', "/w/extensions/MwJson/modules/ext.MwJson.editor.ace/worker-json.js");
 		window.JSONEditor.defaults.options.upload.upload_handler = "fileUpload";
 	}
 

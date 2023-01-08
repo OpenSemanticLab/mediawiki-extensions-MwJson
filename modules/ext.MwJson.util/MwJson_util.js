@@ -12,8 +12,9 @@ mwjson.util = class {
 		);
 	}
 
-	static OslId() {
-		return "OSL" + mwjson.util.uuidv4().replaceAll("-", "");
+	static OslId(uuid) {
+		if (!uuid) uuid = mwjson.util.uuidv4();
+		return "OSL" + uuid.replaceAll("-", "");
 	}
 
 	static valueIfExists(value, default_value = "") {

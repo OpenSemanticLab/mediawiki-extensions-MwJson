@@ -492,7 +492,6 @@ mwjson.api = class {
 		fetch(query)
 			.then(response => response.json())
 			.then(data => {
-				console.log(data);
 				var label_dict = {};
 
 				for (const title of titles) {
