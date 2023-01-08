@@ -83,6 +83,7 @@
                 "autocomplete.min.js",
                 "jsoneditor.min.js",
                 "MwJson_editor.js",
+                "MwJson_editor_ui.js",
                 "MwJson_editor_init.js"
             ],
             "dependencies": [
