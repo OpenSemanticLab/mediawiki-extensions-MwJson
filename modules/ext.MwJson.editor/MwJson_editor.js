@@ -171,194 +171,6 @@ mwjson.editor = class {
 		windowManager.openWindow(dialog, { pageTitle: _config.title });
 	}
 
-	static isObjLiteral(_obj) {
-		var _test = _obj;
-		return (typeof _obj !== 'object' || _obj === null ?
-			false :
-			(
-				(function () {
-					while (!false) {
-						if (Object.getPrototypeOf(_test = Object.getPrototypeOf(_test)) === null) {
-							break;
-						}
-					}
-					return Object.getPrototypeOf(_obj) === _test;
-				})()
-			)
-		);
-	}
-
-	static wikiJson2SchemaJsonRecursion(wikiJson, footerWikiJson = undefined) {
-		var schemaJson = {}
-		if (footerWikiJson != undefined) { 
-			schemaJson['osl_footer'] = mwjson.editor.wikiJson2SchemaJsonRecursion(footerWikiJson);
-			delete schemaJson['osl_footer']['extensions']; //not defined in schema
-		}
-		for (var key in wikiJson) {
-			var value = wikiJson[key];
-			if (Array.isArray(value)) //handle first because arrays are also objects
-			{
-				schemaJson[key] = [];
-				for (var index = 0; index < value.length; index++) { //for (var element : value)
-					var element = value[index];
-					//if (debug) console.log("index: " + index + ", elementtype:" + (typeof element) + ", element:" + element);
-					if (typeof element === "object") {
-						if (key === "extensions") {
-							if (footerWikiJson != undefined) { //we asume that every extension provides also a footer template
-								var nextFooter = footerWikiJson[schemaJson['osl_footer']['osl_template']]['extensions'][index];
-								schemaJson[key].push(mwjson.editor.wikiJson2SchemaJsonRecursion(element, nextFooter));
-							}
-						}
-						else schemaJson[key].push(mwjson.editor.wikiJson2SchemaJsonRecursion(element));
-					}
-					else {
-						schemaJson[key].push(element);
-					}
-				}
-
-			}
-			else if (typeof value === "object") {
-				schemaJson = mwjson.editor.wikiJson2SchemaJsonRecursion(value, footerWikiJson);
-				schemaJson['osl_template'] = key;
-			}
-			else {
-				schemaJson[key] = value;
-			}
-		}
-
-		for (key in schemaJson) {
-			if (schemaJson[key] === "" && key === 'extensions') schemaJson[key] = [];
-			//if (schemaJson[key] === "") delete schemaJson[key]; //schemaJson[key] = undefined; ////set properties with empty string to none
-        	/*if (Array.isArray(schemaJson[key])) { //wikiJson defaults are lists, even for single or empty values
-            	if (schemaJson[key].length == 0) delete schemaJson[key]
-            	//else if len(schemaJson[key]) == 1: schemaJson[key] = schemaJson[key][0]
-			}*/
-		}
-
-		return schemaJson;
-	}
-
-	static wikiJson2SchemaJson(wikiJson, isRoot = true) {
-		var schemaJson = {}
-		if (mwjson.editor.isObjLiteral(wikiJson[0]) === false 
-		|| typeof wikiJson[1] !== 'string' 
-		|| mwjson.editor.isObjLiteral(wikiJson[2]) === false) {
-			console.log("Error: Invalid wikiJson:", wikiJson);
-			return schemaJson;
-		}
-		var schemaJson = {};
-
-		schemaJson = mwjson.editor.wikiJson2SchemaJsonRecursion(wikiJson[0], wikiJson[2])
-		schemaJson['osl_wikitext'] = wikiJson[1];
-		return schemaJson;
-	}
-
-	static schemaJson2WikiJson(schemaJson, isRoot = true) {
-		var wikiJson = [{}, "", {}]; //header, freetext, footer
-		var template = "";
-		var footer_template = "";
-		if (Object.hasOwn(schemaJson, 'osl_template')) {
-			template = schemaJson['osl_template'];
-			wikiJson[0][template] = {};
-		}
-		else {
-			console.log("Error: Mandatory property 'osl_template' not found in schemaJson", schemaJson);
-			return;
-		}
-		if (Object.hasOwn(schemaJson, 'osl_wikitext')) wikiJson[1] = schemaJson['osl_wikitext'];
-		if (Object.hasOwn(schemaJson, 'osl_footer')) {
-			wikiJson[2] = mwjson.editor.schemaJson2WikiJson(schemaJson['osl_footer'], false)[0];
-			footer_template = schemaJson['osl_footer']['osl_template'];
-			wikiJson[2][footer_template]['extensions'] = [];
-		}
-		for (var key in schemaJson) {
-			if (key.startsWith('_') || key.startsWith('osl_template') || key.startsWith('osl_wikitext') || key.startsWith('osl_footer')) continue;
-			if (schemaJson[key] === undefined) continue;
-			else if (typeof schemaJson[key] === 'string') wikiJson[0][template][key] = schemaJson[key];
-			else if (typeof schemaJson[key] === 'number') wikiJson[0][template][key] = schemaJson[key];
-			else if (Array.isArray(schemaJson[key])) {
-				wikiJson[0][template][key] = [];
-				schemaJson[key].forEach(subSchemaJson => {
-					if (mwjson.editor.isObjLiteral(wikiJson[0])) {
-						var subWikiJson = mwjson.editor.schemaJson2WikiJson(subSchemaJson, false);
-						wikiJson[0][template][key].push(subWikiJson[0]);
-						if (key === "extensions") {
-							wikiJson[2][footer_template]['extensions'].push(subWikiJson[2]);
-						}
-					}
-					else wikiJson[0][template][key].push(subWikiJson); //Literal
-				});
-			}
-			else { //object
-				var subWikiJson = mwjson.editor.schemaJson2WikiJson(schemaJson[key], false);
-				wikiJson[0][template][key] = [subWikiJson[0]]; //wikiJson defaults to arrays
-			}
-		}
-		return wikiJson;
-	}
-
-	static data2template(data, isRoot = true) {
-		var wikitext = "";
-		if (data._template) {
-			wikitext += "{{";
-			wikitext += data._template;
-		}
-		for (var key in data) {
-			if (key.startsWith('_')) continue;
-			if (data._template) wikitext += "\n|" + key + "=";
-			if (data[key] === undefined) continue;
-			else if (typeof data[key] === 'string') wikitext += data[key];
-			else if (typeof data[key] === 'number') wikitext += (data[key]);
-			else if (Array.isArray(data[key])) {
-				data[key].forEach(o => {
-					wikitext += mwjson.editor.data2template(o, false);
-					//console.log("Type of " + o + " is " + typeof o);
-					if (o._template) { }
-					else wikitext += ";";
-				});
-			}
-			else wikitext += mwjson.editor.data2template(data[key], false);
-			//wikitext += "\n";
-		}
-		if (data._template) {
-			wikitext += "\n}}"
-		}
-		return wikitext;
-	}
-
-	static getTemplatePropertyMapping(schema) {
-		var mapping = mwjson.editor.getPropertyTemplateMapping(schema);
-		var inverse_mapping = {};
-		for(var key in mapping){
-			inverse_mapping[mapping[key]] = key;
-		}
-		return inverse_mapping;
-	}
-
-	static getPropertyTemplateMapping(schema) {
-		//TODO: use jsonpath on schema
-		var mapping = {
-			"header": "OslTemplate:KB/Term",
-			"footer": "OslTemplate:KB/Term/Footer"
-		}
-	}
-
-	static pagedict2data(pagedict) {
-		var data = {}
-		var textkey = "text";
-		var text_counter = 0;
-		for (var key in pagedict)
-		{
-			var content_element = pagedict[key];
-			if (typeof content_element == "object") wt += mwjson.parser.getWikitextFromWikipageTemplateKeyDict(content_element);
-			else if (typeof content_element == "string") {
-				text_counter += 1;
-				data[textkey + text_counter] = content_element;
-			}
-			else console.log("Error: content element is not dict or string: " + content_element);
-		}
-	}
-
 	createEditor() {
 		//return function(err, config) {
 
@@ -415,7 +227,7 @@ mwjson.editor = class {
 					//load data from page if exist
 					if (this.targetPage.content !== "") {
 						console.log("Load data:", this.targetPage.dict);
-						var schemaJson = mwjson.editor.wikiJson2SchemaJson(this.targetPage.dict);
+						var schemaJson = mwjson.editor.mwjson.parser.wikiJson2SchemaJson(this.targetPage.dict);
 						console.log(schemaJson);
 						this.jsoneditor.setValue(schemaJson);
 					}
@@ -609,12 +421,12 @@ mwjson.editor = class {
 			console.log(JSON.stringify(json));
 			mwjson.api.getPage(this.config.target).then((page) => {
 				if (page.content_model[this.config.target_slot] === 'wikitext') {
-					page.content = mwjson.editor.data2template(json)
+					page.content = mwjson.editor.mwjson.parser.data2template(json)
 					//add edit link with base64 encode data
 					//page.content = "<noinclude>[" + url + " Edit Template]</noinclude>\n<br\>" + page.content;
 					page.changed = true;
 					//console.log(page.content);
-					var wikiJson = mwjson.editor.schemaJson2WikiJson(json)
+					var wikiJson = mwjson.editor.mwjson.parser.schemaJson2WikiJson(json)
 					page.dict = wikiJson;
 					mwjson.parser.updateContent(page);
 					console.log(wikiJson);
@@ -638,7 +450,7 @@ mwjson.editor = class {
 		if (Array.isArray(this.targetPage.data)) {
 			this.targetPage.data.forEach((template, index) => {
 				Object.assign(template, this.jsoneditor.getValue()[index]);
-				wikitext = data2template(template);
+				wikitext = mwjson.parser.data2template(template);
 				template._token.clear();
 				template._token.push(wikitext);
 			});
@@ -646,7 +458,7 @@ mwjson.editor = class {
 		else {
 			var template = this.targetPage.data;
 			Object.assign(template, this.jsoneditor.getValue());
-			wikitext = data2template(template);
+			wikitext = mwjson.parser.data2template(template);
 			template._token.clear();
 			template._token.push(wikitext);
 		}
