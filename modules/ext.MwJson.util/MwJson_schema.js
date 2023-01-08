@@ -79,10 +79,14 @@ mwjson.schema = class {
 			for (const property of Object.keys(schema.properties)) {
 				
 				for (const attr of translateables) {
-					if (schema.properties[property][attr+"*"]) {
+					if (schema.properties[property][attr+"*"]) { //objects
 						if (schema.properties[property][attr+"*"][this.config.lang]) schema.properties[property][attr] = schema.properties[property][attr+"*"][this.config.lang];
 					}
+                    if (schema.properties[property].items && schema.properties[property].items[attr+"*"]) { //array items
+						if (schema.properties[property].items[attr+"*"][this.config.lang]) schema.properties[property].items[attr] = schema.properties[property].items[attr+"*"][this.config.lang];
+					}
 				}
+
 				if (this.config.mode !== "default") {
 					if (schema.properties[property].options) {
 						if (schema.properties[property].options.conditional_visible && schema.properties[property].options.conditional_visible.modes) {

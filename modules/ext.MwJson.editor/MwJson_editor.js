@@ -6,7 +6,7 @@ mwjson.editor = class {
 			target_slot: 'main',
 			target_namespace: 'Item',
 			mode: "default", // options: default, query
-			lang: "en",
+			lang: mw.config.get('wgUserLanguage'),
 			id: 'json-editor-' + mwjson.util.getShortUid(),
 			onsubmit: (json) => this.onsubmit(json)
 		};

@@ -55,8 +55,8 @@ mwjson.api = class {
 								/*page.slots[slot_key] = JSON.parse(slot["*"]);
 								//page.schema.properties[slot_key] = { "$ref": "/wiki/MediaWiki:Slot-jsonschema-jsonschema.json?action=raw" };
 								//page.schema.properties[slot_key] = { "$ref": "/w/extensions/MwJson/modules/ext.MwJson.editor/jsonschema-jsonschema.json" }; //from https://github.com/wclssdn/JSONSchemaCreator/blob/0544223fb43ebd4c8614ea97b275cae38f2c015c/dist/en.js
-								page.schema.definitions = window.jsonschema_jsonschema_definitions;
-								page.schema.properties[slot_key] = window.jsonschema_jsonschema;
+								page.schema.definitions = mwjson.schema.jsonschema_jsonschema_definitions;
+								page.schema.properties[slot_key] = mwjson.schema.jsonschema_jsonschema_root;
 								*/
 							}
 							else {

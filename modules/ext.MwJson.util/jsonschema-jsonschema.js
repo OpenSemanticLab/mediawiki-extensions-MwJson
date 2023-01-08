@@ -1,4 +1,20 @@
-window.jsonschema_jsonschema_definitions = {
+mwjson.schema.jsonschema_jsonschema_root = {
+    "title": "JSON Schema",
+    "$ref": "#/definitions/schema",
+    "properties": {
+        "definitions": {
+            "type": "object",
+            "patternProperties": {
+                ".*": {
+                    "$ref": "#/definitions/schema"
+                }
+            }
+        }
+    }
+};
+
+//need to be on the root level of the aktual schema even if mwjson.schema.jsonschema_jsonschema_root is nested
+mwjson.schema.jsonschema_jsonschema_definitions = {
         "schemaArray": {
             "type": "array",
             "minItems": 1,
@@ -698,17 +714,7 @@ window.jsonschema_jsonschema_definitions = {
             ]
         }
     };
-window.jsonschema_jsonschema = {
-    "title": "JSON Schema",
-    "$ref": "#/definitions/schema",
-    "properties": {
-        "definitions": {
-            "type": "object",
-            "patternProperties": {
-                ".*": {
-                    "$ref": "#/definitions/schema"
-                }
-            }
-        }
-    }
-};
+
+//build to full schema
+mwjson.schema.jsonschema_jsonschema = mwjson.schema.jsonschema_jsonschema_root;
+mwjson.schema.jsonschema_jsonschema.definitions = mwjson.schema.jsonschema_jsonschema_definitions;
