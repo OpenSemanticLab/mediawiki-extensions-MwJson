@@ -19,9 +19,9 @@ mwjson.schema = class {
         console.log("mwjson.schema selftest");
         var jsonschema = {
             "@context": {
-                test: "property:TestProperty",
-                number_max: "property:HasNumber",
-                date_min: "property:HasDate"
+                test: "Property:TestProperty",
+                number_max: "Property:HasNumber",
+                date_min: "Property:HasDate"
             },
             properties: {
                 test: { title: "Test", type: "string" },
@@ -147,16 +147,33 @@ mwjson.schema = class {
         return { categories: categories };
     }
 
+    _buildContext(args) {
+        var schema = mwjson.util.defaultArg(args.jsonschema, {});
+        var context = mwjson.util.defaultArg(schema['@context'], {});
+        if (mwjson.util.isObject(context)) return {context:context};
+        var result = {};
+        var index = 0;
+        for (var subcontext of context) {
+            if (mwjson.util.isString(subcontext)){
+                result["" + index] = subcontext;
+                index++;
+            } 
+            else result = mwjson.util.mergeDeep(result, subcontext)
+        }
+        return {context:result}
+    }
+
     //maps jsondata values to semantic properties by using the @context attribute within the schema
     //test: console.log(p.getSemanticProperties({jsonschema={["@context"]={test="property:TestProperty"}}, jsondata={test="TestValue"}}))
     _getSemanticProperties(args) {
         var jsondata = mwjson.util.defaultArg(args.jsondata, {});
         var schema = mwjson.util.defaultArg(args.schema, {});
 
-        var debug = mwjson.util.defaultArg(args.debug, false);
+        var debug = mwjson.util.defaultArg(args.debug, true);
 
         args.properties = args.properties || {}; //semantic properties
         args.property_data = args.property_data || {};
+        var context = this._buildContext({jsonschema: schema}).context;
 
         if (schema.allOf) {
 			if (Array.isArray(schema.allOf)) {
@@ -173,19 +190,26 @@ mwjson.schema = class {
 			}
 		}
 
-        if (mwjson.util.isDefined(schema['@context'])) {
+        if (mwjson.util.isDefined(context)) {
 
             var schema_properties = mwjson.util.defaultArg(schema.properties, {});
             if (debug) {
-                for (const [k, v] of Object.entries(schema['@context'])) {
+                for (const [k, v] of Object.entries(context)) {
                     this.log("" + k + " maps to " + v);
+                    if (mwjson.util.isNumber(k)) this.log("imports " + v)
+                    else if (mwjson.util.isObject(v)) this.log("" + k + " maps to " + v["@id"]) 
+                    else this.log("" + k + " maps to " + v)
                 }
             }
             for (const [k, v] of Object.entries(jsondata)) {
-                if (mwjson.util.isDefined(schema['@context'][k])) {
-                    if (debug) { this.log(schema['@context'][k]) };
-                    var property_definition = schema['@context'][k].split(':');
-                    if (property_definition[0] === 'property') {
+                if (mwjson.util.isDefined(context[k])) {
+                    if (debug) { this.log(context[k]) };
+
+                    var property_definition = [];
+                    if (mwjson.util.isObject(context[k])) property_definition = context[k]["@id"].split(':');
+                    else property_definition = context[k].split(':');
+
+                    if (property_definition[0] === 'Property') {
                         var property_name = property_definition[1];
                         args.properties[property_name] = v;
                         if (debug) { this.log("set " + property_name + " = " + v); }
@@ -230,7 +254,14 @@ mwjson.schema = class {
             select = select + "\n|?" + def.property;
             if (mwjson.util.isDefined(def.schema_data.title)) { select = select + "=" + def.schema_data.title }
         }
-        if (where !== "") { res = "{{#ask:" + res + where + select + "}}" }
+
+        var options = "";
+        options += "|default=No results";
+        //options += "|format=datatable"; //requires smw modules
+        options += "|limit=1000";
+
+        if (where !== "") { res = "{{#ask:" + res + where + select + options + "}}" }
+
         return { wikitext: res };
     }
 

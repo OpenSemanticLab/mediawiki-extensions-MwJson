@@ -70,8 +70,9 @@ mwjson.editor = class {
 		this.jsoneditor = new JSONEditor(this.container, this.config.JSONEditorConfig);
 		console.log(this.config.data);
 
-		if (!this.config.popup) {
-			$(this.container).append($("<button type='Button' class='btn btn-primary btn-block' id='save-form'>Save</button>"));
+		if (!this.config.popup || this.config.mode === 'query') {
+			if (this.config.mode === 'query') $(this.container).prepend($("<button type='Button' class='btn btn-primary btn-block' id='save-form'>Query</button>"));
+			else $(this.container).append($("<button type='Button' class='btn btn-primary btn-block' id='save-form'>Save</button>"));
 			$("#save-form").click(() => {
 				this._onsubmit(this.jsoneditor.getValue());
 			});
@@ -244,22 +245,22 @@ mwjson.editor = class {
 					+ ". " + mw.message("mwjson-editor-save-anyway").text() 
 					).done( ( confirmed ) => {
 					if ( confirmed ) {
-						mw.notify(mw.message("mwjson-editor-do-not-close-window").text(), { title: mw.message("mwjson-editor-saving").text() + "...", type: 'warn'});
+						if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-do-not-close-window").text(), { title: mw.message("mwjson-editor-saving").text() + "...", type: 'warn'});
 						const submit_promise = this.config.onsubmit(json);
 						if (submit_promise) submit_promise.then(() => resolve()).catch();
 						else resolve();
-						mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success'});
+						if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success'});
 					} else {
 						reject();
 					}
 				} );
 			}
 			else {
-				mw.notify(mw.message("mwjson-editor-do-not-close-window").text(), { title: mw.message("mwjson-editor-saving").text() + "...", type: 'warn'});
+				if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-do-not-close-window").text(), { title: mw.message("mwjson-editor-saving").text() + "...", type: 'warn'});
 				const submit_promise = this.config.onsubmit(json);
 				if (submit_promise) submit_promise.then(() => resolve()).catch();
 				else resolve();
-				mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success'});
+				if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success'});
 			}
 		});
 		return promise;

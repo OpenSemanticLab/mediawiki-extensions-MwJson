@@ -63,6 +63,14 @@ mwjson.util = class {
 		return (typeof item === 'string' || item instanceof String)
 	}
 
+	static isInteger(item) {
+		return Number.isInteger(item);
+	}
+
+	static isNumber(item) {
+		return !isNaN(item);
+	}
+
 	//from https://stackoverflow.com/questions/27936772/how-to-deep-merge-instead-of-shallow-merge
 	static mergeDeep(target, source) {
 		let output = Object.assign({}, target);

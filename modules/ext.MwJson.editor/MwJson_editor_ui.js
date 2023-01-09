@@ -32,17 +32,19 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
     Dialog.static.name = 'CreatePageDialog';
     // Specify the static configurations: title and action set
     Dialog.static.title = _config.msg["dialog-title"];
-    Dialog.static.actions = [
-        {
-            flags: 'primary',
-            label: _config.msg['continue'],
-            action: 'create'
-        },
+    Dialog.static.actions = [        
         {
             flags: 'safe',
             label: _config.msg['cancel']
         }
     ];
+    if (editor.config.mode !== 'query') {
+        Dialog.static.actions.push({
+            flags: 'primary',
+            label: _config.msg['continue'],
+            action: 'create'
+        });
+    }
     if (_config.toggle_fullscreen) {
         Dialog.static.actions.push(
             {
@@ -59,7 +61,10 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
             padded: true,
             expanded: false
         });
-
+        if (editor.config.mode === 'query') {
+            editor.config.result_container_id = editor.config.id + '_query';
+            this.panel.$element.append($('<div id="' + editor.config.result_container_id + '" style="height:300px"><div>'));
+        }
         this.panel.$element.append($('<div id="' + editor.config.id + '" style="height:500px"><div>'));
         this.$body.append(this.panel.$element);
     };
