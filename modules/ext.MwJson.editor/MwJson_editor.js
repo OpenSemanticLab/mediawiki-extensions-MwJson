@@ -71,8 +71,9 @@ mwjson.editor = class {
 		console.log(this.config.data);
 
 		if (!this.config.popup || this.config.mode === 'query') {
-			if (this.config.mode === 'query') $(this.container).prepend($("<button type='Button' class='btn btn-primary btn-block' id='save-form'>Query</button>"));
-			else $(this.container).append($("<button type='Button' class='btn btn-primary btn-block' id='save-form'>Save</button>"));
+			var btn_label = mw.message("mwjson-editor-submit-save").text();
+			if (this.config.mode === 'query') btn_label = mw.message("mwjson-editor-submit-query").text();
+			$(this.container).append($("<button type='Button' class='btn btn-primary btn-block' id='save-form'>" + btn_label + "</button>"));
 			$("#save-form").click(() => {
 				this._onsubmit(this.jsoneditor.getValue());
 			});
@@ -355,11 +356,30 @@ mwjson.editor = class {
 					//console.log("Parsed: " + data.parse.text);
 					$result_container.html($(data.parse.text['*']));
 					//$result_container.find("a").attr("target", "_blank"); //make all links open in new tab
+					//mwjson.editor.initDataTables(); 
 				});
 		});
 	}
 
 	static init() {
+
+		const mw_modules = [
+			'ext.codeEditor.ace', //loading ace.min.js leads to styling issues (css conflict with codeEditor?)
+			'ext.veforall.main',
+			'ext.geshi.visualEditor',
+			'ext.CodeMirror.lib',
+			'ext.CodeMirror.mode.mediawiki',
+			'ext.CodeMirror',
+			//'ext.wikiEditor',
+			//'ext.srf.datatables.bootstrap',
+			//'smw.tableprinter.datatable', 'ext.smw.table.styles',
+			//'ext.srf', 'ext.srf.api', 'ext.srf.util', 'ext.srf.widgets',
+			//'ext.jquery.async','ext.jquery.atwho','ext.jquery.caret','ext.jquery.jStorage','ext.jquery.md5',
+			//'ext.libs.tippy',
+			//'ext.smw.api',
+			//'ext.smw.data','ext.smw.dataItem','ext.smw.dataValue','ext.smw.purge','ext.smw.query','ext.smw.suggester','ext.smw.tooltips',
+			//'ext.smw.suggester.textInput', 'smw.entityexaminer','smw.factbox','smw.tippy'
+		];
 
 		const deferred = $.Deferred();
 		if (!('ready' in mwjson.editor) || !mwjson.editor.ready) {
@@ -369,12 +389,7 @@ mwjson.editor = class {
 				//$.getScript("https://cdn.jsdelivr.net/npm/@json-editor/json-editor@latest/dist/jsoneditor.js"),
 				//$.getScript("https://unpkg.com/imask"),
 				//$.getScript("https://cdn.jsdelivr.net/npm/ace-builds@latest/src-noconflict/ace.min.js"),
-				mw.loader.using('ext.codeEditor.ace'), //loading ace.min.js leads to styling issues (css conflict with codeEditor?)
-				mw.loader.using('ext.veforall.main'),
-				mw.loader.using('ext.geshi.visualEditor'),
-				mw.loader.using('ext.CodeMirror.lib'),
-				mw.loader.using('ext.CodeMirror.mode.mediawiki'),
-				mw.loader.using('ext.CodeMirror'),
+				mw.loader.using(mw_modules), 
 				//mw.loader.using('ext.wikiEditor'),
 				//$.getScript("/w/extensions/MwJson/modules/ext.MwJson.editor/json-schema-ref-parser.js"),
 				$.Deferred(function (deferred) {
@@ -386,6 +401,8 @@ mwjson.editor = class {
 				var msg_promises = [];
 				var msg_counter = 0;
 				var msgs = [
+					"mwjson-editor-submit-save",
+					"mwjson-editor-submit-query",
 					"mwjson-editor-saving",
 					"mwjson-editor-fields-contain-syntax-error",
 					"mwjson-editor-save-anyway",

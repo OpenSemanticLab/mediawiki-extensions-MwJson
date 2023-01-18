@@ -6,6 +6,8 @@
 	},
 	"mw-json-desc": "Jsonschema based Api for Mediawiki",
 	"mw-json-name": "MwJson",
+	"mwjson-editor-submit-save": "Save",
+	"mwjson-editor-submit-query": "Run query",
 	"mwjson-editor-saving": "Saving",
 	"mwjson-editor-fields-contain-syntax-error": "At least one field contains a syntax error",
 	"mwjson-editor-save-anyway": "Saved anyway?",

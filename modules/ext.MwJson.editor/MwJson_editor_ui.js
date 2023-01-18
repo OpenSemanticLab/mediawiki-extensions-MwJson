@@ -63,7 +63,7 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
         });
         if (editor.config.mode === 'query') {
             editor.config.result_container_id = editor.config.id + '_query';
-            this.panel.$element.append($('<div id="' + editor.config.result_container_id + '" style="height:300px"><div>'));
+            this.panel.$element.append($('<div id="' + editor.config.result_container_id + '" style="height:300px;overflow:auto"><div>'));
         }
         this.panel.$element.append($('<div id="' + editor.config.id + '" style="height:500px"><div>'));
         this.$body.append(this.panel.$element);
@@ -480,4 +480,60 @@ mwjson.editor.createPageDialog = function (_config) {
 
     // Open the window!   
     windowManager.openWindow(dialog, { pageTitle: _config.title });
+}
+
+mwjson.editor.initDataTables = function () {
+    mw.loader.using( 'ext.srf.datatables', function(){
+
+    var datatables = new srf.formats.datatables();
+    //var _datatables = datatables._datatables;
+
+	var html = mw.html,
+		profile = $.client.profile(),
+		smwApi = new smw.api(),
+		util = new srf.util();
+
+    //from https://github.com/SemanticMediaWiki/SemanticResultFormats/blob/master/formats/datatables/resources/ext.srf.formats.datatables.js#L988
+    $( '.srf-datatables' ).each( function() {
+
+        var container = $( this ).find( '.container' );
+        console.log(container);
+        var id = container.attr('id');
+        console.log(id);
+        var config = mw.config.get( id );
+        console.log(config);
+        var _data = smwApi.parse(config);
+        console.log(_data);
+
+        var context = $( this ),
+            container = context.find( '.container' ),
+            //data = smwApi.parse( _datatables.getData( container ) );
+            data = smwApi.parse( mw.config.get( container.attr('id') ) );
+
+        // Add bottom element to avoid display clutter on succeeding elements
+        $( html.element( 'div', {
+            'class': 'bottom',
+            'style': 'clear:both'
+            }
+        ) ).appendTo( context );
+
+        // Adopt directionality which ensures that all elements within its context
+        // are appropriately displayed
+        context.prop( 'dir', $( 'html' ).attr( 'dir' ) );
+        context.prop( 'lang', $( 'html' ).attr( 'lang' ) );
+
+        // Ensures that CSS/JS dependencies are "really" loaded before
+        // dataTables gets initialized
+        mw.loader.using( 'ext.srf.datatables.' + context.data( 'theme' ), function(){
+            datatables.init( context, container, data );
+
+            // Do an auto update if enabled via user-preferences
+            if ( datatables.defaults.autoUpdate ) {
+                datatables.update( context, data );
+            }
+        } );
+
+    } );
+
+    });
 }

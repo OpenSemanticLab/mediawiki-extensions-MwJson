@@ -258,6 +258,7 @@ mwjson.schema = class {
         var options = "";
         options += "|default=No results";
         //options += "|format=datatable"; //requires smw modules
+        //options += "|theme=bootstrap";
         options += "|limit=1000";
 
         if (where !== "") { res = "{{#ask:" + res + where + select + options + "}}" }
