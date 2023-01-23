@@ -13,8 +13,13 @@ mwjson.util = class {
 	}
 
 	static OslId(uuid) {
+		console.log("OslId is deprecated. Please use mwjson.util.OswId");
+		return mwjson.util.OswId(uuid);
+	}
+
+	static OswId(uuid) {
 		if (!uuid) uuid = mwjson.util.uuidv4();
-		return "OSL" + uuid.replaceAll("-", "");
+		return "OSW" + uuid.replaceAll("-", "");
 	}
 
 	static valueIfExists(value, default_value = "") {
