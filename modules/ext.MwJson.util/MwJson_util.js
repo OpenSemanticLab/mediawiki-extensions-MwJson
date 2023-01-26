@@ -22,6 +22,15 @@ mwjson.util = class {
 		return "OSW" + uuid.replaceAll("-", "");
 	}
 
+	static toPascalCase(str) {
+		var camelCase = mwjson.util.toCamelCase(str);
+		return camelCase.charAt(0).toUpperCase() + camelCase.slice(1);
+	}
+	
+	static toCamelCase(str) {
+		return str.toLowerCase().replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase());
+	}
+
 	static valueIfExists(value, default_value = "") {
 		if (value) return value;
 		else return default_value;
