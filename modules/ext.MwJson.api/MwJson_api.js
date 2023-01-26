@@ -45,7 +45,8 @@ mwjson.api = class {
 						page.content_model[slot_key] = slot.contentmodel;
 						if (slot.contentmodel === 'json') {
 							if (slot_key == 'jsondata') {
-								page.slots[slot_key] = JSON.parse(slot["*"]);
+								page.slots[slot_key] = slot["*"];
+								//page.slots[slot_key] = JSON.parse(slot["*"]);
 								page.schema.properties[slot_key] = { "type": "string", "format": "json" }; //Todo: Fetch schema from categories
 								//page.schema.properties[slot_key] = { "$ref": "/wiki/MediaWiki:Slot-jsonschema-jsondata.json?action=raw" };
 							}
@@ -152,6 +153,7 @@ mwjson.api = class {
 	}
 
 	static editSlots(page, summary = "", mode = 'action-multislot'){
+		mwjson.api.autoEditSlots(page); //could not be solved by modified RevisionRecord.php. ToDo: Move to OSL extension
 		if (mode === 'action-multislot') {
 			var params = {
 				action: 'editslots',
@@ -170,7 +172,6 @@ mwjson.api = class {
 		else {
 			const deferred = $.Deferred();
 			var slot_list = []
-			//mwjson.api.autoEditSlots(page); solved by modified RevisionRecord.php
 			for (var slot_key of Object.keys(page.slots)) {
 				if (page.slots_changed[slot_key]) slot_list.push(slot_key)
 				//mwjson.api.editSlot(page.title, slot_key, page.slots[slot_key], summary); //parallel edit does not work
@@ -194,7 +195,7 @@ mwjson.api = class {
 
 	static autoEditSlots(page) {
 		var namespace_prefix = new mw.Title(page.title).getNamespacePrefix();
-		if (namespace_prefix === "Category:") {
+		/*if (namespace_prefix === "Category:") {
 			if (page.slots['header'] !== "{{#invoke:Category|header}}") {
 				page.slots['header'] = "{{#invoke:Category|header}}"
 				page.slots_changed['header'] = true;
@@ -203,14 +204,14 @@ mwjson.api = class {
 				page.slots['footer'] = "{{#invoke:Category|footer}}"
 				page.slots_changed['footer'] = true;
 			}
-		}
-		if (namespace_prefix === "Item:") {
-			if (page.slots['header'] !== "{{#invoke:Entity2|header}}") {
-				page.slots['header'] = "{{#invoke:Entity2|header}}"
+		}*/
+		if (namespace_prefix === "Item:" || namespace_prefix === "Category:") {
+			if (page.slots['header'] !== "{{#invoke:Entity|header}}") {
+				page.slots['header'] = "{{#invoke:Entity|header}}"
 				page.slots_changed['header'] = true;
 			}
-			if (page.slots['footer'] !== "{{#invoke:Entity2|footer}}") {
-				page.slots['footer'] = "{{#invoke:Entity2|footer}}"
+			if (page.slots['footer'] !== "{{#invoke:Entity|footer}}") {
+				page.slots['footer'] = "{{#invoke:Entity|footer}}"
 				page.slots_changed['footer'] = true;
 			}
 		}
@@ -487,7 +488,7 @@ mwjson.api = class {
 			query += title + "]]";
 			first = false;
 		}
-		query += "|?HasLabel=label&format=json"
+		query += "|?Display_title_of=label&format=json"
 
 		fetch(query)
 			.then(response => response.json())
@@ -500,11 +501,13 @@ mwjson.api = class {
 					if (result) 
 						if (result.printouts.label)
 							if (result.printouts.label[0])
-								if (result.printouts.label[0].Text)
+								if (result.printouts.label[0].Text) { //multi lang label
 									if (result.printouts.label[0].Text.item)
 										if (result.printouts.label[0].Text.item[0])
 											label = result.printouts.label[0].Text.item[0];
 											label_dict[title] = label;
+								}
+								else label_dict[title] = result.printouts.label[0]
 				}
 				
 				deferred.resolve(label_dict);
