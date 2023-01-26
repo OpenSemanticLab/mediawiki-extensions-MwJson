@@ -74,7 +74,7 @@ mwjson.schema = class {
     }
 
     _preprocess(schema) {
-		const translateables = ["title", "description"];
+		const translateables = ["title", "description", "enum_titles"];
 		if (schema.properties) {
 			for (const property of Object.keys(schema.properties)) {
 				
@@ -82,9 +82,19 @@ mwjson.schema = class {
 					if (schema.properties[property][attr+"*"]) { //objects
 						if (schema.properties[property][attr+"*"][this.config.lang]) schema.properties[property][attr] = schema.properties[property][attr+"*"][this.config.lang];
 					}
-                    if (schema.properties[property].items && schema.properties[property].items[attr+"*"]) { //array items
-						if (schema.properties[property].items[attr+"*"][this.config.lang]) schema.properties[property].items[attr] = schema.properties[property].items[attr+"*"][this.config.lang];
+                    if (schema.properties[property].options && schema.properties[property].options[attr+"*"]) { //options
+						if (schema.properties[property].options[attr+"*"][this.config.lang]) schema.properties[property].options[attr] = schema.properties[property].options[attr+"*"][this.config.lang];
 					}
+                    if (schema.properties[property].items) { //} && schema.properties[property].items.properties) { //array items
+                        this._preprocess(schema.properties[property].items)
+                        /*if (schema.properties[property].items.properties[attr+"*"]) { 
+						    if (schema.properties[property].items.properties[attr+"*"][this.config.lang]) schema.properties[property].items.properties[attr] = schema.properties[property].items.properties[attr+"*"][this.config.lang];
+                        }
+                        if (schema.properties[property].items.options && schema.properties[property].items.options[attr+"*"]) { //options
+                            if (schema.properties[property].items.options[attr+"*"][this.config.lang]) schema.properties[property].items.options[attr] = schema.properties[property].items.options[attr+"*"][this.config.lang];
+                        }*/
+					}
+
 				}
 
 				if (this.config.mode !== "default") {
@@ -264,6 +274,52 @@ mwjson.schema = class {
         if (where !== "") { res = "{{#ask:" + res + where + select + options + "}}" }
 
         return { wikitext: res };
+    }
+
+    static getAutocompleteQuery(subschema) {
+        if (subschema.query) { //legacy (deprecated)
+            console.log("Warning: schema.query is deprecated. Use schema.options.autocomplete.query")
+            return subschema.query; 
+        }
+        else if (subschema.options) {
+            if (subschema.options.autocomplete) {
+                if (subschema.options.autocomplete.query) return subschema.options.autocomplete.query;
+                else if (subschema.options.autocomplete.property) return "[[" + subschema.options.autocomplete.property + ":+]]"
+            }
+        }
+    }
+    static getAutocompletePreviewTemplate(subschema) {
+        if (subschema.previewWikiTextTemplate) { //legacy (deprecated)
+            console.log("Warning: schema.previewWikiTextTemplate is deprecated. Use schema.options.autocomplete.render_template")
+            return {type: ["handlebars", "wikitext"], value: subschema.previewWikiTextTemplate}; 
+        }
+        else if (subschema.options) {
+            if (subschema.options.autocomplete) {
+                if (subschema.options.autocomplete.render_template) return subschema.options.autocomplete.render_template;
+            }
+        }
+    }
+    static getAutocompleteLabelTemplate(subschema) {
+        if (subschema.labelTemplate) { //legacy (deprecated)
+            console.log("Warning: schema.labelTemplate is deprecated. Use schema.options.autocomplete.label_template")
+            return {type: ["handlebars"], value: subschema.labelTemplate}; 
+        }
+        else if (subschema.options) {
+            if (subschema.options.autocomplete) {
+                if (subschema.options.autocomplete.label_template) return subschema.options.autocomplete.label_template;
+            }
+        }
+    }
+    static getAutocompleteResultProperty(subschema) {
+        if (subschema.listProperty) { //legacy (deprecated)
+            console.log("Warning: schema.listProperty is deprecated. Use schema.options.autocomplete.result_property")
+            return {type: ["handlebars"], value: subschema.labelTemplate}; 
+        }
+        else if (subschema.options) {
+            if (subschema.options.autocomplete) {
+                if (subschema.options.autocomplete.label_template) return subschema.options.autocomplete.label_template;
+            }
+        }
     }
 
     log(arg) {

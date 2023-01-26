@@ -491,8 +491,10 @@ mwjson.editor = class {
 				// the SMW query API.
 				search_smw: (jseditor_editor, input) => {
 					if (jseditor_editor.watched_values) console.log("Watched: " + jseditor_editor.watched_values);
-					console.log("Search with schema: " + jseditor_editor.schema.query);
-					var url = `/w/api.php?action=ask&query=${jseditor_editor.schema.query}&format=json`;
+					var query = mwjson.schema.getAutocompleteQuery(jseditor_editor.schema);
+					var result_property = mwjson.schema.getAutocompleteResultProperty(jseditor_editor.schema);
+					console.log("Search with schema: " + query);
+					var url = `/w/api.php?action=ask&query=${query}&format=json`;
 					//replace params
 					console.log("URL: " + url);
 					for (const key in jseditor_editor.watched_values) {
@@ -510,10 +512,10 @@ mwjson.editor = class {
 							.then(data => {
 								//convert result dict to list/array
 								var resultList = Object.values(data.query.results); //use subjects as results
-								if (jseditor_editor.schema.listProperty) { //use objects as results
+								if (result_property) { //use objects as results
 									resultList = [];
 									Object.values(data.query.results).forEach(result => {
-										resultList = resultList.concat(result.printouts[jseditor_editor.schema.listProperty])
+										resultList = resultList.concat(result.printouts[result_property])
 									});
 									resultList = [...new Set(resultList)]; //remove duplicates
 								}
