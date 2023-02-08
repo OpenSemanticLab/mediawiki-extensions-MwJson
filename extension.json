@@ -76,7 +76,9 @@
             "remoteExtPath":"MwJson/modules/ext.MwJson.editor",
             "styles":[
                 "autocomplete.min.css",
-                "jsoneditor.css"
+                "jsoneditor.css",
+                "bootstrap.min.css",
+                "spectre-icons.min.css"
             ],
             "scripts":[
                 "handlebars.min.js",

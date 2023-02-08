@@ -387,8 +387,8 @@ mwjson.editor = class {
 
 		const deferred = $.Deferred();
 		if (!('ready' in mwjson.editor) || !mwjson.editor.ready) {
-			mw.loader.load('https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css', 'text/css');
-			mw.loader.load('https://cdn.jsdelivr.net/npm/spectre.css@latest/dist/spectre-icons.min.css', 'text/css');
+			//mw.loader.load('https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css', 'text/css');
+			//mw.loader.load('https://cdn.jsdelivr.net/npm/spectre.css@latest/dist/spectre-icons.min.css', 'text/css');
 			mwjson.parser.init();
 			$.when(
 				//$.getScript("https://cdn.jsdelivr.net/npm/@json-editor/json-editor@latest/dist/jsoneditor.js"),
