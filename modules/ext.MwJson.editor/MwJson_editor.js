@@ -461,8 +461,14 @@ mwjson.editor = class {
 			"onSubmit": "onSubmit_smw",
 			"autoSelect": "true"
 		};
-		window.JSONEditor.defaults.options.labelTemplate = "{{#if result.printouts.label.length}}{{result.printouts.label}}{{else if result.displaytitle}}{{result.displaytitle}}{{else}}{{result.fulltext}}{{/if}}";
-		window.JSONEditor.defaults.options.previewWikiTextTemplate = "[[{{result.fulltext}}]]";
+		window.JSONEditor.defaults.options.labelTemplate = "" +
+			"{{#if result.printouts.label.0}}{{result.printouts.label.0}}" + 
+			"{{else if result.displaytitle}}{{result.displaytitle}}" +
+			"{{else}}{{result.fulltext}}{{/if}}";
+		window.JSONEditor.defaults.options.previewWikiTextTemplate = "" + 
+			"{{#if result.printouts.image.0.fulltext}}[[{{result.printouts.image.0.fulltext}}|right|x66px]]<br>{{/if}}" +
+			"[[{{result.fulltext}}]]" + 
+			"{{#if result.printouts.description.0}}<br>{{result.printouts.description.0}}{{/if}}",
 		window.JSONEditor.defaults.options.ace = {
 			//"theme": "ace/theme/vibrant_ink",
 			"tabSize": 4,
