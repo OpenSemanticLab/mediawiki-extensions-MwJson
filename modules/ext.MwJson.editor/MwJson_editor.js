@@ -126,12 +126,14 @@ mwjson.editor = class {
 
 				//collect autocomplete field values to fetch labels
 				if (subeditor.format === 'autocomplete') {// && this.flags["change-after-load"]) {
-					//console.log("Autocomplete Editor:", subeditor);
-					//console.log("Dirty: ", subeditor.is_dirty);
+					console.log("Autocomplete Editor:", subeditor);
+					console.log("Dirty: ", subeditor.is_dirty);
 					if (input.value_id && input.value_label) { //label already fetched 
 						input.value = input.value_label;
 						subeditor.value = input.value_id; //will be applied on the next .getValue() call
+						if (subeditor.is_dirty) subeditor.change(); //resets aborted user input
 						subeditor.is_dirty = false;
+						
 					}
 					else if (subeditor.value !== ""){
 						labeled_inputs.push({input: input, value_id: subeditor.value});
