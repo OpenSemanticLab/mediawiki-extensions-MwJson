@@ -13,6 +13,7 @@ mwjson.schema = class {
         if (mwjson.util.isString(jsonschema)) jsonschema = JSON.parse(jsonschema);
         jsonschema.id = jsonschema.id || 'root';
         this._jsonschema = jsonschema;
+        this.subschemas_uuids = [];
     }
 
     static selftest() {
@@ -118,13 +119,14 @@ mwjson.schema = class {
 		if (schema.allOf) {
 			if (Array.isArray(schema.allOf)) {
 				for (const subschema of schema.allOf) {
-					this._preprocess(subschema)
+					this._preprocess(subschema);
 				}
 			}
 			else {
-				this._preprocess(subschema)
+				this._preprocess(subschema);
 			}
 		}
+        if (schema.uuid) this.subschemas_uuids.push(schema.uuid);
 		return schema;
 	}
 

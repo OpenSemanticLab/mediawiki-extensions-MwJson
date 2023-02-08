@@ -205,7 +205,7 @@ mwjson.api = class {
 				page.slots_changed['footer'] = true;
 			}
 		}*/
-		if (namespace_prefix === "Item:" || namespace_prefix === "Category:") {
+		if (namespace_prefix === "Item:" || namespace_prefix === "Category:" || namespace_prefix === "Property:") {
 			if (page.slots['header'] !== "{{#invoke:Entity|header}}") {
 				page.slots['header'] = "{{#invoke:Entity|header}}"
 				page.slots_changed['header'] = true;
