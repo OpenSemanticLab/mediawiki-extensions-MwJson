@@ -109,7 +109,8 @@ mwjson.schema = class {
                     if (this.config.mode === "query" && schema.properties[property].options.hidden) {
                         //remove hidden fields completely
                         delete schema.properties[property];
-                        schema.required = schema.required.filter(function(e) { return e !== property });
+                        if (schema.required)
+                            schema.required = schema.required.filter(function(e) { return e !== property });
                     }
 				}
 			}
@@ -241,23 +242,28 @@ mwjson.schema = class {
     }
 
     getSemanticQuery(args) {
-        //var jsondata = mwjson.util.defaultArg(args.jsondata, {})
+        var jsondata = mwjson.util.defaultArg(args.jsondata, {})
         //var schema = mwjson.util.defaultArg(args.jsonschema, {})
         var res = "";
         var where = "";
         var select = "";
+
+        if (jsondata.type) { //handle categories: "type": ["Category:SomeCategory"] => [[Category:SomeCategory]]
+            for (const t of jsondata.type) where = where + "\n[[" + t + "]]";
+        };
+
         var semantic_properties = this.getSemanticProperties(args);
         //this.log(semantic_properties)
         for (const [k, def] of Object.entries(semantic_properties.definitions)) {
             // see also: https://www.semantic-mediawiki.org/wiki/Help:Search_operators
             var filter = mwjson.util.defaultArgPath(def.schema_data, ['options', 'role', 'query', 'filter'], 'eq');
             var value = def.value;
-            if (def.schema_data.type === 'string' && (def.schema_data.format === 'number' || def.schema_data.format === 'date')) {
-                if (filter === 'min') value = "<" + value;
-                else if (filter === 'max') value = ">" + value;
+            if (def.schema_data.type === 'string' && def.schema_data.format && (def.schema_data.format === 'number' || def.schema_data.format.startsWith('date'))) {
+                if (filter === 'min') value = ">" + value;
+                else if (filter === 'max') value = "<" + value;
                 else value = value; //exact match
             }
-            else if (def.schema_data.type === 'string') {
+            else if (def.schema_data.type === 'string' && def.schema_data.format !== 'autocomplete') {
                 value = "~*" + value + "*";
             }
             where = where + "\n[[" + def.property + "::" + value + "]]";
@@ -284,6 +290,9 @@ mwjson.schema = class {
         else if (subschema.options) {
             if (subschema.options.autocomplete) {
                 if (subschema.options.autocomplete.query) return subschema.options.autocomplete.query;
+                else if (subschema.options.autocomplete.category) {
+                    return "[[:" + subschema.options.autocomplete.category + "]]|?Display_title_of=label|?HasImage=image|HasDescription=description"
+                }
                 else if (subschema.options.autocomplete.property) return "[[" + subschema.options.autocomplete.property + ":+]]"
             }
         }
