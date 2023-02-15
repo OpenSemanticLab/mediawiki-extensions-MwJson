@@ -404,7 +404,7 @@ mwjson.editor = class {
 
 				//fetch all i18n msgs
 				var msg_promises = [];
-				var msg_counter = 0;
+				
 				var msgs = [
 					"mwjson-editor-submit-save",
 					"mwjson-editor-submit-query",
@@ -416,6 +416,7 @@ mwjson.editor = class {
 					"mwjson-editor-error",
 					"mwjson-editor-error-occured-while-saving",
 				];
+				var msg_counter = msgs.length;
 				for (var key of Object.keys(JSONEditor.defaults.languages.en)) {
 					msgs.push("json-editor-" + key);
 					msg_counter += 1;
