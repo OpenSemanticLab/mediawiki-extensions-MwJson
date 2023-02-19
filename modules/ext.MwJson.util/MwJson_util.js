@@ -85,12 +85,41 @@ mwjson.util = class {
 		return !isNaN(item);
 	}
 
+	//from https://stackoverflow.com/questions/201183/how-to-determine-equality-for-two-javascript-objects
+	static deepEqual(x, y) {
+		const ok = Object.keys, tx = typeof x, ty = typeof y;
+		return x && y && tx === 'object' && tx === ty ? (
+		  ok(x).length === ok(y).length &&
+			ok(x).every(key => mwjson.util.deepEqual(x[key], y[key]))
+		) : (x === y);
+	}
+
+	static uniqueArray(array) {
+		var result = []
+		for (const item of array) {
+			var add = true;
+			for (const added_item of result) {
+				if (mwjson.util.deepEqual(added_item, item)) {
+					add = false;
+					continue;
+				}
+			}
+			if (add) result.push(item);
+		}
+		return result;
+	}
+
 	//from https://stackoverflow.com/questions/27936772/how-to-deep-merge-instead-of-shallow-merge
 	static mergeDeep(target, source) {
 		let output = Object.assign({}, target);
 		if (mwjson.util.isObject(target) && mwjson.util.isObject(source)) {
 			Object.keys(source).forEach(key => {
-				if (mwjson.util.isObject(source[key])) {
+				if (mwjson.util.isArray(source[key]) && mwjson.util.isArray(target[key]) ) {
+					if (!(key in target))
+						Object.assign(output, { [key]: source[key] });
+					else
+						output[key] = mwjson.util.uniqueArray(target[key].concat(...source[key]));
+				} else if (mwjson.util.isObject(source[key])) {
 					if (!(key in target))
 						Object.assign(output, { [key]: source[key] });
 					else
