@@ -506,7 +506,7 @@ mwjson.editor = class {
 					var query = mwjson.schema.getAutocompleteQuery(jseditor_editor.schema);
 					var result_property = mwjson.schema.getAutocompleteResultProperty(jseditor_editor.schema);
 					console.log("Search with schema: " + query);
-					var url = `/w/api.php?action=ask&query=${query}&format=json`;
+					var url = `/w/api.php?action=ask&query=${query}|limit=10000&format=json`;
 					//replace params
 					console.log("URL: " + url);
 					for (const key in jseditor_editor.watched_values) {
