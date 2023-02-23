@@ -4,7 +4,7 @@ mwjson.extData = class {
 
     static getValue(data, path, mode) {
         var value = undefined;
-        if (mode === 'jsonpath') value = JSONPath.JSONPath({ path: path, json: data, wrap: false, preventEval: true }); //security inplications see https://github.com/JSONPath-Plus/JSONPath/issues/182
+        if (mode === 'jsonpath') value = jsonpath.query(data, path);
         else if (mode === 'xpath') {
             var value = [];
             let values = data.evaluate(path, data, null, XPathResult.ANY_TYPE, null);
