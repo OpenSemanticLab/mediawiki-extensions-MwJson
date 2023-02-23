@@ -660,6 +660,48 @@ mwjson.editor = class {
 			return options.inverse(this);
 		});
 
+		// register replace operator 
+		// e. g. {{#replace <find> <replace>}}{{string}}{{/replace}}
+		Handlebars.registerHelper('replace', function( find, replace, options) {
+			var string = options.fn(this);
+			return string.replaceAll( find, replace );
+		});
+
+		// register split operator 	
+		// {{#split <find> <index>}}<string>{{/split}}
+		// e. g. {{#split "/" -1}}https://test.com/target{{/split}} => target
+		Handlebars.registerHelper('split', function( find, index, options) {
+			var string = options.fn(this);
+			var result = string.split( find );
+          	if (index < 0) return result[result.length + index];
+            else return result[index];
+		});
+
+		// register split interator
+		// {{#each_split <string> <find>}}...{{/each_split}}
+		// e. g. {{#each_split "https://test.com/target" "/"}}{{.}},{{/each_split}} => https:,,test.com,target, 
+		Handlebars.registerHelper('each_split', function( string, find, options) {
+          var data = string.split(find);
+          var result = '';
+          data.forEach((item) => {
+              result += options.fn(item);
+          });
+          return result;
+		});
+
+		// register substring operator
+		// {{#substring start end}}<string>{{/substring}}
+		// e. g. {{#substring 0 4}}My-test-string{{/substring}} => My-t
+		// e. g. {{#substring -2 ""}}My-test-string{{/substring}} => ng
+		// e. g. {{#substring 0 -2}}My-test-string{{/substring}} => My-test-stri
+		Handlebars.registerHelper('substring', function( start, end, options) {
+			var string = options.fn(this);
+          	var result = "";
+          	if (end === "") result = string.slice( start);
+          	else result = string.slice( start, end );
+			return result
+		});
+
 		console.log("Callbacks set");
 	};
 }
