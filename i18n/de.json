@@ -15,6 +15,8 @@
 	"mwjson-editor-saved": "Gespeichert",
 	"mwjson-editor-error": "Fehler",
 	"mwjson-editor-error-occured-while-saving.": "Beim Speichern ist ein Fehler aufgetreten",
+	"mwjson-editor-fetch-external-data": "Externe Daten von $1 laden",
+	"mwjson-editor-fetch-external-data-requires": "Erfordert $1",
 	"@section_json-editor": "--------- JSON Editor -----------",
 	"json-editor-error_notset": "Eigenschaft muss gesetzt sein",
 	"json-editor-error_notempty": "Wert erforderlich",

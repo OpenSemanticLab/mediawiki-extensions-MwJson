@@ -14,6 +14,7 @@ mwjson.schema = class {
         jsonschema.id = jsonschema.id || 'root';
         this._jsonschema = jsonschema;
         this.subschemas_uuids = [];
+        this.data_source_maps = [];
     }
 
     static selftest() {
@@ -127,6 +128,7 @@ mwjson.schema = class {
 			}
 		}
         if (schema.uuid) this.subschemas_uuids.push(schema.uuid);
+        if (schema.data_source_maps) this.data_source_maps = this.data_source_maps.concat(schema.data_source_maps);
 		return schema;
 	}
 
@@ -241,6 +243,13 @@ mwjson.schema = class {
         args = args || {};
         args.schema = this.getSchema();
         return this._getSemanticProperties(args);
+    }
+
+    getPropertyDefinition(property_name) {
+        const jsonschema = this.getSchema();
+        var res =  JSONPath.JSONPath({path: "$.." + property_name, json: this.getSchema(), wrap: false, preventEval: true});
+        if (mwjson.util.isArray(res) && res.length === 1) res = res[0]; //unwrap array - wrap option may not work as expected: https://github.com/JSONPath-Plus/JSONPath/issues/72
+        return res;
     }
 
     getSemanticQuery(args) {

@@ -81,6 +81,32 @@ mwjson.editor = class {
 			});
 		}
 
+		if (this.jsonschema.data_source_maps.length && this.config.mode === 'default') {
+			//console.log(this.jsonschema.data_source_maps);
+			for (const [index, data_source_map] of this.jsonschema.data_source_maps.entries()) {
+				if (!data_source_map.label) data_source_map.label = data_source_map.source.substring(0, 20) + "...";
+				var btn_label = mw.message("mwjson-editor-fetch-external-data", data_source_map.label).text();
+				if (data_source_map.required) {
+					var required_prop_names = "";
+					for (const required_prop of data_source_map.required) required_prop_names += this.jsonschema.getPropertyDefinition(required_prop).title + ", ";
+					required_prop_names = required_prop_names.slice(0,-2);
+					btn_label += " (" + mw.message("mwjson-editor-fetch-external-data-requires", required_prop_names).text() + ")";
+				}
+				$(this.container).append($("<button type='Button' class='btn btn-primary btn-block' id='fetch-external-data-" + index + "'>" + btn_label + "</button>"));
+				this.jsoneditor.on('change', () => {
+					var enabled = true;
+					var jsondata = this.jsoneditor.getValue();
+					for (const required_prop of data_source_map.required) if (!jsondata[required_prop]) enabled = false;
+					$("#fetch-external-data-" + index).prop('disabled', !enabled);
+				});
+				$("#fetch-external-data-" + index).click(() => {
+					mwjson.extData.fetchData([data_source_map], this.jsoneditor.getValue()).then((jsondata) => {
+						this.jsoneditor.setValue(jsondata);
+					});
+				});
+			}
+		}
+
 		// listen for loaded
 		this.jsoneditor.on('ready', () => {
 			console.log("Editor loaded");

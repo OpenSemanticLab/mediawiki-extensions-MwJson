@@ -1,7 +1,7 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.1.0",
+    "version":"0.2.0",
     "author":[
         "[https://github.com/simontaurus Simon Stier]"
     ],
@@ -39,8 +39,10 @@
             "scripts":[
                 "lz-string.min.js",
                 "json-schema-ref-parser.js",
+                "jsonpath-plus.min.js",
                 "MwJson_util.js",
                 "MwJson_schema.js",
+                "MwJson_extData.js",
                 "jsonschema-jsonschema.js"
             ],
             "dependencies": [
@@ -92,7 +94,11 @@
                 "ext.mwjson.api",
 		        "ext.mwjson.parser"
             ],
-            "position":"bottom"
+            "position":"bottom",
+            "messages": [
+                "mwjson-editor-fetch-external-data",
+                "mwjson-editor-fetch-external-data-requires"
+            ]
         },
         "ext.mwjson.editor.ace":{
             "localBasePath":"modules/ext.MwJson.editor.ace",
