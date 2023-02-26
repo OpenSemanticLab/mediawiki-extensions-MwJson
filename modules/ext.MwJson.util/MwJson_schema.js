@@ -257,11 +257,14 @@ mwjson.schema = class {
         //var schema = mwjson.util.defaultArg(args.jsonschema, {})
         var res = "";
         var where = "";
+        var or_where = "";
         var select = "";
+        var or_select = "";
 
         if (jsondata.type) { //handle categories: "type": ["Category:SomeCategory"] => [[Category:SomeCategory]]
             for (const t of jsondata.type) where = where + "\n[[" + t + "]]";
         };
+        or_where += where;
 
         var semantic_properties = this.getSemanticProperties(args);
         //this.log(semantic_properties)
@@ -269,7 +272,9 @@ mwjson.schema = class {
             // see also: https://www.semantic-mediawiki.org/wiki/Help:Search_operators
             var filter = mwjson.util.defaultArgPath(def.schema_data, ['options', 'role', 'query', 'filter'], 'eq');
             var value = def.value;
-            if (def.schema_data.type === 'string' && def.schema_data.format && (def.schema_data.format === 'number' || def.schema_data.format.startsWith('date'))) {
+            if (def.schema_data.type === 'integer' || 
+                def.schema_data.type === 'number' ||
+                (def.schema_data.type === 'string' && def.schema_data.format && (def.schema_data.format === 'number' || def.schema_data.format.startsWith('date')))) {
                 if (filter === 'min') value = ">" + value;
                 else if (filter === 'max') value = "<" + value;
                 else value = value; //exact match
@@ -278,9 +283,13 @@ mwjson.schema = class {
                 value = "~*" + value + "*";
             }
             where = where + "\n[[" + def.property + "::" + value + "]]";
+            or_where = or_where + "\n[[Has_subobject." + def.property + "::" + value + "]]"; //property chain with build-in property "Has subobject" to include matching subobjects. ToDo: do this only for subobjects within the schema
             select = select + "\n|?" + def.property;
+            or_select = or_select + "\n|?Has_subobject." + def.property;
             if (mwjson.util.isDefined(def.schema_data.title)) { select = select + "=" + def.schema_data.title }
         }
+        where = where + "OR" + or_where;
+        select = select + or_select;
 
         var options = "";
         options += "|default=No results";
