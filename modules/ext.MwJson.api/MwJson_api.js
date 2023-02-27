@@ -111,7 +111,8 @@ mwjson.api = class {
 				});
 			}
 			else {
-				deferred.reject(new Error('File does not exists'));
+				//deferred.reject(new Error('File does not exists'));
+				deferred.resolve(page);
 			}
 		});
 		return deferred.promise();
