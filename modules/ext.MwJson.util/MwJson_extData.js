@@ -12,10 +12,9 @@ mwjson.extData = class {
             while (node = values.iterateNext()) {
                 value.push(node.textContent);
             }
-            if (value.length === 0) value = undefined
-            else if (value.length === 1) value = value[0]
-
         }
+        if (value.length === 0) value = undefined;
+        else if (value.length === 1) value = value[0];
         return value;
     }
 
@@ -28,7 +27,7 @@ mwjson.extData = class {
             }
             else if (mwjson.util.isObject(v)) {
                 obj[k] = {};
-                mwjson.extData.mapObjectMap(obj[k], v, data);
+                mwjson.extData.mapObjectMap(obj[k], v, data, mode);
             }
             else console.log("invalide map entry: ", v)
         }
@@ -68,10 +67,22 @@ mwjson.extData = class {
                     contentType = 'application/html';
                     data_source.mode = 'xpath';
                 }
+
                 var headers = {};
                 if (contentType) headers['Content-Type'] = contentType;
+
+                var options = {};
+                options.headers = headers;
+
+                if (data_source.request_object_map) {
+                    options.body = {};
+                    mwjson.extData.mapObjectMap(options.body, data_source.request_object_map, jsondata, 'jsonpath');
+                    options.body = JSON.stringify(options.body);
+                    options.method = 'POST';
+                }
+                
                 const fetch_promise = new Promise(resolve => {
-                    fetch(url, { headers: headers })
+                    fetch(url, options)
                         .then(response => {
                             if (data_source.format === 'xml' || data_source.format === 'html') return response.text();
                             else return response.json();
