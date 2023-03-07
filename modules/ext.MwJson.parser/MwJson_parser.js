@@ -211,9 +211,8 @@ mwjson.parser = class {
 			else if (typeof content_element == "string") wt += content_element;
 			else console.log("Error: content element is not dict or string: " + content_element);
 		}
-		p['original_content'] = p['content'];
-		p['content'] = wt;
-		p.changed = p['original_content'] !== p['content'];
+		p.slots_changed['main'] = wt !== p.slots['main'];
+		p.slots['main'] = wt;
 		return wt;
 	} 
 

@@ -5,9 +5,15 @@ mwjson.util = class {
 	static getShortUid() {
 		return (performance.now().toString(36) + Math.random().toString(36)).replace(/\./g, "");
 	}
-
-	static uuidv4() {
-		return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+ 
+	static uuidv4(prefixedUuid) {
+		if (prefixedUuid) { //e. g. OSW83e54febeb444c7484b3c7a81b5ba2fde
+			var uuid = prefixedUuid.replace(/[^a-fA-F0-9]+(.)/g, '');
+			uuid = uuid.slice(-32);
+			uuid = uuid.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/g, '$1-$2-$3-$4-$5');
+			return uuid;
+		}
+		else return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
 			(c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
 		);
 	}
@@ -22,12 +28,28 @@ mwjson.util = class {
 		return "OSW" + uuid.replaceAll("-", "");
 	}
 
+	static isPascalCase(str) {
+		return str.match(/[^a-zA-Z0-9]+(.)/g) === null 
+		  && str.charAt(0).toUpperCase() == str.charAt(0);
+	}
+	
+	static isCamelCase(str) {
+		return str.match(/[^a-zA-Z0-9]+(.)/g) === null 
+		  && str.charAt(0).toLowerCase() == str.charAt(0);
+	}
+
 	static toPascalCase(str) {
+		if (mwjson.util.isPascalCase(str)) return str;
+		str = str.charAt(0).toUpperCase() + str.slice(1);
+		if (mwjson.util.isPascalCase(str)) return str;
 		var camelCase = mwjson.util.toCamelCase(str);
 		return camelCase.charAt(0).toUpperCase() + camelCase.slice(1);
 	}
 	
 	static toCamelCase(str) {
+		if (mwjson.util.isCamelCase(str)) return str;
+		str = str.charAt(0).toLowerCase() + str.slice(1);
+		if (mwjson.util.isCamelCase(str)) return str;
 		return str.toLowerCase().replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase());
 	}
 
