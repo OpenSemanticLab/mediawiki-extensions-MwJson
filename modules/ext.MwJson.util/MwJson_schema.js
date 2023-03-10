@@ -309,11 +309,16 @@ mwjson.schema = class {
         }
         else if (subschema.options) {
             if (subschema.options.autocomplete) {
-                if (subschema.options.autocomplete.query) return subschema.options.autocomplete.query;
-                else if (subschema.options.autocomplete.category) {
-                    return "[[" + subschema.options.autocomplete.category + "]]|?Display_title_of=label|?HasImage=image|HasDescription=description"
+                var res = "";
+                if (subschema.options.autocomplete.query_filter_property) {
+                    res += "[[" + subschema.options.autocomplete.query_filter_property + "::like:*{{{_user_input}}}*]]"
                 }
-                else if (subschema.options.autocomplete.property) return "[[" + subschema.options.autocomplete.property + ":+]]"
+                if (subschema.options.autocomplete.query) res += subschema.options.autocomplete.query;
+                else if (subschema.options.autocomplete.category) {
+                    res += "[[" + subschema.options.autocomplete.category + "]]|?Display_title_of=label|?HasImage=image|HasDescription=description"
+                }
+                else if (subschema.options.autocomplete.property) res += "[[" + subschema.options.autocomplete.property + ":+]]"
+                return res;
             }
         }
     }
