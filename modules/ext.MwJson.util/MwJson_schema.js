@@ -247,7 +247,7 @@ mwjson.schema = class {
 
     getPropertyDefinition(property_name) {
         const jsonschema = this.getSchema();
-        var res =  jsonpath.query(this.getSchema(), "$.." + property_name);
+        var res =  jsonpath.query(this.getSchema(), "$..properties." + property_name);
         if (mwjson.util.isArray(res) && res.length === 1) res = res[0]; //unwrap array - wrap option may not work as expected: https://github.com/JSONPath-Plus/JSONPath/issues/72
         return res;
     }
