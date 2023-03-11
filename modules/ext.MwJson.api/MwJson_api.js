@@ -154,7 +154,6 @@ mwjson.api = class {
 	}
 
 	static editSlots(page, summary = "", mode = 'action-multislot'){
-		mwjson.api.autoEditSlots(page); //could not be solved by modified RevisionRecord.php. ToDo: Move to OSL extension
 		if (mode === 'action-multislot') {
 			var params = {
 				action: 'editslots',
@@ -192,31 +191,6 @@ mwjson.api = class {
 			do_edit();
 			return deferred.promise();
 		}
-	}
-
-	static autoEditSlots(page) {
-		var namespace_prefix = new mw.Title(page.title).getNamespacePrefix();
-		/*if (namespace_prefix === "Category:") {
-			if (page.slots['header'] !== "{{#invoke:Category|header}}") {
-				page.slots['header'] = "{{#invoke:Category|header}}"
-				page.slots_changed['header'] = true;
-			}
-			if (page.slots['footer'] !== "{{#invoke:Category|footer}}") {
-				page.slots['footer'] = "{{#invoke:Category|footer}}"
-				page.slots_changed['footer'] = true;
-			}
-		}*/
-		if (namespace_prefix === "Item:" || namespace_prefix === "Category:" || namespace_prefix === "Property:") {
-			if (page.slots['header'] !== "{{#invoke:Entity|header}}") {
-				page.slots['header'] = "{{#invoke:Entity|header}}"
-				page.slots_changed['header'] = true;
-			}
-			if (page.slots['footer'] !== "{{#invoke:Entity|footer}}") {
-				page.slots['footer'] = "{{#invoke:Entity|footer}}"
-				page.slots_changed['footer'] = true;
-			}
-		}
-		
 	}
 
 	static copyPageContent(sourcePage, targetPage){
