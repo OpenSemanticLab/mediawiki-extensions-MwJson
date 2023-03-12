@@ -460,7 +460,7 @@ mwjson.api = class {
 			if (!first) query += "OR";
 			query += "[[";
 			if (title.startsWith("Category:")) query += ":";
-			query += title + "]]";
+			query += encodeURIComponent(title) + "]]";
 			first = false;
 		}
 		query += "|?Display_title_of=label&format=json"
