@@ -657,7 +657,7 @@ mwjson.editor = class {
 			
 		};
 
-		//  register compare operator 
+		// register compare operator 
 		// e.g. {{#when <operand1> 'eq' <operand2>}} {{/when}}
 		// {{#when var1 'eq' var2}}equal{{else when var1 'gt' var2}}gt{{else}}lt{{/when}}
 		Handlebars.registerHelper("when", (operand_1, operator, operand_2, options) => {
@@ -682,7 +682,7 @@ mwjson.editor = class {
 				'&&': (l, r) => l && r,
 				'mod': (l, r) => (l % r) === 0,
 				'%': (l, r) => (l % r) === 0
-			}
+			};
 			let result = operators[operator](operand_1, operand_2);
 			if (result) return options.fn(this);
 			return options.inverse(this);
@@ -691,7 +691,7 @@ mwjson.editor = class {
 		// register replace operator 
 		// e. g. {{#replace <find> <replace>}}{{string}}{{/replace}}
 		Handlebars.registerHelper('replace', function( find, replace, options) {
-			var string = options.fn(this);
+			let string = options.fn(this);
 			return string.replaceAll( find, replace );
 		});
 
@@ -699,8 +699,8 @@ mwjson.editor = class {
 		// {{#split <find> <index>}}<string>{{/split}}
 		// e. g. {{#split "/" -1}}https://test.com/target{{/split}} => target
 		Handlebars.registerHelper('split', function( find, index, options) {
-			var string = options.fn(this);
-			var result = string.split( find );
+			let string = options.fn(this);
+			let result = string.split( find );
           	if (index < 0) return result[result.length + index];
             else return result[index];
 		});
@@ -709,8 +709,8 @@ mwjson.editor = class {
 		// {{#each_split <string> <find>}}...{{/each_split}}
 		// e. g. {{#each_split "https://test.com/target" "/"}}{{.}},{{/each_split}} => https:,,test.com,target, 
 		Handlebars.registerHelper('each_split', function( string, find, options) {
-          var data = string.split(find);
-          var result = '';
+          	let data = string.split(find);
+          	let result = '';
           data.forEach((item) => {
               result += options.fn(item);
           });
@@ -723,11 +723,11 @@ mwjson.editor = class {
 		// e. g. {{#substring -2 ""}}My-test-string{{/substring}} => ng
 		// e. g. {{#substring 0 -2}}My-test-string{{/substring}} => My-test-stri
 		Handlebars.registerHelper('substring', function( start, end, options) {
-			var string = options.fn(this);
-          	var result = "";
+			let string = options.fn(this);
+			let result = "";
           	if (end === "") result = string.slice( start);
           	else result = string.slice( start, end );
-			return result
+			return result;
 		});
 
 		console.log("Callbacks set");
