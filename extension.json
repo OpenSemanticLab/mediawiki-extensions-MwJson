@@ -1,7 +1,7 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.2.5",
+    "version":"0.3.0",
     "author":[
         "[https://github.com/simontaurus Simon Stier]"
     ],
@@ -78,14 +78,14 @@
             "remoteExtPath":"MwJson/modules/ext.MwJson.editor",
             "styles":[
                 "autocomplete.min.css",
-                "jsoneditor.css",
+                "json-editor.css",
                 "bootstrap.min.css",
                 "spectre-icons.min.css"
             ],
             "scripts":[
                 "handlebars.min.js",
                 "autocomplete.min.js",
-                "jsoneditor.min.js",
+                "json-editor.min.js",
                 "MwJson_editor.js",
                 "MwJson_editor_ui.js",
                 "MwJson_editor_init.js"

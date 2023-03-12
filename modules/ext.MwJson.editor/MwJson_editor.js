@@ -531,16 +531,37 @@ mwjson.editor = class {
 				// the SMW query API.
 				search_smw: (jseditor_editor, input) => {
 					if (jseditor_editor.watched_values) console.log("Watched: " + jseditor_editor.watched_values);
-					var query = mwjson.schema.getAutocompleteQuery(jseditor_editor.schema);
+					var query = mwjson.schema.getAutocompleteQuery(jseditor_editor.schema, input);
+					
+					for (const key in jseditor_editor.watched_values) {
+						if (jseditor_editor.watched[key]) {
+							var subeditor = jseditor_editor.jsoneditor.editors[jseditor_editor.watched[key]];
+							if (subeditor) {
+								//jseditor_editor.jsoneditor.editors[jseditor_editor.watched[key]].change(); //force value update
+								//onChange is not called yet => explicite update autocomplete fields
+								if (subeditor.format === 'autocomplete' && subeditor.input.value_id && subeditor.input.value_label) {
+									subeditor.input.value = subeditor.input.value_label;
+									subeditor.value = subeditor.input.value_id; //will be applied on the next .getValue() call
+									if (subeditor.is_dirty) subeditor.change(); //resets aborted user input
+									subeditor.is_dirty = false;
+								}
+							}
+							query = query.replace('{{$(' + key + ')}}', '{{' + jseditor_editor.watched[key].replace("root.","") + '}}');
+						}
+						if (jseditor_editor.watched_values[key] === undefined) query = query.replace('$(' + key + ')', encodeURIComponent('+'));
+						query = query.replace('$(' + key + ')', jseditor_editor.watched_values[key]);
+					}
+
+					var jsondata = jseditor_editor.jsoneditor.getValue();
+					jsondata['_user_input'] = input;
+					var template = Handlebars.compile(query);
+					query = template(jsondata);
 					var result_property = mwjson.schema.getAutocompleteResultProperty(jseditor_editor.schema);
 					console.log("Search with schema: " + query);
 					var url = `/w/api.php?action=ask&query=${query}|limit=10000&format=json`;
 					//replace params
 					console.log("URL: " + url);
-					for (const key in jseditor_editor.watched_values) {
-						if (jseditor_editor.watched_values[key] === undefined) url = url.replace('$(' + key + ')', encodeURIComponent('+'));
-						url = url.replace('$(' + key + ')', jseditor_editor.watched_values[key]);
-					}
+
 					return new Promise(resolve => {
 						//min input len = 0
 						if (input.length < 0) {
@@ -569,15 +590,18 @@ mwjson.editor = class {
 					});
 				},
 				renderResult_smw: (jseditor_editor, result, props) => {
+					var previewTemplate = mwjson.util.deepCopy(mwjson.schema.getAutocompletePreviewTemplate(jseditor_editor.schema)); //use custom value
+					if (previewTemplate.type.shift() === 'handlebars') {
+						if (previewTemplate.type[0] === 'wikitext') previewTemplate.value = previewTemplate.value.replaceAll("\\{", "&#123;").replaceAll("\\}", "&#125;"); //escape curly-brackets with html entities. ToDo: Do this once for the whole schema
+						var template = Handlebars.compile(previewTemplate.value);
+						previewTemplate.value = template({ result: result });
+						if (previewTemplate.type[0] === 'wikitext') previewTemplate.value = previewTemplate.value.replaceAll("&#123;", "{").replaceAll("&#125;", "}");
+					}
+
+					if (previewTemplate.type.shift() === 'wikitext') {
 					var renderUrl = '/w/api.php?action=parse&format=json&text=';
-					var previewWikiTextTemplate = jseditor_editor.jsoneditor.options.previewWikiTextTemplate; //use global/default value
-					if (jseditor_editor.schema.previewWikiTextTemplate) previewWikiTextTemplate = jseditor_editor.schema.previewWikiTextTemplate; //use custom value
-					previewWikiTextTemplate = previewWikiTextTemplate.replaceAll("\\{", "&#123;").replaceAll("\\}", "&#125;"); //escape curly-brackets with html entities. ToDo: Do this once for the whole schema
-					var template = Handlebars.compile(previewWikiTextTemplate);
-					//var template = Handlebars.compile("{{result.fulltext}}");
-					var templateText = template({ result: result });
-					templateText = templateText.replaceAll("&#123;", "{").replaceAll("&#125;", "}");
-					renderUrl += encodeURIComponent(templateText);
+						renderUrl += encodeURIComponent(previewTemplate.value);
+						previewTemplate.value = "";
 					new Promise(resolve => {
 						fetch(renderUrl)
 							.then(response => response.json())
@@ -588,8 +612,9 @@ mwjson.editor = class {
 								//resolve(data.parse.text);
 							});
 					});
+					}
 					return `
-					<li ${props}>
+					<li ${props}>${previewTemplate.value}
 					</li>`;
 				},
 
@@ -603,10 +628,9 @@ mwjson.editor = class {
 				getResultValue_smw: (jseditor_editor, result) => {
 					var label = result.fulltext;
 					if (result.displaytitle && result.displaytitle !== "") label = result.displaytitle;
-					var labelTemplate = jseditor_editor.jsoneditor.options.labelTemplate; //use global/default value
-					if (jseditor_editor.schema.labelTemplate) labelTemplate = jseditor_editor.schema.labelTemplate; //use custom value
-					if (labelTemplate) {
-						label = Handlebars.compile(labelTemplate)({ result: result });
+					var labelTemplate = mwjson.schema.getAutocompleteLabelTemplate(jseditor_editor.schema); //use custom value
+					if (labelTemplate.type.shift() === 'handlebars') {
+						label = Handlebars.compile(labelTemplate.value)({ result: result });
 					}
 					jseditor_editor.input.value_label = label;
 					return label;
@@ -617,6 +641,17 @@ mwjson.editor = class {
 					jseditor_editor.value = result.fulltext;
 					jseditor_editor.input.value_id = result.fulltext;
 					jseditor_editor.onChange(true);
+					if (jseditor_editor.schema.options.autocomplete.field_maps) {
+						for (const map of jseditor_editor.schema.options.autocomplete.field_maps) {
+							var value = mwjson.extData.getValue({result: result}, map.source_path, "jsonpath");
+							if (map.template) value = Handlebars.compile(map.template)(value);
+							var target_editor = map.target_path;
+							for (const key in jseditor_editor.watched_values) target_editor = target_editor.replace('$(' + key + ')', jseditor_editor.watched[key]);
+							if (jseditor_editor.jsoneditor.editors[target_editor]) {
+								jseditor_editor.jsoneditor.editors[target_editor].setValue(value);
+							}
+						}
+					}
 				},
 			},
 			upload: {
