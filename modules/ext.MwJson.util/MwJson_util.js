@@ -107,6 +107,10 @@ mwjson.util = class {
 		return !isNaN(item);
 	}
 
+	static deepCopy(object) {
+		return JSON.parse(JSON.stringify(object))
+	}
+
 	//from https://stackoverflow.com/questions/201183/how-to-determine-equality-for-two-javascript-objects
 	static deepEqual(x, y) {
 		const ok = Object.keys, tx = typeof x, ty = typeof y;
