@@ -100,7 +100,9 @@ mwjson.editor = class {
 					$("#fetch-external-data-" + index).prop('disabled', !enabled);
 				});
 				$("#fetch-external-data-" + index).click(() => {
+					$("#fetch-external-data-" + index).text(btn_label + ": Running...").css('background-color', 'orange');
 					mwjson.extData.fetchData([data_source_map], this.jsoneditor.getValue()).then((jsondata) => {
+						$("#fetch-external-data-" + index).text(btn_label + ": Done.").css('background-color', 'green');
 						this.jsoneditor.setValue(jsondata);
 					});
 				});
