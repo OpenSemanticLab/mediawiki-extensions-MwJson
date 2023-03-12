@@ -332,6 +332,10 @@ mwjson.schema = class {
                 if (subschema.options.autocomplete.render_template) return subschema.options.autocomplete.render_template;
             }
         }
+        return {type: ["handlebars", "wikitext"], value: "" + 
+        "{{#if result.printouts.image.[0].fulltext}}[[{{result.printouts.image.[0].fulltext}}|right|x66px]]<br>{{/if}}" +
+        "[[{{result.fulltext}}]]" + 
+        "{{#if result.printouts.description.[0]}}<br>{{result.printouts.description.[0]}}{{/if}}"};
     }
     static getAutocompleteLabelTemplate(subschema) {
         if (subschema.labelTemplate) { //legacy (deprecated)
@@ -343,6 +347,10 @@ mwjson.schema = class {
                 if (subschema.options.autocomplete.label_template) return subschema.options.autocomplete.label_template;
             }
         }
+        return {type: ["handlebars"], value: "" +
+        "{{#if result.printouts.label.[0]}}{{result.printouts.label.[0]}}" + 
+        "{{else if result.displaytitle}}{{result.displaytitle}}" +
+        "{{else}}{{result.fulltext}}{{/if}}"};
     }
     static getAutocompleteResultProperty(subschema) {
         if (subschema.listProperty) { //legacy (deprecated)
