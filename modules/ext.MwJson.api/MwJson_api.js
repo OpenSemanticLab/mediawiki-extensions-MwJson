@@ -47,12 +47,14 @@ mwjson.api = class {
 							if (slot_key == 'jsondata') {
 								page.slots[slot_key] = slot["*"];
 								//page.slots[slot_key] = JSON.parse(slot["*"]);
-								page.schema.properties[slot_key] = { "type": "string", "format": "json" }; //Todo: Fetch schema from categories
+								//page.schema.properties[slot_key] = { "type": "string", "format": "json" }; //Todo: Fetch schema from categories
+								page.schema.properties[slot_key] = { "type": "string", "format": "textarea", "options": {"wikieditor": "jsoneditors"} };
 								//page.schema.properties[slot_key] = { "$ref": "/wiki/MediaWiki:Slot-jsonschema-jsondata.json?action=raw" };
 							}
 							else if (slot_key == 'jsonschema') {
 								page.slots[slot_key] = slot["*"];
-								page.schema.properties[slot_key] = { "type": "string", "format": "json" }; //Todo: Fetch schema from categories
+								//page.schema.properties[slot_key] = { "type": "string", "format": "json" }; //Todo: Fetch schema from categories
+								page.schema.properties[slot_key] = { "type": "string", "format": "textarea", "options": {"wikieditor": "jsoneditors"} };
 								/*page.slots[slot_key] = JSON.parse(slot["*"]);
 								//page.schema.properties[slot_key] = { "$ref": "/wiki/MediaWiki:Slot-jsonschema-jsonschema.json?action=raw" };
 								//page.schema.properties[slot_key] = { "$ref": "/w/extensions/MwJson/modules/ext.MwJson.editor/jsonschema-jsonschema.json" }; //from https://github.com/wclssdn/JSONSchemaCreator/blob/0544223fb43ebd4c8614ea97b275cae38f2c015c/dist/en.js

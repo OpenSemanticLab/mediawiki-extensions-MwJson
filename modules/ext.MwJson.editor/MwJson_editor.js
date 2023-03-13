@@ -231,6 +231,27 @@ mwjson.editor = class {
 					//$('.CodeMirror-scroll').each(function() {console.log(this); this.dispatchEvent(new Event('click')) });
 					//$('.CodeMirror-wrap').each(function() {this.dispatchEvent(new Event('click')) });
 				}
+
+				if (subeditor.options && subeditor.options.wikieditor === 'jsoneditors') {
+					if (!subeditor.jsoneditors) {
+						console.log("Create JSONEditors for ", input);
+						$input.hide();
+						var $parent = $input.parent();
+						$parent.append('<div class="jsoneditors" style="height: 500px; resize: vertical; overflow: auto;"></div>');
+						var container = $parent.find(".jsoneditors")[0];
+						var options = {
+							mode: 'code',
+							modes: ['code', 'form', 'text', 'tree', 'view', 'preview'], // allowed modes
+							onChangeText: (function(jsonString){
+								//input.value = jsonString;
+								this.value = jsonString;
+								this.change();
+							}).bind(subeditor) //arrow function binding to loop var subeditor does not work 
+						}
+						subeditor.jsoneditors = new JSONEditors(container, options);
+						subeditor.jsoneditors.set(JSON.parse(subeditor.input.value));
+					}
+				}
 			}
 
 			//fetch labels
@@ -253,7 +274,9 @@ mwjson.editor = class {
 	};
 
 	getSyntaxErrors() {
+		const promise = new Promise((resolve, reject) => {
 		var errors = []
+			var validation_promises = [];
 		for (var subeditor_path of Object.keys(this.jsoneditor.editors)) {
 			var subeditor = this.jsoneditor.editors[subeditor_path];
 			if (!subeditor) continue;
@@ -266,13 +289,35 @@ mwjson.editor = class {
 					}
 				}
 			}
+				if (subeditor.jsoneditors) {
+					validation_promises.push(subeditor.jsoneditors.validate())
 		}
-		return errors;
+			}
+			if (validation_promises.length) {
+				Promise.allSettled(validation_promises).then((results) => {
+					for (const result of results) {
+						for (var error of result.value) {
+							if (error.type == 'error') {
+								error.editor_path = subeditor.path;
+								error.editor_label = subeditor.label.innerText;
+								errors.push(error)
+							}
+						}
+					}
+					resolve(errors);
+				});
+			}
+			else {
+				resolve(errors);
+			}
+		});
+		return promise;
 	}
 
 	_onsubmit(json) {
 		const promise = new Promise((resolve, reject) => {
-			if(this.getSyntaxErrors().length) {
+			this.getSyntaxErrors().then((errors) => {
+				if(errors.length) {
 				OO.ui.confirm( 
 					mw.message("mwjson-editor-fields-contain-syntax-error").text() 
 					+ ". " + mw.message("mwjson-editor-save-anyway").text() 
@@ -295,6 +340,7 @@ mwjson.editor = class {
 				else resolve();
 				if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success'});
 			}
+		});
 		});
 		return promise;
 	}
