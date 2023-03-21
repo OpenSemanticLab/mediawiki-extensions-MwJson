@@ -7,8 +7,8 @@ mwjson.util = class {
 	}
  
 	static uuidv4(prefixedUuid) {
-		if (prefixedUuid) { //e. g. OSW83e54febeb444c7484b3c7a81b5ba2fde
-			var uuid = prefixedUuid.replace(/[^a-fA-F0-9]+(.)/g, '');
+		if (prefixedUuid) { //e. g. OSW83e54febeb444c7484b3c7a81b5ba2fd
+			var uuid = prefixedUuid.replace(/[^a-fA-F0-9]/g, '');
 			uuid = uuid.slice(-32);
 			uuid = uuid.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/g, '$1-$2-$3-$4-$5');
 			return uuid;
