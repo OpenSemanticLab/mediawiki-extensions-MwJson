@@ -130,7 +130,7 @@ mwjson.editor = class {
 				}
 				if (page.content_model[this.config.target_slot] === 'json') {
 					console.log(page.slots[this.config.target_slot]);
-					this.jsoneditor.setValue(page.slots[this.config.target_slot]);
+					this.jsoneditor.setValue(page.slots[this.config.target_slot] ? page.slots[this.config.target_slot] : {});
 				}
 			})
 		});
@@ -534,7 +534,8 @@ mwjson.editor = class {
 			"getResultValue": "getResultValue_smw",
 			"renderResult": "renderResult_smw",
 			"onSubmit": "onSubmit_smw",
-			"autoSelect": "true"
+			"autoSelect": "true",
+			"debounceTime": 200
 		};
 		window.JSONEditor.defaults.options.labelTemplate = "" +
 			"{{#if result.printouts.label.[0]}}{{result.printouts.label.[0]}}" + 
@@ -674,7 +675,7 @@ mwjson.editor = class {
 				getResultValue_smw: (jseditor_editor, result) => {
 					var label = result.fulltext;
 					if (result.displaytitle && result.displaytitle !== "") label = result.displaytitle;
-					var labelTemplate = mwjson.schema.getAutocompleteLabelTemplate(jseditor_editor.schema); //use custom value
+					var labelTemplate = mwjson.util.deepCopy(mwjson.schema.getAutocompleteLabelTemplate(jseditor_editor.schema)); //use custom value
 					if (labelTemplate.type.shift() === 'handlebars') {
 						label = Handlebars.compile(labelTemplate.value)({ result: result });
 					}

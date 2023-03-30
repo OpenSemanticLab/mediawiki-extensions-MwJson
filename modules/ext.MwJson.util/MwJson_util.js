@@ -108,7 +108,8 @@ mwjson.util = class {
 	}
 
 	static deepCopy(object) {
-		return JSON.parse(JSON.stringify(object))
+		if (object) return JSON.parse(JSON.stringify(object))
+		else return object;
 	}
 
 	//from https://stackoverflow.com/questions/201183/how-to-determine-equality-for-two-javascript-objects

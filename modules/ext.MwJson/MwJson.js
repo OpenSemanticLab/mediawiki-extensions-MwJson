@@ -2,7 +2,7 @@ class mwjson {
 	constructor() {
 	}
   	
-	static version = "0.5.2";
+	static version = "0.5.3";
 	
 	static getVersion() {
 		return version;

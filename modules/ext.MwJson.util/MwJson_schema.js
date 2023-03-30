@@ -332,10 +332,12 @@ mwjson.schema = class {
                 if (subschema.options.autocomplete.render_template) return subschema.options.autocomplete.render_template;
             }
         }
-        return {type: ["handlebars", "wikitext"], value: "" + 
-        "{{#if result.printouts.image.[0].fulltext}}[[{{result.printouts.image.[0].fulltext}}|right|x66px]]<br>{{/if}}" +
-        "[[{{result.fulltext}}]]" + 
-        "{{#if result.printouts.description.[0]}}<br>{{result.printouts.description.[0]}}{{/if}}"};
+        return {type: ["handlebars"], value: "" +
+        '<div class="mw-parser-output">{{#if result.printouts.image.[0].fulltext}}<div class="floatright">' +
+        '<img style="height:66" src="/wiki/Special:Redirect/file/{{result.printouts.image.[0].fulltext}}?width=100&height=50"></img></div></div><br>{{/if}}' +
+        "<a href='/wiki/{{result.fulltext}}'>{{result.printouts.label.[0]}}</a>" + 
+        "{{#if result.printouts.description.[0]}}<br>{{result.printouts.description.[0]}}{{/if}}"
+        };
     }
     static getAutocompleteLabelTemplate(subschema) {
         if (subschema.labelTemplate) { //legacy (deprecated)
