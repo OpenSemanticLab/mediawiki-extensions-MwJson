@@ -461,20 +461,29 @@ mwjson.api = class {
 		for (const title of titles) {
 			if (!first) query += "OR";
 			query += "[[";
-			if (title.startsWith("Category:")) query += ":";
-			query += encodeURIComponent(title) + "]]";
+			if (title.startsWith("http://") || title.startsWith("https://")) {
+				let uuid = mwjson.util.uuidv4(title);
+				query += "HasUuid::" + uuid;
+			}
+			else {
+				if (title.startsWith("Category:")) query += ":";
+				query += encodeURIComponent(title);
+			}
+			query += "]]";
 			first = false;
 		}
-		query += "|?Display_title_of=label&format=json"
+		query += "|?Display_title_of=label|?HasUuid=uuid&format=json"
 
 		fetch(query)
 			.then(response => response.json())
 			.then(data => {
 				var label_dict = {};
+				
+				for (const title of titles) label_dict[title] = title; //set default
 
-				for (const title of titles) {
-					var result = data.query.results[title];
-					var label = title;
+				for (const result_key of Object.keys(data.query.results)) {
+					let result = data.query.results[result_key];
+					var label = "";
 					if (result) 
 						if (result.printouts.label)
 							if (result.printouts.label[0])
@@ -484,7 +493,19 @@ mwjson.api = class {
 											label = result.printouts.label[0].Text.item[0];
 											label_dict[title] = label;
 								}
-								else label_dict[title] = result.printouts.label[0]
+								else label = result.printouts.label[0]
+					
+					if (label !== "") {
+						label_dict[result.fulltext] = label
+						if (result.printouts.uuid && result.printouts.uuid[0]) label_dict[result.printouts.uuid[0]] = label
+					}
+				}
+
+				for (const title of titles) {
+					if (title.startsWith("http://") || title.startsWith("https://")) {
+						let uuid = mwjson.util.uuidv4(title);
+						if (label_dict[uuid]) label_dict[title] = label_dict[uuid];
+					}
 				}
 				
 				deferred.resolve(label_dict);
