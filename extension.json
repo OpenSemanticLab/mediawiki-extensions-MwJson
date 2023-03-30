@@ -1,7 +1,7 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.5.0",
+    "version":"0.5.1",
     "author":[
         "[https://github.com/simontaurus Simon Stier]"
     ],
@@ -81,11 +81,13 @@
                 "json-editor.css",
                 "bootstrap.min.css",
                 "spectre-icons.min.css",
+                "fontawesome.min.css",
                 "jsoneditor.css"
             ],
             "scripts":[
                 "handlebars.min.js",
                 "autocomplete.min.js",
+                "bootstrap.min.js",
                 "json-editor.min.js",
                 "jsoneditor.min.js",
                 "MwJson_editor.js",
