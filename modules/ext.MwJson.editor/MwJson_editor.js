@@ -537,14 +537,6 @@ mwjson.editor = class {
 			"autoSelect": "true",
 			"debounceTime": 200
 		};
-		window.JSONEditor.defaults.options.labelTemplate = "" +
-			"{{#if result.printouts.label.[0]}}{{result.printouts.label.[0]}}" + 
-			"{{else if result.displaytitle}}{{result.displaytitle}}" +
-			"{{else}}{{result.fulltext}}{{/if}}";
-		window.JSONEditor.defaults.options.previewWikiTextTemplate = "" + 
-			"{{#if result.printouts.image.[0].fulltext}}[[{{result.printouts.image.[0].fulltext}}|right|x66px]]<br>{{/if}}" +
-			"[[{{result.fulltext}}]]" + 
-			"{{#if result.printouts.description.[0]}}<br>{{result.printouts.description.[0]}}{{/if}}",
 		window.JSONEditor.defaults.options.ace = {
 			//"theme": "ace/theme/vibrant_ink",
 			"tabSize": 4,
@@ -685,8 +677,13 @@ mwjson.editor = class {
 				//... but store the fulltext / id
 				onSubmit_smw: (jseditor_editor, result) => {
 					console.log("Selected: " + result.displaytitle + " / " + result.fulltext);
-					jseditor_editor.value = result.fulltext;
-					jseditor_editor.input.value_id = result.fulltext;
+					var result_value = result.fulltext;
+					var storeTemplate = mwjson.util.deepCopy(mwjson.schema.getAutocompleteStoreTemplate(jseditor_editor.schema)); //use custom value
+					if (storeTemplate && storeTemplate.type.shift() === 'handlebars') {
+						result_value = Handlebars.compile(storeTemplate.value)({ result: result });
+					}
+					jseditor_editor.value = result_value;
+					jseditor_editor.input.value_id = result_value;
 					jseditor_editor.onChange(true);
 					if (jseditor_editor.schema.options.autocomplete.field_maps) {
 						for (const map of jseditor_editor.schema.options.autocomplete.field_maps) {

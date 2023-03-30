@@ -354,6 +354,13 @@ mwjson.schema = class {
         "{{else if result.displaytitle}}{{result.displaytitle}}" +
         "{{else}}{{result.fulltext}}{{/if}}"};
     }
+    static getAutocompleteStoreTemplate(subschema) {
+        if (subschema.options) {
+            if (subschema.options.autocomplete) {
+                if (subschema.options.autocomplete.store_template) return subschema.options.autocomplete.store_template;
+            }
+        }
+    }
     static getAutocompleteResultProperty(subschema) {
         if (subschema.listProperty) { //legacy (deprecated)
             console.log("Warning: schema.listProperty is deprecated. Use schema.options.autocomplete.result_property")
