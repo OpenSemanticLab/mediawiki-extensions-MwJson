@@ -325,9 +325,14 @@ mwjson.editor = class {
 					if ( confirmed ) {
 						if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-do-not-close-window").text(), { title: mw.message("mwjson-editor-saving").text() + "...", type: 'warn'});
 						const submit_promise = this.config.onsubmit(json);
-						if (submit_promise) submit_promise.then(() => resolve()).catch();
-						else resolve();
+							if (submit_promise) submit_promise.then(() => {
+								resolve();
 						if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success'});
+							}).catch();
+							else {
+								resolve();
+								if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success'});
+							}
 					} else {
 						reject();
 					}
@@ -336,10 +341,16 @@ mwjson.editor = class {
 			else {
 				if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-do-not-close-window").text(), { title: mw.message("mwjson-editor-saving").text() + "...", type: 'warn'});
 				const submit_promise = this.config.onsubmit(json);
-				if (submit_promise) submit_promise.then(() => resolve()).catch();
-				else resolve();
+					console.log(submit_promise);
+					if (submit_promise) submit_promise.then(() => {
+						resolve();
+						if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success'});
+					}).catch();
+					else {
+						resolve();
 				if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success'});
 			}
+				}
 		});
 		});
 		return promise;
