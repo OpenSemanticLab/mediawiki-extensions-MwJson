@@ -75,11 +75,20 @@ mwjson.schema = class {
         //return deferred.promise();
     }
 
-    _preprocess(schema) {
+    _preprocess(params) {
+        var schema = params.schema;
+        var level = params.level ? params.level : 0;
 		const translateables = ["title", "description", "enum_titles"];
+
+        //include all required properties within defaultProperties. see https://github.com/json-editor/json-editor/issues/1275
+        /*if (schema.required) {
+            if (!schema.defaultProperties) schema.defaultProperties = [];
+            schema.defaultProperties.push(...schema.required)
+        }*/
+
 		if (schema.properties) {
 			for (const property of Object.keys(schema.properties)) {
-				
+                // use text values in user language if provided
 				for (const attr of translateables) {
 					if (schema.properties[property][attr+"*"]) { //objects
 						if (schema.properties[property][attr+"*"][this.config.lang]) schema.properties[property][attr] = schema.properties[property][attr+"*"][this.config.lang];
@@ -88,7 +97,7 @@ mwjson.schema = class {
 						if (schema.properties[property].options[attr+"*"][this.config.lang]) schema.properties[property].options[attr] = schema.properties[property].options[attr+"*"][this.config.lang];
 					}
                     if (schema.properties[property].items) { //} && schema.properties[property].items.properties) { //array items
-                        this._preprocess(schema.properties[property].items)
+                        this._preprocess({schema: schema.properties[property].items})
                         /*if (schema.properties[property].items.properties[attr+"*"]) { 
 						    if (schema.properties[property].items.properties[attr+"*"][this.config.lang]) schema.properties[property].items.properties[attr] = schema.properties[property].items.properties[attr+"*"][this.config.lang];
                         }
@@ -99,6 +108,34 @@ mwjson.schema = class {
 
 				}
 
+                /* order properties aligned to allOf nesting level
+                level  | schema   | propertyOrder   | adapted propertyOrder
+                    1	Specific	-10	                -10
+                    1	Specific	990	                998990
+                    1	Specific	1000	            999000
+                    1	Specific	1010	            1003010
+                    2	Middle	    -11	                -11
+                    2	Middle	    990	                996990
+                    2	Middle	    1000	            997000
+                    2	Middle	    1010	            1005010
+                    3	Base	    -12	                -12
+                    3	Base	    990	                994990
+                    3	Base	    1000	            995000
+                    3	Base	    1010	            1007010
+                */
+                if (!schema.properties[property].propertyOrder) schema.properties[property].propertyOrder;
+                if (schema.properties[property].propertyOrder < 0) 
+                    //absolute value - is currently not ranked correctly
+                    schema.properties[property].propertyOrder = schema.properties[property].propertyOrder; 
+                else if (schema.properties[property].propertyOrder <= 1000) 
+                    //insert on top, rank higher levels before lower levels: default value is 1000, so we shift -2*1000 per level
+                    schema.properties[property].propertyOrder = (1000*1000 - level*2000) + schema.properties[property].propertyOrder;
+                else if (schema.properties[property].propertyOrder > 1000) 
+                    //insert on buttom, rank higher levels after lower levels: default value is 1000, so we shift 2*1000 per level
+                    schema.properties[property].propertyOrder = (1000*1000 + level*2000) + schema.properties[property].propertyOrder; 
+                
+
+                // filter properties according to mode, e. g. remove non-query properties in query mode
 				if (this.config.mode !== "default") {
 					if (schema.properties[property].options) {
 						if (schema.properties[property].options.conditional_visible && schema.properties[property].options.conditional_visible.modes) {
@@ -120,11 +157,11 @@ mwjson.schema = class {
 		if (schema.allOf) {
 			if (Array.isArray(schema.allOf)) {
 				for (const subschema of schema.allOf) {
-					this._preprocess(subschema);
+					this._preprocess({schema: subschema, level: level + 1});
 				}
 			}
 			else {
-				this._preprocess(subschema);
+				this._preprocess({schema: schema.allOf, level: level + 1});
 			}
 		}
         if (schema.uuid) this.subschemas_uuids.push(schema.uuid);
@@ -135,7 +172,7 @@ mwjson.schema = class {
     preprocess() {
         this.log("proprocess start");
         const promise = new Promise((resolve, reject) => {
-            this.setSchema(this._preprocess(this.getSchema()));
+            this.setSchema(this._preprocess({schema: this.getSchema()}));
             this.log("proprocess finish");
             resolve();
         });
