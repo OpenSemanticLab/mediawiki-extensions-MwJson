@@ -6,6 +6,7 @@ mwjson.editor = class {
 			target_slot: 'main',
 			target_namespace: 'Item',
 			mode: "default", // options: default, query
+			submit_enabled: true, //if true, add save button
 			lang: mw.config.get('wgUserLanguage'),
 			id: 'json-editor-' + mwjson.util.getShortUid(),
 			onsubmit: (json) => this.onsubmit(json)
@@ -28,6 +29,7 @@ mwjson.editor = class {
 			.then(() => {
 				console.log("create editor");
 				this.createEditor();
+				this.createUI();
 			})
 			.catch((err) => {
 				console.error(err);
@@ -44,7 +46,6 @@ mwjson.editor = class {
 		this.config.JSONEditorConfig = this.config.JSONEditorConfig || {};
 		
 		var defaultJSONEditorConfig = {
-			schema: this.jsonschema.getSchema(),
 			theme: 'bootstrap4',
 			iconlib: "spectre",
 			remove_button_labels: true,
@@ -66,48 +67,12 @@ mwjson.editor = class {
 			form_name_root: this.jsonschema.getSchema().id
 		}
 		this.config.JSONEditorConfig = mwjson.util.mergeDeep(defaultJSONEditorConfig, this.config.JSONEditorConfig);
+		this.config.JSONEditorConfig.schema = this.jsonschema.getSchema(),
 		console.log(this.config.JSONEditorConfig);
 
 		//create editor
 		this.jsoneditor = new JSONEditor(this.container, this.config.JSONEditorConfig);
 		console.log(this.config.data);
-
-		if (!this.config.popup || this.config.mode === 'query') {
-			var btn_label = mw.message("mwjson-editor-submit-save").text();
-			if (this.config.mode === 'query') btn_label = mw.message("mwjson-editor-submit-query").text();
-			$(this.container).append($("<button type='Button' class='btn btn-primary btn-block' id='save-form'>" + btn_label + "</button>"));
-			$("#save-form").click(() => {
-				this._onsubmit(this.jsoneditor.getValue());
-			});
-		}
-
-		if (this.jsonschema.data_source_maps.length && this.config.mode === 'default') {
-			//console.log(this.jsonschema.data_source_maps);
-			for (const [index, data_source_map] of this.jsonschema.data_source_maps.entries()) {
-				if (!data_source_map.label) data_source_map.label = data_source_map.source.substring(0, 20) + "...";
-				var btn_label = mw.message("mwjson-editor-fetch-external-data", data_source_map.label).text();
-				if (data_source_map.required) {
-					var required_prop_names = "";
-					for (const required_prop of data_source_map.required) required_prop_names += this.jsonschema.getPropertyDefinition(required_prop).title + ", ";
-					required_prop_names = required_prop_names.slice(0,-2);
-					btn_label += " (" + mw.message("mwjson-editor-fetch-external-data-requires", required_prop_names).text() + ")";
-				}
-				$(this.container).append($("<button type='Button' class='btn btn-primary btn-block' id='fetch-external-data-" + index + "'>" + btn_label + "</button>"));
-				this.jsoneditor.on('change', () => {
-					var enabled = true;
-					var jsondata = this.jsoneditor.getValue();
-					for (const required_prop of data_source_map.required) if (!jsondata[required_prop]) enabled = false;
-					$("#fetch-external-data-" + index).prop('disabled', !enabled);
-				});
-				$("#fetch-external-data-" + index).click(() => {
-					$("#fetch-external-data-" + index).text(btn_label + ": Running...").css('background-color', 'orange');
-					mwjson.extData.fetchData([data_source_map], this.jsoneditor.getValue()).then((jsondata) => {
-						$("#fetch-external-data-" + index).text(btn_label + ": Done.").css('background-color', 'green');
-						this.jsoneditor.setValue(jsondata);
-					});
-				});
-			}
-		}
 
 		// listen for loaded
 		this.jsoneditor.on('ready', () => {
@@ -265,13 +230,118 @@ mwjson.editor = class {
 			});
 
 			this.flags["change-after-load"] = false;
+
+			if (this.data_jsoneditors) {
+				var jsondata = this.jsoneditor.getValue();
+				jsondata = mwjson.util.mergeDeep({"@context": this.jsonschema.getContext()}, jsondata)
+				console.log("add context", this.jsonschema.getContext());
+				this.data_jsoneditors.set(jsondata);
+			}
 		});
 
 		// listen for array changes
 		this.jsoneditor.on('addRow', editor => {
 			//console.log('addRow', editor)
 		});
-	};
+	}
+
+	createUI() {
+		if (this.config.submit_enabled && (!this.config.popup || this.config.mode === 'query')) {
+			var btn_label = mw.message("mwjson-editor-submit-save").text();
+			if (this.config.mode === 'query') btn_label = mw.message("mwjson-editor-submit-query").text();
+			const btn_id = this.config.id + "_save-form";
+			$(this.container).append($("<button type='Button' class='btn btn-primary btn-block' id='" + btn_id + "'>" + btn_label + "</button>"));
+			$("#" + btn_id).click(() => {
+				console.log("Query");
+				this._onsubmit(this.jsoneditor.getValue());
+			});
+		}
+
+		if (this.jsonschema.data_source_maps.length && this.config.mode === 'default') {
+			//console.log(this.jsonschema.data_source_maps);
+			for (const [index, data_source_map] of this.jsonschema.data_source_maps.entries()) {
+				if (!data_source_map.label) data_source_map.label = data_source_map.source.substring(0, 20) + "...";
+				var btn_label = mw.message("mwjson-editor-fetch-external-data", data_source_map.label).text();
+				if (data_source_map.required) {
+					var required_prop_names = "";
+					for (const required_prop of data_source_map.required) required_prop_names += this.jsonschema.getPropertyDefinition(required_prop).title + ", ";
+					required_prop_names = required_prop_names.slice(0,-2);
+					btn_label += " (" + mw.message("mwjson-editor-fetch-external-data-requires", required_prop_names).text() + ")";
+				}
+				$(this.container).append($("<button type='Button' class='btn btn-primary btn-block' id='fetch-external-data-" + index + "'>" + btn_label + "</button>"));
+				this.jsoneditor.on('change', () => {
+					var enabled = true;
+					var jsondata = this.jsoneditor.getValue();
+					for (const required_prop of data_source_map.required) if (!jsondata[required_prop]) enabled = false;
+					$("#fetch-external-data-" + index).prop('disabled', !enabled);
+				});
+				$("#fetch-external-data-" + index).click(() => {
+					$("#fetch-external-data-" + index).text(btn_label + ": Running...").css('background-color', 'orange');
+					mwjson.extData.fetchData([data_source_map], this.jsoneditor.getValue()).then((jsondata) => {
+						$("#fetch-external-data-" + index).text(btn_label + ": Done.").css('background-color', 'green');
+						this.jsoneditor.setValue(jsondata);
+					});
+				});
+			}
+		}
+
+		if (this.config.schema_editor) {
+			var options = {
+				mode: 'code',
+				modes: ['code', 'form', 'text', 'tree', 'view', 'preview'], // allowed modes
+			}
+			var container = $("#" + this.config.schema_editor.container_id);
+			container.addClass('mwjson-code-container')
+			var editor_container = $('<div class="mwjson-code-editor-container"></div>');
+			container.append(editor_container);
+			this.schema_jsoneditors = new JSONEditors(editor_container[0], options);
+			this.schema_jsoneditors.set(this.config.schema);
+			var btn_label = "Update";
+			const btn_id = this.config.id + "_load-schema";
+			container.append($("<button type='Button' class='btn btn-primary btn-block' id='" + btn_id + "'>" + btn_label + "</button>"));
+			$("#" + btn_id).click(() => {
+				this.jsoneditor.destroy();
+				this.config.schema = this.schema_jsoneditors.get();
+				this.jsonschema = new mwjson.schema({jsonschema: this.config.schema, config: {mode: this.config.mode, lang: this.config.lang}, debug: true});
+				this.jsonschema.bundle()
+					.then(() => this.jsonschema.preprocess())
+					.then(() => {
+						console.log("reload editor");
+						this.createEditor();
+					})
+					.catch((err) => {
+						console.error(err);
+					});
+			});
+		}
+		if (this.config.data_editor) {
+			var options = {
+				mode: 'code',
+				modes: ['code', 'form', 'text', 'tree', 'view', 'preview'], // allowed modes
+				onChangeText: (jsonString) => {
+					var jsondata = JSON.parse(jsonString);
+					if (jsondata['@context']) delete jsondata['@context'];
+					this.jsoneditor.setValue(jsondata);
+				}
+			}
+			var container = $("#" + this.config.data_editor.container_id);
+			container.addClass('mwjson-code-container')
+			var editor_container = $('<div class="mwjson-code-editor-container"></div>');
+			container.append(editor_container);
+			this.data_jsoneditors = new JSONEditors(editor_container[0], options);
+			//subeditor.jsoneditors.set(JSON.parse(subeditor.input.value));
+			var btn_label = "Download";
+			const btn_id = this.config.id + "_download_jsonld";
+			container.append($("<a type='Button' class='btn btn-primary btn-block' id='" + btn_id + "' style='color:white'>" + btn_label + "</a>"));
+			$("#" + btn_id).click(() => {
+				//var jsondata = this.jsoneditor.getValue();
+				//jsondata = mwjson.util.mergeDeep({"@context": this.jsonschema.getContext()}, jsondata)
+				//console.log("add context", this.jsonschema.getContext());
+				var jsondata = this.data_jsoneditors.get();
+				mwjson.util.downloadTextAsFile("metadata.jsonld", JSON.stringify(jsondata, null, 4));
+			});
+		}
+	}
 
 	getSyntaxErrors() {
 		const promise = new Promise((resolve, reject) => {

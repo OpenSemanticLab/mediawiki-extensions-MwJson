@@ -1,9 +1,9 @@
 /* compact design: inline labels and descriptions */
-.json-editor-compact div.form-group {display: flex;}
-.json-editor-compact div.form-group>label {display: flex; align-items: center; margin-right: 10px; width: 200px;}
-.json-editor-compact div.form-group input.form-check-input {right: 50px;}
-.json-editor-compact div.form-group>small.form-text {width: 150px; margin-left: 10px;}
-.json-editor-compact div.form-group>div.autocomplete {width: 100%; }
+.json-editor-compact :not(.property-selector) div.form-group {display: flex;}
+.json-editor-compact :not(.property-selector) div.form-group>label {display: flex; align-items: center; margin-right: 10px; width: 200px;}
+.json-editor-compact :not(.property-selector) div.form-group input.form-check-input {right: 50px;}
+.json-editor-compact :not(.property-selector) div.form-group>small.form-text {width: 150px; margin-left: 10px;}
+.json-editor-compact :not(.property-selector) div.form-group>div.autocomplete {width: 100%; }
 
 /* fix general layout */
 .card-title label {margin-right: 10px;}
@@ -29,4 +29,13 @@
 overwrite margin with more specific selector */
 .form-check input[type='checkbox'] {
     margin: 0.3em 0em 0em -1.25em;
+}
+
+.mwjson-code-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.mwjson-code-editor-container {
+    flex: 1 0 auto;
 }

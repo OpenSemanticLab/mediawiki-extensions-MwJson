@@ -13,6 +13,7 @@ mwjson.schema = class {
         if (mwjson.util.isString(jsonschema)) jsonschema = JSON.parse(jsonschema);
         jsonschema.id = jsonschema.id || 'root';
         this._jsonschema = jsonschema;
+        this._context = {};
         this.subschemas_uuids = [];
         this.data_source_maps = [];
     }
@@ -44,6 +45,27 @@ mwjson.schema = class {
 
     setSchema(jsonschema) {
         this._jsonschema = jsonschema;
+    }
+
+    getContext(config) {
+        var _config = {
+            include_extern: true, //skos, schema.org, etc.
+            include_intern: true, //wiki Properities
+            include_custom: false, //wiki Properities
+        }
+        config = mwjson.util.mergeDeep(_config, config);
+        var res = {};
+        var context = this._context;
+        for (const key in context) {
+            var ignore = false;
+            if (config.include_custom === false && key.endsWith("*")) {
+                ignore = true;
+                console.log("Ignore", key);
+            }
+            //ToDo: implement other cases
+            if (!ignore) res[key] = context[key];
+        }
+        return res;
     }
 
     bundle() {
@@ -164,6 +186,7 @@ mwjson.schema = class {
 				this._preprocess({schema: schema.allOf, level: level + 1});
 			}
 		}
+        if (schema['@context']) this._context = mwjson.util.mergeDeep(schema['@context'], this._context); // merge nested context over general context
         if (schema.uuid) this.subschemas_uuids.push(schema.uuid);
         if (schema.data_source_maps) this.data_source_maps = this.data_source_maps.concat(schema.data_source_maps);
 		return schema;
