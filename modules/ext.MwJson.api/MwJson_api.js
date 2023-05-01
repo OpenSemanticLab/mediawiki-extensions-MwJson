@@ -516,4 +516,77 @@ mwjson.api = class {
 
 		return deferred.promise();
 	}
+
+	static parseWikiText(params) {
+		const deferred = $.Deferred();
+		var api = new mw.Api();
+		api.get({
+			action: 'parse',
+			prop: ['text', 'headhtml', 'modules', 'jsconfigvars'],
+			text: params.text,
+			contentmodel: 'wikitext',
+			format: 'json',
+		}).done(function (data) {
+
+			
+			console.log(data);
+			if (params.display_mode === "embedded") {
+				mw.config.set(data.parse.jsconfigvars);
+				//let states = {}
+				//for (const module of data.parse.modules) {
+				//	states[module] = 'registered';
+				//	console.log(mw.loader.getState(module));
+				//}
+				//mw.loader.state(states); //force reset state from ready to registered
+				mw.loader.using(data.parse.modules)
+				let $header = $(data.parse.headhtml['*']);
+				console.log($header);
+				console.log($header.filter('script:contains(mw.config.set)'));
+				$('head').append($header.filter('script:contains(mw.config.set)'));
+				if (params.container) $(params.container).html($(data.parse.text['*']));
+			}
+			if (params.display_mode === "iframe" && params.container) {
+				let $iframe = $("<iframe>" + data.parse.headhtml['*'] + " </iframe>");
+				//let $header = $(data.parse.headhtml['*']);
+				//$iframe.contents().filter('head').html($(data.parse.headhtml['*']));
+				//$(params.container).append($iframe);
+				//$('<iframe id="someId"/>').appendTo(params.container).contents().find('body').html($("<div></div>"));
+				//console.log($('<iframe id="someId"/>').appendTo(params.container).contents().find('body'))
+				//$iframe.contents().filter('body').html($(data.parse.text['*']));
+				//$('body', $header).append(data.parse.text['*']);
+				
+				//let $header = $( '<div></div>' )
+				const parser = new DOMParser();
+				
+				//$header.html(data.parse.headhtml['*'] + data.parse.text['*'] + "</body>");
+				const htmlDoc = parser.parseFromString(data.parse.headhtml['*'] + data.parse.text['*'] + "</body>", 'text/html');
+				//$('body', $header).html($(data.parse.text['*']));
+				console.log(htmlDoc);
+				if (params.copy_parent_frame_style) $('head', htmlDoc).append($('head').children('style').clone());
+				//$('head', $header).append($(data.parse.headhtml['*']).children());
+				//$('head', htmlDoc).append($('<script>mw.loader.using("ext.smw.style", "ext.smw.tooltips", "ext.srf.datatables");</script>'));
+				console.log(htmlDoc.documentElement.innerHTML);
+				params.container.innerHTML = "";
+				$('<iframe>', {
+					srcdoc:htmlDoc.documentElement.innerHTML,
+					frameborder: 0,
+					style: "width:100%;height: 95%;",
+					allow: "fullscreen",
+					//scrolling: 'no'
+				}).appendTo(params.container).on('load', function () {
+					//$(this).contents().find('body').append($(data.parse.text['*']));
+					//$(this).contents().find('head').append($('head').children().clone());
+					//$(this).contents().find('head').append($(data.parse.headhtml['*']).children());
+					//$(this).contents().find('head').append($('<script>mw.loader.using("ext.smw.style", "ext.smw.tooltips", "ext.srf.datatables");</script>'));
+					
+				});
+				
+
+			}
+
+			deferred.resolve({html: data.parse.text['*']});
+		});
+		return deferred.promise();
+		
+	}
 }
