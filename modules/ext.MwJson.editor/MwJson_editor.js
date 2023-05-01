@@ -505,16 +505,17 @@ mwjson.editor = class {
 		$result_container.html("");
 		var wikitext = this.jsonschema.getSemanticQuery({jsondata: json}).wikitext;
 		console.log("wikitext", wikitext);
-		var renderUrl = '/w/api.php?action=parse&format=json&text=';
-		renderUrl += encodeURIComponent(wikitext);
+		//var renderUrl = '/w/api.php?action=parse&format=json&text=';
+		//renderUrl += encodeURIComponent(wikitext);
 		new Promise(resolve => {
 			//console.log("Render-URL: " + renderUrl);
-			fetch(renderUrl)
-				.then(response => response.json())
-				.then(data => {
+			//fetch(renderUrl)
+				//.then(response => response.json())
+			mwjson.api.parseWikiText({text: wikitext, display_mode: "iframe", container: $result_container[0]})
+				.then(result => {
 					//console.log("Parsed: " + data.parse.text);
-					$result_container.html($(data.parse.text['*']));
-					//$result_container.find("a").attr("target", "_blank"); //make all links open in new tab
+					//$result_container.html($(result.html));
+					$result_container.find("iframe").contents().find("a").attr("target", "_blank"); //make all links open in new tab - does not work on dynamic content
 					//mwjson.editor.initDataTables(); 
 				});
 		});
