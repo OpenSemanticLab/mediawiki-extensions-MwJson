@@ -9,7 +9,8 @@ mwjson.editor = class {
 			submit_enabled: true, //if true, add save button
 			lang: mw.config.get('wgUserLanguage'),
 			id: 'json-editor-' + mwjson.util.getShortUid(),
-			onsubmit: (json) => this.onsubmit(json)
+			onsubmit: (json) => this.onsubmit(json),
+			onchange: (json) => {}
 		};
 		this.config = mwjson.util.mergeDeep(defaultConfig, config);
 		this.flags = {'change-after-load': false};
@@ -231,6 +232,8 @@ mwjson.editor = class {
 
 			this.flags["change-after-load"] = false;
 
+			if (this.config.onchange) this.config.onchange(this.jsoneditor.getValue());
+
 			if (this.data_jsoneditors) {
 				var jsondata = this.jsoneditor.getValue();
 				jsondata = mwjson.util.mergeDeep({"@context": this.jsonschema.getContext()}, jsondata)
@@ -300,18 +303,7 @@ mwjson.editor = class {
 			const btn_id = this.config.id + "_load-schema";
 			container.append($("<button type='Button' class='btn btn-primary btn-block' id='" + btn_id + "'>" + btn_label + "</button>"));
 			$("#" + btn_id).click(() => {
-				this.jsoneditor.destroy();
-				this.config.schema = this.schema_jsoneditors.get();
-				this.jsonschema = new mwjson.schema({jsonschema: this.config.schema, config: {mode: this.config.mode, lang: this.config.lang}, debug: true});
-				this.jsonschema.bundle()
-					.then(() => this.jsonschema.preprocess())
-					.then(() => {
-						console.log("reload editor");
-						this.createEditor();
-					})
-					.catch((err) => {
-						console.error(err);
-					});
+				this.setSchema({schema: this.schema_jsoneditors.get()});
 			});
 		}
 		if (this.config.data_editor) {
@@ -382,6 +374,30 @@ mwjson.editor = class {
 			}
 		});
 		return promise;
+	}
+
+	setData(params) {
+		this.jsoneditor.setValue(params.jsondata);
+	}
+
+	getData() {
+		return this.jsoneditor.getValue();
+	}
+
+	//sets a new jsonschema and reloads the editor to apply changes
+	setSchema(params) {
+		this.jsoneditor.destroy();
+		this.config.schema = params.schema;
+		this.jsonschema = new mwjson.schema({jsonschema: this.config.schema, config: {mode: this.config.mode, lang: this.config.lang}, debug: true});
+		this.jsonschema.bundle()
+			.then(() => this.jsonschema.preprocess())
+			.then(() => {
+				console.log("reload editor");
+				this.createEditor();
+			})
+			.catch((err) => {
+				console.error(err);
+			});
 	}
 
 	_onsubmit(json) {
