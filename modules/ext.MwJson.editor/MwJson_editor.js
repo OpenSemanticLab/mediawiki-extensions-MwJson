@@ -47,7 +47,7 @@ mwjson.editor = class {
 		this.config.JSONEditorConfig = this.config.JSONEditorConfig || {};
 		
 		var defaultJSONEditorConfig = {
-			theme: 'bootstrap4',
+			theme: 'bootstrap5',
 			iconlib: "spectre",
 			remove_button_labels: true,
 			ajax: true,
