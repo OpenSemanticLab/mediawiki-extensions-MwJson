@@ -135,6 +135,21 @@ mwjson.editor = class {
 					}
 				}
 
+				if (subeditor.options.quantity) {
+					console.log("Scale");
+					if (subeditor.options.quantity.display_scale != 1.0 || subeditor.options.quantity.display_offset != 0.0) {
+						if (input.value != 0 && input.value === subeditor.value) {//not yet scaled
+							console.log(input.value, subeditor.input_value, subeditor.value, input.subeditor_value);
+							if (input.subeditor_value != subeditor.value) input.value = subeditor.value * subeditor.options.quantity.display_scale + subeditor.options.quantity.display_offset;
+							else if (subeditor.input_value != input.value) subeditor.value = (input.value - subeditor.options.quantity.display_offset) * subeditor.options.quantity.display_scale;
+							input.subeditor_value = subeditor.value;
+							subeditor.input_value = input.value;
+							console.log(input.value, subeditor.input_value, subeditor.value, input.subeditor_value);
+							subeditor.change();
+						}
+					}
+				}
+
 				//BUG: Does not save value in original text field (only if source mode is toggled). See PageForms extension
 				if (subeditor.options && subeditor.options.wikieditor === 'visualeditor') {
 					if (!subeditor.visualEditor) {
