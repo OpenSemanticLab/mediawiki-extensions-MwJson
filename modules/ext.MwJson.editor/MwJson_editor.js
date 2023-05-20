@@ -640,11 +640,13 @@ mwjson.editor = class {
 			"tabSize": 4,
 			"useSoftTabs": true,
 			"wrap": true,
-			"useWorker": true
+			"useWorker": true,
+			"autoScrollEditorIntoView": true
 		};
 		ace.config.set("basePath", "/w/extensions/MwJson/modules/ext.MwJson.editor.ace");
 		ace.config.set("workerPath", "/w/extensions/MwJson/modules/ext.MwJson.editor.ace");
 		ace.config.setModuleUrl('ace/mode/json_worker', "/w/extensions/MwJson/modules/ext.MwJson.editor.ace/worker-json.js");
+		ace.config.set("autoScrollEditorIntoView", true);
 		window.JSONEditor.defaults.options.upload.upload_handler = "fileUpload";
 	}
 
