@@ -225,6 +225,12 @@ mwjson.editor.createCopyPageDialog = function (_config) {
     var defaultConfig = { "title": "", "template": mw.config.get("wgPageName"), "hide_template": true, "hide_template_preview": true };
     _config = { ...defaultConfig, ..._config };
     //_config.beforeSubmit = (targetTitle) => {return mwjson.api.copyPage(_config.sourceTitle, targetTitle)};
+    /*_config.modify = (p) => { 
+        const d = $.Deferred(); 
+        d.resolve(p); 
+        return d.promise(); 
+    }*/
+    //_config.beforeSubmit = (targetTitle, template) => { return mwjson.api.copyPage(template, targetTitle, "", _config.modify) };
     mwjson.editor.createPageDialog(_config);
 }
 
