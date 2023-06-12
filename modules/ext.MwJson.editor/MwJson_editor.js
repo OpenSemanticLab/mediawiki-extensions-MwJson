@@ -799,6 +799,7 @@ mwjson.editor = class {
 			upload: {
 				fileUpload: (jseditor, type, file, cbs) => {
 					console.log("Upload file", file);
+					const label = file.name;
 					var target = mwjson.util.OslId() + "." + file.name.split('.').pop();
 					Object.defineProperty(file, 'name', {writable: true, value: target}); //name is readonly, so file.name = target does not work
 					mwjson.api.getFilePage(target).done((page) => {
@@ -809,6 +810,7 @@ mwjson.editor = class {
 						mwjson.api.updatePage(page).done((page) => {
 							console.log("Upload succesful");
 							cbs.success('File:' + target);
+							mw.hook( 'jsoneditor.file.uploaded' ).fire({exists: false, name: target, label: label});
 						}).fail(function (error) {
 							console.log("Upload failed:", error);
 							cbs.failure('Upload failed:' + error);
@@ -822,6 +824,7 @@ mwjson.editor = class {
 							mwjson.api.updatePage(page).done((page) => {
 								console.log("Upload succesful");
 								cbs.success('File:' + target);
+								mw.hook( 'jsoneditor.file.uploaded' ).fire({exists: false, name: target, label: file.name});
 							}).fail(function (error) {
 								console.log("Upload failed:", error);
 								cbs.failure('Upload failed:' + error);

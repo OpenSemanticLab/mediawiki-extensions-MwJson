@@ -267,7 +267,7 @@ mwjson.api = class {
 			comment: summary,
 			text: "",
 			format: 'json',
-			ignorewarnings: 1
+			ignorewarnings: true
 		};
 		//todo: chunked upload of large files: https://doc.wikimedia.org/mediawiki-core/master/js/#!/api/mw.Api.plugin.upload
 		new mw.Api().upload(blob, param).done(function (data) {
@@ -275,8 +275,10 @@ mwjson.api = class {
 				type: 'success'
 			});
 			deferred.resolve(data);
-		}).fail(function (data) {
-			if (data === 'exists' || data === 'was-deleted' || data === 'duplicate' || data == 'duplicate-archive' || data === 'page-exists') { //only warning, upload was successful anyway
+		}).fail(function (retStatus, data) {
+			//since MW1.39 second param data contains the complete respose
+			//if (data === 'exists' || data === 'was-deleted' || data === 'duplicate' || data == 'duplicate-archive' || data === 'page-exists') { //only warning, upload was successful anyway
+			if (data.upload.result === "Success") {
 				mw.notify('Saved', {
 					type: 'success'
 				});
