@@ -591,4 +591,25 @@ mwjson.api = class {
 		return deferred.promise();
 		
 	}
+
+	static getUserInfo() {
+		const deferred = $.Deferred();
+
+		let userInfo = {
+			userCanRead: false,
+			userCanEdit: false
+		};
+		
+		new mw.Api().getUserInfo().then(data => {
+			userInfo = data;
+			userInfo.userCanRead = userInfo.rights.includes('read');
+			userInfo.userCanEdit = userInfo.rights.includes('edit');
+			deferred.resolve(userInfo);
+		}, error => {
+			// e. g. 'readapidenied' when user has no read rights 
+			deferred.resolve(userInfo);
+		});
+
+		return deferred.promise();
+	}
 }
