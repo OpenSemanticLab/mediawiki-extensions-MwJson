@@ -17,19 +17,34 @@ mwjson.api = class {
 			rvslots: "*", //all slots
 			format: 'json',
 		}).done(function (data) {
+			var page = undefined;
+			for (var page_id of Object.keys(data.query.pages)) {
+				var page_data = data.query.pages[page_id];
+				page = mwjson.api._createPageObjectFromApiResult(page_data);
+			}
+			//console.log(page);
+			deferred.resolve(page);
+		}).catch((error) => {
+			deferred.reject(error);
+		});
+		return deferred.promise();
+	}
+
+	static _createPageObjectFromApiResult(page_data) {
+		const title = page_data.title;
+		const page_id = page_data.pageid;
 			var page = {
 				title: title, exists: false, changed: false, content: "", 
-				slots: { main: "" }, slots_changed: { main: false}, content_model: {main: "wikitext"},
+			slots: { main: "" }, slots_changed: { main: false }, content_model: { main: "wikitext" },
 				schema: {
 					"title": title,
 					"type": "object",
 					"properties": {
-						"main": { "type": "string", "format": "handlebars", "options": {"wikieditor": "novisualeditor"}} //format 'mediawiki' is supported by ace, but not yet by jsoneditor
+					"main": { "type": "string", "format": "handlebars", "options": { "wikieditor": "novisualeditor" } } //format 'mediawiki' is supported by ace, but not yet by jsoneditor
 					}
 				}
 			};
-			for (var page_id of Object.keys(data.query.pages)) {
-				var page_data = data.query.pages[page_id];
+
 				//if (!(page_data.hasOwnProperty("missing") && page_data.missing === true)) {
 				if (page_data.hasOwnProperty("missing") || page_id === -1) { //non exitings page may contain missing=""
 					page.exists = false;
