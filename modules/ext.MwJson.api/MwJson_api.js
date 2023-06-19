@@ -30,81 +30,103 @@ mwjson.api = class {
 		return deferred.promise();
 	}
 
+	static getPages(titles) {
+		const deferred = $.Deferred();
+		//$.getJSON(`/w/api.php?action=query&prop=revisions&titles=${title}&rvprop=content|contentmodel&rvslots="*"&format=json`, function(data) {
+		var api = new mw.Api();
+		api.get({
+			action: 'query',
+			prop: 'revisions',
+			titles: titles.join("|"), //max 50 pages
+			rvprop: ['content', 'contentmodel'],
+			rvslots: "*", //all slots
+			format: 'json',
+		}).done(function (data) {
+			var pages = [];
+			for (var page_id of Object.keys(data.query.pages)) {
+				var page_data = data.query.pages[page_id];
+				pages.push(mwjson.api._createPageObjectFromApiResult(page_data));
+			}
+			//console.log(page);
+			deferred.resolve(pages);
+		}).catch((error) => {
+			deferred.reject(error);
+		});
+		return deferred.promise();
+	}
+
 	static _createPageObjectFromApiResult(page_data) {
 		const title = page_data.title;
 		const page_id = page_data.pageid;
-			var page = {
-				title: title, exists: false, changed: false, content: "", 
+		var page = {
+			title: title, exists: false, changed: false, content: "",
 			slots: { main: "" }, slots_changed: { main: false }, content_model: { main: "wikitext" },
-				schema: {
-					"title": title,
-					"type": "object",
-					"properties": {
+			schema: {
+				"title": title,
+				"type": "object",
+				"properties": {
 					"main": { "type": "string", "format": "handlebars", "options": { "wikieditor": "novisualeditor" } } //format 'mediawiki' is supported by ace, but not yet by jsoneditor
-					}
-				}
-			};
-
-				//if (!(page_data.hasOwnProperty("missing") && page_data.missing === true)) {
-				if (page_data.hasOwnProperty("missing") || page_id === -1) { //non exitings page may contain missing=""
-					page.exists = false;
-					page.slots_changed['main'] = true; //to create an empty page
-				}
-				else {
-					page.exists = true;
-					page.content = page_data.revisions[0].slots["main"]["*"]; //deprecated main slot content
-					var page_slots = page_data.revisions[0].slots;
-					for (var slot_key of Object.keys(page_slots)) {
-						var slot = page_data.revisions[0].slots[slot_key];
-						page.slots_changed[slot_key] = false;
-						page.content_model[slot_key] = slot.contentmodel;
-						if (slot.contentmodel === 'json') {
-							if (slot_key == 'jsondata') {
-								page.slots[slot_key] = slot["*"];
-								//page.slots[slot_key] = JSON.parse(slot["*"]);
-								//page.schema.properties[slot_key] = { "type": "string", "format": "json" }; //Todo: Fetch schema from categories
-								page.schema.properties[slot_key] = { "type": "string", "format": "textarea", "options": {"wikieditor": "jsoneditors"} };
-								//page.schema.properties[slot_key] = { "$ref": "/wiki/MediaWiki:Slot-jsonschema-jsondata.json?action=raw" };
-							}
-							else if (slot_key == 'jsonschema') {
-								page.slots[slot_key] = slot["*"];
-								//page.schema.properties[slot_key] = { "type": "string", "format": "json" }; //Todo: Fetch schema from categories
-								page.schema.properties[slot_key] = { "type": "string", "format": "textarea", "options": {"wikieditor": "jsoneditors"} };
-								/*page.slots[slot_key] = JSON.parse(slot["*"]);
-								//page.schema.properties[slot_key] = { "$ref": "/wiki/MediaWiki:Slot-jsonschema-jsonschema.json?action=raw" };
-								//page.schema.properties[slot_key] = { "$ref": "/w/extensions/MwJson/modules/ext.MwJson.editor/jsonschema-jsonschema.json" }; //from https://github.com/wclssdn/JSONSchemaCreator/blob/0544223fb43ebd4c8614ea97b275cae38f2c015c/dist/en.js
-								page.schema.definitions = mwjson.schema.jsonschema_jsonschema_definitions;
-								page.schema.properties[slot_key] = mwjson.schema.jsonschema_jsonschema_root;
-								*/
-							}
-							else {
-								page.slots[slot_key] = slot["*"];
-								page.schema.properties[slot_key] = { "type": "string", "format": "json" };
-							}
-						}
-						else {
-							page.slots[slot_key] = slot["*"]; //default: text
-							if (slot_key === 'main') page.schema.properties[slot_key] = { "type": "string", "format": "textarea", "options": {"wikieditor": "novisualeditor"} };
-							else page.schema.properties[slot_key] = { "type": "string", "format": "handlebars", "options": {"wikieditor": ""} };
-						}
-					}
-
-				}
-				var site_slots = mw.config.get('wgWSSlotsDefinedSlots');
-				if (site_slots) {
-					for (var slot_key of Object.keys(site_slots)) {
-						var slot_schema = { "type": "string", "format": "handlebars" };
-						page.content_model[slot_key] = site_slots[slot_key]['content_model'];
-						if (site_slots[slot_key]['content_model'] == 'json') slot_schema['format'] = 'json';
-						if (!page.schema.properties[slot_key]) page.schema.properties[slot_key] = slot_schema;
-						//if (slot_key === 'jsondata') page.schema.properties[slot_key] = { "$ref": "/wiki/MediaWiki:Slot-jsonschema-jsondata.json?action=raw" };
-					}
 				}
 			}
-			console.log(page);
-			deferred.resolve(page);
-		});
-		return deferred.promise();
+		};
+
+		//if (!(page_data.hasOwnProperty("missing") && page_data.missing === true)) {
+		if (page_data.hasOwnProperty("missing") || page_id === -1) { //non exitings page may contain missing=""
+			page.exists = false;
+			page.slots_changed['main'] = true; //to create an empty page
+		}
+		else {
+			page.exists = true;
+			page.content = page_data.revisions[0].slots["main"]["*"]; //deprecated main slot content
+			var page_slots = page_data.revisions[0].slots;
+			for (var slot_key of Object.keys(page_slots)) {
+				var slot = page_data.revisions[0].slots[slot_key];
+				page.slots_changed[slot_key] = false;
+				page.content_model[slot_key] = slot.contentmodel;
+				if (slot.contentmodel === 'json') {
+					if (slot_key == 'jsondata') {
+						page.slots[slot_key] = slot["*"];
+						//page.slots[slot_key] = JSON.parse(slot["*"]);
+						//page.schema.properties[slot_key] = { "type": "string", "format": "json" }; //Todo: Fetch schema from categories
+						page.schema.properties[slot_key] = { "type": "string", "format": "textarea", "options": { "wikieditor": "jsoneditors" } };
+						//page.schema.properties[slot_key] = { "$ref": "/wiki/MediaWiki:Slot-jsonschema-jsondata.json?action=raw" };
+					}
+					else if (slot_key == 'jsonschema') {
+						page.slots[slot_key] = slot["*"];
+						//page.schema.properties[slot_key] = { "type": "string", "format": "json" }; //Todo: Fetch schema from categories
+						page.schema.properties[slot_key] = { "type": "string", "format": "textarea", "options": { "wikieditor": "jsoneditors" } };
+						/*page.slots[slot_key] = JSON.parse(slot["*"]);
+						//page.schema.properties[slot_key] = { "$ref": "/wiki/MediaWiki:Slot-jsonschema-jsonschema.json?action=raw" };
+						//page.schema.properties[slot_key] = { "$ref": "/w/extensions/MwJson/modules/ext.MwJson.editor/jsonschema-jsonschema.json" }; //from https://github.com/wclssdn/JSONSchemaCreator/blob/0544223fb43ebd4c8614ea97b275cae38f2c015c/dist/en.js
+						page.schema.definitions = mwjson.schema.jsonschema_jsonschema_definitions;
+						page.schema.properties[slot_key] = mwjson.schema.jsonschema_jsonschema_root;
+						*/
+					}
+					else {
+						page.slots[slot_key] = slot["*"];
+						page.schema.properties[slot_key] = { "type": "string", "format": "json" };
+					}
+				}
+				else {
+					page.slots[slot_key] = slot["*"]; //default: text
+					if (slot_key === 'main') page.schema.properties[slot_key] = { "type": "string", "format": "textarea", "options": { "wikieditor": "novisualeditor" } };
+					else page.schema.properties[slot_key] = { "type": "string", "format": "handlebars", "options": { "wikieditor": "" } };
+				}
+			}
+
+		}
+		var site_slots = mw.config.get('wgWSSlotsDefinedSlots');
+		if (site_slots) {
+			for (var slot_key of Object.keys(site_slots)) {
+				var slot_schema = { "type": "string", "format": "handlebars" };
+				page.content_model[slot_key] = site_slots[slot_key]['content_model'];
+				if (site_slots[slot_key]['content_model'] == 'json') slot_schema['format'] = 'json';
+				if (!page.schema.properties[slot_key]) page.schema.properties[slot_key] = slot_schema;
+				//if (slot_key === 'jsondata') page.schema.properties[slot_key] = { "$ref": "/wiki/MediaWiki:Slot-jsonschema-jsondata.json?action=raw" };
+			}
+		}
+
+		return page;
 	}
 
 	static getFilePage(name, dataType = "text") {
@@ -170,7 +192,7 @@ mwjson.api = class {
 		);
 	}
 
-	static editSlots(page, summary = "", mode = 'action-multislot'){
+	static editSlots(page, summary = "", mode = 'action-multislot') {
 		if (mode === 'action-multislot') {
 			var params = {
 				action: 'editslots',
@@ -210,7 +232,7 @@ mwjson.api = class {
 		}
 	}
 
-	static copyPageContent(sourcePage, targetPage){
+	static copyPageContent(sourcePage, targetPage) {
 		for (var slot_key of Object.keys(sourcePage.slots)) {
 			targetPage.slots[slot_key] = sourcePage.slots[slot_key];
 			targetPage.content_model[slot_key] = sourcePage.content_model[slot_key];
@@ -373,6 +395,23 @@ mwjson.api = class {
 		return deferred.promise();
 	}
 
+	static getPagesFromAskQuery(query) {
+		const deferred = $.Deferred();
+		var api = new mw.Api();
+		api.get({
+			action: 'ask',
+			query: query,
+			format: 'json',
+		}).then(data => {
+			let titles = Object.keys(data.query.results);
+			mwjson.api.getPages(titles)
+				.then(pages => deferred.resolve(pages));
+		}).catch((error) => {
+			deferred.reject(error);
+		});
+		return deferred.promise();
+	}
+
 	static getSemanticProperties(title, mode = 'html') {
 		const deferred = $.Deferred();
 
@@ -495,23 +534,23 @@ mwjson.api = class {
 			.then(response => response.json())
 			.then(data => {
 				var label_dict = {};
-				
+
 				for (const title of titles) label_dict[title] = title; //set default
 
 				for (const result_key of Object.keys(data.query.results)) {
 					let result = data.query.results[result_key];
 					var label = "";
-					if (result) 
+					if (result)
 						if (result.printouts.label)
 							if (result.printouts.label[0])
 								if (result.printouts.label[0].Text) { //multi lang label
 									if (result.printouts.label[0].Text.item)
 										if (result.printouts.label[0].Text.item[0])
 											label = result.printouts.label[0].Text.item[0];
-											label_dict[title] = label;
+									label_dict[title] = label;
 								}
 								else label = result.printouts.label[0]
-					
+
 					if (label !== "") {
 						label_dict[result.fulltext] = label
 						if (result.printouts.uuid && result.printouts.uuid[0]) label_dict[result.printouts.uuid[0]] = label
@@ -524,12 +563,12 @@ mwjson.api = class {
 						if (label_dict[uuid]) label_dict[title] = label_dict[uuid];
 					}
 				}
-				
+
 				deferred.resolve(label_dict);
 			},
-			(error) => {
-				deferred.reject(error);
-			});
+				(error) => {
+					deferred.reject(error);
+				});
 
 		return deferred.promise();
 	}
@@ -545,7 +584,7 @@ mwjson.api = class {
 			format: 'json',
 		}).done(function (data) {
 
-			
+
 			console.log(data);
 			if (params.display_mode === "embedded") {
 				mw.config.set(data.parse.jsconfigvars);
@@ -571,10 +610,10 @@ mwjson.api = class {
 				//console.log($('<iframe id="someId"/>').appendTo(params.container).contents().find('body'))
 				//$iframe.contents().filter('body').html($(data.parse.text['*']));
 				//$('body', $header).append(data.parse.text['*']);
-				
+
 				//let $header = $( '<div></div>' )
 				const parser = new DOMParser();
-				
+
 				//$header.html(data.parse.headhtml['*'] + data.parse.text['*'] + "</body>");
 				const htmlDoc = parser.parseFromString(data.parse.headhtml['*'] + data.parse.text['*'] + "</body>", 'text/html');
 				//$('body', $header).html($(data.parse.text['*']));
@@ -585,7 +624,7 @@ mwjson.api = class {
 				console.log(htmlDoc.documentElement.innerHTML);
 				params.container.innerHTML = "";
 				$('<iframe>', {
-					srcdoc:htmlDoc.documentElement.innerHTML,
+					srcdoc: htmlDoc.documentElement.innerHTML,
 					frameborder: 0,
 					style: "width:100%;height: 95%;",
 					allow: "fullscreen",
@@ -595,16 +634,16 @@ mwjson.api = class {
 					//$(this).contents().find('head').append($('head').children().clone());
 					//$(this).contents().find('head').append($(data.parse.headhtml['*']).children());
 					//$(this).contents().find('head').append($('<script>mw.loader.using("ext.smw.style", "ext.smw.tooltips", "ext.srf.datatables");</script>'));
-					
+
 				});
-				
+
 
 			}
 
-			deferred.resolve({html: data.parse.text['*']});
+			deferred.resolve({ html: data.parse.text['*'] });
 		});
 		return deferred.promise();
-		
+
 	}
 
 	static getUserInfo() {
@@ -614,7 +653,7 @@ mwjson.api = class {
 			userCanRead: false,
 			userCanEdit: false
 		};
-		
+
 		new mw.Api().getUserInfo().then(data => {
 			userInfo = data;
 			userInfo.userCanRead = userInfo.rights.includes('read');
