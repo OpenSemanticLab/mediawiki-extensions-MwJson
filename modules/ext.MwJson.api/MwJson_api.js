@@ -332,10 +332,14 @@ mwjson.api = class {
 		return deferred.promise();
 	}
 
-	static updatePage(page, summary = "") {
+	static updatePage(page, meta) {
 		const deferred = $.Deferred();
 		const hasChangedFile = ('file' in page && page.file.changed);
 		var slots_changed = false;
+		meta = meta || {comment: ""};
+		if (mwjson.util.isString(meta)) meta = {comment: meta}; //backwards compatibility
+		var summary = meta.comment;
+
 		for (var slot_key of Object.keys(page.slots)) { if (page.slots_changed[slot_key]) slots_changed = true; }
 		if (!page.exists && page.title && (page.content || page.slots['main'])) {
 			mwjson.api.createPage(page.title, page.content, summary).then((data) => {

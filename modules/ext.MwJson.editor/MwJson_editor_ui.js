@@ -10,14 +10,19 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
             "dialog-title": "JSONEditor",
             "continue": "Continue",
             "cancel": "Cancel",
-            "toggle-fullscreen": "Leave / enter fullscreen"
+            "toggle-fullscreen": "Leave / enter fullscreen",
+            "edit-comment": mw.message("mwjson-editor-edit-comment-input-label").text(),
+            "edit-comment-placeholder": mw.message("mwjson-editor-edit-comment-input-placeholder").text(),
+            "edit-comment-tooltip": mw.message("mwjson-editor-edit-comment-input-tooltip").text()
         },
         redirect: (page) => {
             var params = { "veaction": "edit" };
             if (!page.exists) params["redlink"] = 1;
             return new mw.Title(page.title).getUrl(params);
         },
-        new_window: false
+        new_window: false,
+        edit_comment: true,
+        edit_comment_required: false
     };
 
     _config = mwjson.util.mergeDeep(defaultConfig, _config);
@@ -32,7 +37,7 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
     Dialog.static.name = 'CreatePageDialog';
     // Specify the static configurations: title and action set
     Dialog.static.title = _config.msg["dialog-title"];
-    Dialog.static.actions = [        
+    Dialog.static.actions = [
         {
             flags: 'safe',
             label: _config.msg['cancel']
@@ -42,9 +47,11 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
         Dialog.static.actions.push({
             flags: 'primary',
             label: _config.msg['continue'],
-            action: 'create'
+            action: 'create',
+            disabled: _config.edit_comment_required
         });
     }
+    else _config.edit_comment = false; // diable comment in query form
     if (_config.toggle_fullscreen) {
         Dialog.static.actions.push(
             {
@@ -61,20 +68,39 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
             padded: true,
             expanded: false
         });
+
+        if (_config.edit_comment) {
+            this.content = new OO.ui.FieldsetLayout();
+            this.commentInput = new OO.ui.TextInputWidget();
+            let commentFieldLabelDetails = _config.edit_comment_required ?
+                mw.message('mwjson-editor-required').text() : mw.message('mwjson-editor-optional').text();
+            let commentFieldLabel = _config.msg['edit-comment'] + ' (' + commentFieldLabelDetails + ')';
+            this.commentField = new OO.ui.FieldLayout(this.commentInput, {
+                label: commentFieldLabel,
+                placeholder: _config.msg['edit-comment-placeholder'],
+                title: _config.msg['edit-comment-tooltip'],
+                align: 'left'
+            });
+            this.content.addItems([this.commentField]);
+            this.panel.$element.append(this.content.$element);
+            if (_config.edit_comment_required) this.commentInput.connect(this, { 'change': 'onCommentInputChange' });
+        }
+
         if (editor.config.mode === 'query') {
             editor.config.result_container_id = editor.config.id + '_query';
             this.panel.$element.append($('<div id="' + editor.config.result_container_id + '" style="height:300px;overflow:auto"><div>'));
         }
-        this.panel.$element.append($('<div id="' + editor.config.id + '" style="height:500px"><div>'));
+        this.panel.$element.append($('<div id="' + editor.config.id + '" style="min-height:500px;"><div>'));
         this.$body.append(this.panel.$element);
     };
 
-    // Specify any additional functionality required by the window (disable creating an empty URL, in this case)
-    /*Dialog.prototype.onTitleInputChange = function (value) {
+    // Specify any additional functionality required by the window (disable creating an empty comment, in this case)
+    // only called when _config.edit_comment_required === true
+    Dialog.prototype.onCommentInputChange = function (value) {
         this.actions.setAbilities({
             create: !!value.length
         });
-    };*/
+    };
 
     // Specify the dialog height (or don't to use the automatically generated height).
     Dialog.prototype.getBodyHeight = function () {
@@ -100,7 +126,12 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
         if (action === 'create') {
             // Create a new process to handle the action
             return new OO.ui.Process(function () {
-                editor._onsubmit(editor.jsoneditor.getValue())
+                let meta = {};
+                if (_config.edit_comment) 
+                    meta.comment = this.commentInput.getValue();
+                editor._onsubmit(
+                    editor.jsoneditor.getValue(), meta
+                )
                     .then(() => dialog.close({ action: action }))
                     .catch();
             }, this);

@@ -1,7 +1,7 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.11.0",
+    "version":"0.12.0",
     "author":[
         "[https://github.com/simontaurus Simon Stier]"
     ],
@@ -101,7 +101,12 @@
             "position":"bottom",
             "messages": [
                 "mwjson-editor-fetch-external-data",
-                "mwjson-editor-fetch-external-data-requires"
+                "mwjson-editor-fetch-external-data-requires",
+                "mwjson-editor-optional",
+                "mwjson-editor-required",
+                "mwjson-editor-edit-comment-input-label",
+                "mwjson-editor-edit-comment-input-placeholder",
+                "mwjson-editor-edit-comment-input-tooltip"
             ]
         },
         "ext.mwjson.editor.ace":{

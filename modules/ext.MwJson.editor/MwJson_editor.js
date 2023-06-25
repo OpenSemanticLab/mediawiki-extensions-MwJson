@@ -400,7 +400,7 @@ mwjson.editor = class {
 			});
 	}
 
-	_onsubmit(json) {
+	_onsubmit(json, meta) {
 		const promise = new Promise((resolve, reject) => {
 			this.getSyntaxErrors().then((errors) => {
 				if(errors.length) {
@@ -410,7 +410,7 @@ mwjson.editor = class {
 					).done( ( confirmed ) => {
 					if ( confirmed ) {
 						if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-do-not-close-window").text(), { title: mw.message("mwjson-editor-saving").text() + "...", type: 'warn'});
-						const submit_promise = this.config.onsubmit(json);
+						const submit_promise = this.config.onsubmit(json, meta);
 							if (submit_promise) submit_promise.then(() => {
 								resolve();
 						if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success'});
@@ -426,7 +426,7 @@ mwjson.editor = class {
 			}
 			else {
 				if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-do-not-close-window").text(), { title: mw.message("mwjson-editor-saving").text() + "...", type: 'warn'});
-				const submit_promise = this.config.onsubmit(json);
+				const submit_promise = this.config.onsubmit(json, meta);
 					console.log(submit_promise);
 					if (submit_promise) submit_promise.then(() => {
 						resolve();
@@ -442,12 +442,14 @@ mwjson.editor = class {
 		return promise;
 	}
 
-	onsubmit(json) {
-		if (this.config.mode === 'default') return this.onsubmitPage(json);
-		else if (this.config.mode === 'query') return this.onsubmitQuery(json);
+	onsubmit(json, meta) {
+		if (this.config.mode === 'default') return this.onsubmitPage(json, meta);
+		else if (this.config.mode === 'query') return this.onsubmitQuery(json, meta);
 	}
 
-	onsubmitPage(json) {
+	onsubmitPage(json, meta) {
+		meta = meta || {}
+		meta.comment = meta.comment || "Edited with JsonEditor";
 		const promise = new Promise((resolve, reject) => {
 			if (!this.config.target) {
 				this.config.target = "";
@@ -477,7 +479,7 @@ mwjson.editor = class {
 					page.slots[this.config.target_slot] = json;
 					page.slots_changed[this.config.target_slot] = true;
 				}
-				mwjson.api.updatePage(page, "Edited with JsonEditor").then(() => {
+				mwjson.api.updatePage(page, meta).then(() => {
 					resolve();
 					window.location.href = "/wiki/" + page.title
 				});
@@ -516,7 +518,7 @@ mwjson.editor = class {
 		});*/
 	}
 
-	onsubmitQuery(json) {
+	onsubmitQuery(json, meta) {
 		const $result_container = $('#' + this.config.result_container_id);
 		$result_container.html("");
 		var wikitext = this.jsonschema.getSemanticQuery({jsondata: json}).wikitext;
