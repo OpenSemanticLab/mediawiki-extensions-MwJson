@@ -59,7 +59,8 @@ mwjson.util = class {
 	}
 
 	static stripNamespace(title) {
-		return title.split(":")[title.split(":").length - 1]
+		if (title.includes(":")) return title.replace(title.split(":")[0] + ":", "");
+		else return title;
 	}
 
 	static objectToCompressedBase64(object) {
