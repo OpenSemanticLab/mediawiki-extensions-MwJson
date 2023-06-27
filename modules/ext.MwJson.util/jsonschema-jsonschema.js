@@ -81,6 +81,20 @@ mwjson.schema.jsonschema_jsonschema_definitions = {
                         },
                         "wysiwyg": {
                             "type": "boolean"
+                        },
+                        "autocomplete": {
+                            "type": "object",
+                            "properties": {
+                                "category": {
+                                    "type": "string",
+                                    "format": "autocomplete",
+                                    "options": {
+                                        "autocomplete": {
+                                            "query": "[[HasType::Category:Category]]|?Display_title_of=label|?HasImage=image|HasDescription=description"
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -88,6 +102,7 @@ mwjson.schema.jsonschema_jsonschema_definitions = {
                     "type": "string",
                     "propertyOrder": 20,
                     "enum": [
+                        "autocomplete",
                         "color",
                         "date",
                         "datetime",
@@ -676,6 +691,9 @@ mwjson.schema.jsonschema_jsonschema_definitions = {
                 "type": "object"
             },
             "oneOf": [
+                /*{
+                    "title": "Any",
+                },*/
                 {
                     "title": "Object",
                     "additionalProperties": false,
