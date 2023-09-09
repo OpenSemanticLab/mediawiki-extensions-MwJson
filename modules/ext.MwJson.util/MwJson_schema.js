@@ -16,6 +16,58 @@ mwjson.schema = class {
         this._context = {};
         this.subschemas_uuids = [];
         this.data_source_maps = [];
+
+        // custom resolver to catch different notation of relative urls
+        // see https://apitools.dev/json-schema-ref-parser/docs/plugins/resolvers.html
+        // testcases
+        /*
+            /wiki/Category:Item?action=raw&slot=jsonschema
+            ./Category:Item?action=raw&slot=jsonschema
+            ./index.php?title=Category:Item&action=raw&slot=jsonschema
+            /wiki/Category:Item
+            ./Category:Item
+            ./index.php?title=Category:Item
+            https://test.com/wiki/Category:Item?action=raw&slot=jsonschema
+            https://test.com/Category:Item?action=raw&slot=jsonschema
+            https://test.com/w/index.php?title=Category:Item&action=raw&slot=jsonschema
+            https://test3.com/wiki/Category:Item //external domain, will not be handled
+            https://test.com/Category:Item
+            https://test.com/index.php?title=Category:Item
+        */
+        let server = mw.config.get("wgServer")
+        server = server.split("//")[server.split("//").length-1];
+        server=server.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // escape for use in regex, e. g. '.' => '\.'
+        let regex = new RegExp("^(?<domain>.*" + server + ")?(?<base>[^:]*)\/(.*title=)?(?<title>[^?&]*?)(?<params>[?&].*)?$");
+        this.title_regex = regex;
+        this.resolver = {
+            order: 1,
+            canRead: regex,
+            read: (file, callback, $refs) => {
+                let url = file.url;
+                let query = new mw.Uri(file.url).query;
+                let match = regex.exec(file.url);
+                if (match && match.groups && match.groups.title) {
+                    url = match.groups.title;
+                    if ("title" in query) {
+                        delete query["title"];
+                    }
+                    // generate a guaranteed valid url to the target page and append query params (except 'title')
+                    url = mw.util.getUrl( match.groups.title, query );
+                }
+                fetch(url)
+                    .then(response => {
+                        if (!response.ok) {
+                            callback(new Error("HTTP error " + response.status));
+                        }
+                        else {
+                            return response.text();
+                        }
+                    })
+                    .then(text => {
+                        callback(null, text);
+                    })
+            }
+        }
     }
 
     static selftest() {
@@ -26,6 +78,7 @@ mwjson.schema = class {
                 number_max: "Property:HasNumber",
                 date_min: "Property:HasDate"
             },
+            allOf: {$ref: "./Category:TestCategory"},
             properties: {
                 test: { title: "Test", type: "string" },
                 number_max: { title: "Number", type: "string", format: "number", options: { role: { query: { filter: "max" } } } },
@@ -74,7 +127,7 @@ mwjson.schema = class {
         const promise = new Promise((resolve, reject) => {
 
             if (this.getSchema()) {
-                $RefParser.bundle(this.getSchema(), (error, schema) => {
+                $RefParser.bundle(this.getSchema(), {resolve: {wiki: this.resolver}}, (error, schema) => {
                     if (error) {
                         console.error(error);
                         reject(error);
@@ -210,11 +263,17 @@ mwjson.schema = class {
         var allOf = jsonschema['allOf'];
         if (mwjson.util.isDefined(allOf)) {
             if (!mwjson.util.isArray(allOf)) allOf = [allOf]; // "allOf": {"$ref": "/wiki/Category:Test?action=raw"}
-            for (const [p, v] of Object.entries(allOf)) { // "allOf": [{"$ref": "/wiki/Category:Test?action=raw"}]
-                if (p === '$ref') {
-                    var category = v.split("Category:")[1].split('?')[0];  // e.g. "/wiki/Category:Test?action=raw"
-                    if (includeNamespace) { category = "Category:" + category };
-                    categories.push(category);
+            for (const e of allOf) {
+                for (const [p, v] of Object.entries(e)) { // "allOf": [{"$ref": "/wiki/Category:Test?action=raw"}]
+                    if (p === '$ref') {
+                        console.log("Test");
+                        let match = this.title_regex.exec(v);
+                        if (match && match.groups && match.groups.title) {
+                            var category = match.groups.title;  // e.g. "Category:Test"
+                            if (!includeNamespace) { category = category.replaceAll("Category:", "") };
+                            categories.push(category);
+                        }
+                    }
                 }
             }
         }
@@ -394,8 +453,8 @@ mwjson.schema = class {
         }
         return {type: ["handlebars"], value: "" +
         '<div class="mw-parser-output">{{#if result.printouts.image.[0].fulltext}}<div class="floatright">' +
-        '<img style="height:66" src="/wiki/Special:Redirect/file/{{result.printouts.image.[0].fulltext}}?width=100&height=50"></img></div></div><br>{{/if}}' +
-        "<a href='/wiki/{{result.fulltext}}'>{{result.printouts.label.[0]}}</a>" + 
+        '<img style="height:66" src="./Special:Redirect/file/{{result.printouts.image.[0].fulltext}}?width=100&height=50"></img></div></div><br>{{/if}}' +
+        "<a href='./{{result.fulltext}}'>{{result.printouts.label.[0]}}</a>" + 
         "{{#if result.printouts.description.[0]}}<br>{{result.printouts.description.[0]}}{{/if}}"
         };
     }

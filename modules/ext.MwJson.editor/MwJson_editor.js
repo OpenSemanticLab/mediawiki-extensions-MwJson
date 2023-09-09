@@ -481,7 +481,7 @@ mwjson.editor = class {
 				}
 				mwjson.api.updatePage(page, meta).then(() => {
 					resolve();
-					window.location.href = "/wiki/" + page.title
+					window.location.href = mw.util.getUrl(page.title);
 				});
 			}).catch();
 		});

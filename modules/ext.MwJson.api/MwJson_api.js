@@ -89,15 +89,15 @@ mwjson.api = class {
 						//page.slots[slot_key] = JSON.parse(slot["*"]);
 						//page.schema.properties[slot_key] = { "type": "string", "format": "json" }; //Todo: Fetch schema from categories
 						page.schema.properties[slot_key] = { "type": "string", "format": "textarea", "options": { "wikieditor": "jsoneditors" } };
-						//page.schema.properties[slot_key] = { "$ref": "/wiki/MediaWiki:Slot-jsonschema-jsondata.json?action=raw" };
+						//page.schema.properties[slot_key] = { "$ref": mw.util.getUrl( "MediaWiki:Slot-jsonschema-jsondata.json", {"action": "raw"} ) };
 					}
 					else if (slot_key == 'jsonschema') {
 						page.slots[slot_key] = slot["*"];
 						//page.schema.properties[slot_key] = { "type": "string", "format": "json" }; //Todo: Fetch schema from categories
 						page.schema.properties[slot_key] = { "type": "string", "format": "textarea", "options": { "wikieditor": "jsoneditors" } };
 						/*page.slots[slot_key] = JSON.parse(slot["*"]);
-						//page.schema.properties[slot_key] = { "$ref": "/wiki/MediaWiki:Slot-jsonschema-jsonschema.json?action=raw" };
-						//page.schema.properties[slot_key] = { "$ref": "/w/extensions/MwJson/modules/ext.MwJson.editor/jsonschema-jsonschema.json" }; //from https://github.com/wclssdn/JSONSchemaCreator/blob/0544223fb43ebd4c8614ea97b275cae38f2c015c/dist/en.js
+						//page.schema.properties[slot_key] = { "$ref": mw.util.getUrl( "MediaWiki:Slot-jsonschema-jsonschema.json, {"action": "raw"} ) };
+						//page.schema.properties[slot_key] = { "$ref": mw.config.get("wgScriptPath") + "/extensions/MwJson/modules/ext.MwJson.editor/jsonschema-jsonschema.json" }; //from https://github.com/wclssdn/JSONSchemaCreator/blob/0544223fb43ebd4c8614ea97b275cae38f2c015c/dist/en.js
 						page.schema.definitions = mwjson.schema.jsonschema_jsonschema_definitions;
 						page.schema.properties[slot_key] = mwjson.schema.jsonschema_jsonschema_root;
 						*/
@@ -122,7 +122,7 @@ mwjson.api = class {
 				page.content_model[slot_key] = site_slots[slot_key]['content_model'];
 				if (site_slots[slot_key]['content_model'] == 'json') slot_schema['format'] = 'json';
 				if (!page.schema.properties[slot_key]) page.schema.properties[slot_key] = slot_schema;
-				//if (slot_key === 'jsondata') page.schema.properties[slot_key] = { "$ref": "/wiki/MediaWiki:Slot-jsonschema-jsondata.json?action=raw" };
+				//if (slot_key === 'jsondata') page.schema.properties[slot_key] = { "$ref": mw.util.getUrl( "MediaWiki:Slot-jsonschema-jsondata.json", {"action": "raw"} ) };
 			}
 		}
 
@@ -135,7 +135,7 @@ mwjson.api = class {
 			page.file = { name: name, changed: false };
 			if (page.exists && dataType == "text") {
 				$.ajax({
-					url: "/wiki/Special:Redirect/file/" + name,
+					url: mw.util.getUrl("Special:Redirect/file/" + name),
 					dataType: dataType,
 					success: function (data) {
 						page.file.exists = true;
