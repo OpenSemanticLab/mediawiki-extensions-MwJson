@@ -6,7 +6,7 @@ mwjson.api = class {
 
 	static getPage(title) {
 		const deferred = $.Deferred();
-		//$.getJSON(`/w/api.php?action=query&prop=revisions&titles=${title}&rvprop=content|contentmodel&rvslots="*"&format=json`, function(data) {
+		//$.getJSON(mw.config.get("wgScriptPath") + `/api.php?action=query&prop=revisions&titles=${title}&rvprop=content|contentmodel&rvslots="*"&format=json`, function(data) {
 		var api = new mw.Api();
 		api.get({
 			action: 'query',
@@ -32,7 +32,7 @@ mwjson.api = class {
 
 	static getPages(titles) {
 		const deferred = $.Deferred();
-		//$.getJSON(`/w/api.php?action=query&prop=revisions&titles=${title}&rvprop=content|contentmodel&rvslots="*"&format=json`, function(data) {
+		//$.getJSON(mw.config.get("wgScriptPath") + `/api.php?action=query&prop=revisions&titles=${title}&rvprop=content|contentmodel&rvslots="*"&format=json`, function(data) {
 		var api = new mw.Api();
 		api.get({
 			action: 'query',
@@ -434,7 +434,7 @@ mwjson.api = class {
 
 		//only html mode can retrieve inverse properties
 		if (mode === 'html') {
-			const query = `/w/api.php?action=smwbrowse&browse=subject&params={"subject":"${encodeURIComponent(subject)}","subobject":"${subObject}","options":{"showAll":"true"}, "ns":${namespace_id}, "type":"html"}&format=json`;
+			const query = mw.config.get("wgScriptPath") + `/api.php?action=smwbrowse&browse=subject&params={"subject":"${encodeURIComponent(subject)}","subobject":"${subObject}","options":{"showAll":"true"}, "ns":${namespace_id}, "type":"html"}&format=json`;
 			fetch(query)
 				.then(response => response.json())
 				.then(data => {
@@ -481,7 +481,7 @@ mwjson.api = class {
 		}
 
 		else {
-			const query = `/w/api.php?action=smwbrowse&browse=subject&params={"subject":"${encodeURIComponent(subject)}","subobject":"${subObject}","options":{"showAll":"true"}, "ns":${namespace_id}, "type":"json"}&format=json`;
+			const query = mw.config.get("wgScriptPath") + `/api.php?action=smwbrowse&browse=subject&params={"subject":"${encodeURIComponent(subject)}","subobject":"${subObject}","options":{"showAll":"true"}, "ns":${namespace_id}, "type":"json"}&format=json`;
 			fetch(query)
 				.then(response => response.json())
 				.then(data => {
@@ -516,7 +516,7 @@ mwjson.api = class {
 
 		var titles = [...new Set(titles)]; //filter duplicates
 
-		var query = "/w/api.php?action=ask&query=";
+		var query = mw.config.get("wgScriptPath") + "/api.php?action=ask&query=";
 		var first = true;
 		for (const title of titles) {
 			if (!first) query += "OR";

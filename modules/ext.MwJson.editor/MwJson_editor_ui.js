@@ -207,7 +207,7 @@ mwjson.editor.createAutocompleteInput = function (config) {
 
     new Autocomplete('#' + config.div_id, {
         search: input => {
-            const url = `/w/api.php?action=ask&query=${config.query(input)}&format=json`;
+            const url = mw.config.get("wgScriptPath") + `/api.php?action=ask&query=${config.query(input)}&format=json`;
             return new Promise(resolve => {
                 if (input.length < config.minInputLen) { return resolve([]); }
                 fetch(url)
@@ -225,7 +225,7 @@ mwjson.editor.createAutocompleteInput = function (config) {
         renderResult: (result, props) => {
             if (config.renderMode == "html") return config.renderResult(result, props);
             if (config.renderMode == "wikitext") {
-                var renderUrl = '/w/api.php?action=parse&format=json&text=';
+                var renderUrl = mw.config.get("wgScriptPath") + '/api.php?action=parse&format=json&text=';
                 renderUrl += encodeURIComponent(config.renderResult(result, props));
                 new Promise(resolve => {
                     //console.log("Render-URL: " + renderUrl);
@@ -325,7 +325,7 @@ mwjson.editor.createPageDialog = function (_config) {
         },
         onSubmit: result => {
             _config.template = result.fulltext;
-            var renderUrl = '/w/api.php?action=parse&format=json&page=';
+            var renderUrl = mw.config.get("wgScriptPath") + '/api.php?action=parse&format=json&page=';
             renderUrl += encodeURIComponent(result.fulltext);
             new Promise(resolve => {
                 //console.log("Render-URL: " + renderUrl);

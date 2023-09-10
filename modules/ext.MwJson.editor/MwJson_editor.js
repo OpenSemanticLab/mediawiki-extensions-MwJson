@@ -533,7 +533,7 @@ mwjson.editor = class {
 		$result_container.html("");
 		var wikitext = this.jsonschema.getSemanticQuery({jsondata: json}).wikitext;
 		console.log("wikitext", wikitext);
-		//var renderUrl = '/w/api.php?action=parse&format=json&text=';
+		//var renderUrl = mw.config.get("wgScriptPath") + '/api.php?action=parse&format=json&text=';
 		//renderUrl += encodeURIComponent(wikitext);
 		new Promise(resolve => {
 			//console.log("Render-URL: " + renderUrl);
@@ -580,7 +580,7 @@ mwjson.editor = class {
 				//$.getScript("https://cdn.jsdelivr.net/npm/ace-builds@latest/src-noconflict/ace.min.js"),
 				mw.loader.using(mw_modules), 
 				//mw.loader.using('ext.wikiEditor'),
-				//$.getScript("/w/extensions/MwJson/modules/ext.MwJson.editor/json-schema-ref-parser.js"),
+				//$.getScript(mw.config.get("wgScriptPath") + "/extensions/MwJson/modules/ext.MwJson.editor/json-schema-ref-parser.js"),
 				$.Deferred(function (deferred) {
 					$(deferred.resolve);
 				})
@@ -655,9 +655,9 @@ mwjson.editor = class {
 			"wrap": true,
 			"useWorker": true
 		};
-		ace.config.set("basePath", "/w/extensions/MwJson/modules/ext.MwJson.editor.ace");
-		ace.config.set("workerPath", "/w/extensions/MwJson/modules/ext.MwJson.editor.ace");
-		ace.config.setModuleUrl('ace/mode/json_worker', "/w/extensions/MwJson/modules/ext.MwJson.editor.ace/worker-json.js");
+		ace.config.set("basePath", mw.config.get("wgScriptPath") + "/extensions/MwJson/modules/ext.MwJson.editor.ace");
+		ace.config.set("workerPath", mw.config.get("wgScriptPath") + "/extensions/MwJson/modules/ext.MwJson.editor.ace");
+		ace.config.setModuleUrl('ace/mode/json_worker', mw.config.get("wgScriptPath") + "/extensions/MwJson/modules/ext.MwJson.editor.ace/worker-json.js");
 		window.JSONEditor.defaults.options.upload.upload_handler = "fileUpload";
 	}
 
@@ -708,7 +708,7 @@ mwjson.editor = class {
 					query = template(jsondata);
 					var result_property = mwjson.schema.getAutocompleteResultProperty(jseditor_editor.schema);
 					console.log("Search with schema: " + query);
-					var url = `/w/api.php?action=ask&query=${query}|limit=10000&format=json`;
+					var url = mw.config.get("wgScriptPath") + `/api.php?action=ask&query=${query}|limit=10000&format=json`;
 					//replace params
 					console.log("URL: " + url);
 
@@ -749,7 +749,7 @@ mwjson.editor = class {
 					}
 
 					if (previewTemplate.type.shift() === 'wikitext') {
-					var renderUrl = '/w/api.php?action=parse&format=json&text=';
+					var renderUrl = mw.config.get("wgScriptPath") + '/api.php?action=parse&format=json&text=';
 						renderUrl += encodeURIComponent(previewTemplate.value);
 						previewTemplate.value = "";
 					new Promise(resolve => {
