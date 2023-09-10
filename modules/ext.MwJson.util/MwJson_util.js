@@ -195,6 +195,34 @@ mwjson.util = class {
 		document.body.removeChild(element);
 	  }
 
+	static getAbsolutePageUrl(title, params={}) {
+		return mw.util.getUrl(title, params);
+	}
+
+	static getRelativePageUrl(title, params={}, pretty=true) {
+		let url = "";
+		if (pretty) {
+			url += "./" + encodeURI(title);
+			let first = true;
+			for (const p of params) {
+				if (first) {
+					url += "?";
+					first = false;
+				}
+				else {url += "&";}
+				url += p + "=" + encodeURIComponent(params[p]);
+			}
+		}
+		else {
+			url += "." + mw.config.get("wgScriptPath") + "/index.php?title=";
+			url += encodeURIComponent(title);
+			for (const p of params) {
+				url += "&" + p + "=" + encodeURIComponent(params[p]);
+			}
+		}
+		return url;
+	}
+
 	static addBarLink(config) {
 		var defaultConfig = {
 			"location": "#p-cactions",

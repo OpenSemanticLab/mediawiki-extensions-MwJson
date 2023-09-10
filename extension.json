@@ -1,7 +1,7 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.12.4",
+    "version":"0.13.0",
     "author":[
         "[https://github.com/simontaurus Simon Stier]"
     ],
