@@ -7,6 +7,7 @@ mwjson.editor = class {
 			target_namespace: 'Item',
 			mode: "default", // options: default, query
 			submit_enabled: true, //if true, add save button
+			allow_submit_with_errors: true,
 			lang: mw.config.get('wgUserLanguage'),
 			id: 'json-editor-' + mwjson.util.getShortUid(),
 			onsubmit: (json) => this.onsubmit(json),
@@ -401,28 +402,37 @@ mwjson.editor = class {
 	}
 
 	_onsubmit(json, meta) {
+		document.activeElement.blur(); //ensure input is defocused to update final jsondata
 		const promise = new Promise((resolve, reject) => {
 			this.getSyntaxErrors().then((errors) => {
-				if(errors.length) {
-				OO.ui.confirm( 
-					mw.message("mwjson-editor-fields-contain-syntax-error").text() 
-					+ ". " + mw.message("mwjson-editor-save-anyway").text() 
-					).done( ( confirmed ) => {
-					if ( confirmed ) {
-						if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-do-not-close-window").text(), { title: mw.message("mwjson-editor-saving").text() + "...", type: 'warn'});
-						const submit_promise = this.config.onsubmit(json, meta);
-							if (submit_promise) submit_promise.then(() => {
-								resolve();
-						if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success'});
-							}).catch();
-							else {
-								resolve();
+				const validation_errors = this.jsoneditor.validate();
+				if(errors.length || validation_errors.length) {
+					let msg = mw.message("mwjson-editor-fields-contain-error").text();
+					if (this.config.allow_submit_with_errors) {
+						msg += ". " + mw.message("mwjson-editor-save-anyway").text();
+						OO.ui.confirm( msg ).done( ( confirmed ) => {
+							if ( confirmed ) {
+								if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-do-not-close-window").text(), { title: mw.message("mwjson-editor-saving").text() + "...", type: 'warn'});
+								const submit_promise = this.config.onsubmit(json, meta);
+									if (submit_promise) submit_promise.then(() => {
+										resolve();
 								if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success'});
+									}).catch();
+									else {
+										resolve();
+										if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success'});
+									}
+							} else {
+								reject();
 							}
-					} else {
-						reject();
+						} );
 					}
-				} );
+					else {
+						msg += ". " + mw.message("mwjson-editor-fix-all-errors").text();
+						OO.ui.alert( msg ).done( () => {
+							reject();
+						} );
+					}
 			}
 			else {
 				if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-do-not-close-window").text(), { title: mw.message("mwjson-editor-saving").text() + "...", type: 'warn'});
@@ -583,7 +593,8 @@ mwjson.editor = class {
 					"mwjson-editor-submit-save",
 					"mwjson-editor-submit-query",
 					"mwjson-editor-saving",
-					"mwjson-editor-fields-contain-syntax-error",
+					"mwjson-editor-fields-contain-error",
+					"mwjson-editor-fix-all-errors",
 					"mwjson-editor-save-anyway",
 					"mwjson-editor-do-not-close-window",
 					"mwjson-editor-saved",
