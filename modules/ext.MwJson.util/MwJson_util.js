@@ -28,6 +28,29 @@ mwjson.util = class {
 		return "OSW" + uuid.replaceAll("-", "");
 	}
 
+	// see https://stackoverflow.com/questions/11652681/replacing-umlauts-in-js
+	static replaceUmlaute(str) {
+
+		const umlautMap  = {
+			'\u00dc': 'UE',
+			'\u00c4': 'AE',
+			'\u00d6': 'OE',
+			'\u00fc': 'ue',
+			'\u00e4': 'ae',
+			'\u00f6': 'oe',
+			'\u00df': 'ss',
+		}
+
+		return str
+			.replace(/[\u00dc|\u00c4|\u00d6][a-z]/g, (a) => {
+			const big = umlautMap [a.slice(0, 1)];
+			return big.charAt(0) + big.charAt(1).toLowerCase() + a.slice(1);
+			})
+			.replace(new RegExp('['+Object.keys(umlautMap ).join('|')+']',"g"),
+			(a) => umlautMap [a]
+			);
+	}
+
 	static isPascalCase(str) {
 		return str.match(/[^a-zA-Z0-9]+(.)/g) === null 
 		  && str.charAt(0).toUpperCase() == str.charAt(0);
@@ -39,18 +62,28 @@ mwjson.util = class {
 	}
 
 	static toPascalCase(str) {
-		if (mwjson.util.isPascalCase(str)) return str;
-		str = str.charAt(0).toUpperCase() + str.slice(1);
-		if (mwjson.util.isPascalCase(str)) return str;
-		var camelCase = mwjson.util.toCamelCase(str);
-		return camelCase.charAt(0).toUpperCase() + camelCase.slice(1);
+		str = mwjson.util.replaceUmlaute(str);
+		if (!mwjson.util.isPascalCase(str)) {
+			str = str.charAt(0).toUpperCase() + str.slice(1);
+		}
+		if (!mwjson.util.isPascalCase(str)) {
+			var camelCase = mwjson.util.toCamelCase(str);
+			str = camelCase.charAt(0).toUpperCase() + camelCase.slice(1);
+		};
+		// make sure to remove all non-alphanums
+		return str.replace(/[^a-zA-Z0-9]/g, "");
 	}
 	
 	static toCamelCase(str) {
-		if (mwjson.util.isCamelCase(str)) return str;
-		str = str.charAt(0).toLowerCase() + str.slice(1);
-		if (mwjson.util.isCamelCase(str)) return str;
-		return str.toLowerCase().replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase());
+		str = mwjson.util.replaceUmlaute(str);
+		if (!mwjson.util.isCamelCase(str)) {
+			str = str.charAt(0).toLowerCase() + str.slice(1);
+		}
+		if (!mwjson.util.isCamelCase(str)) {
+			str = str.toLowerCase().replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase());
+		}
+		// make sure to remove all non-alphanums
+		return str.replace(/[^a-zA-Z0-9]/g, "");
 	}
 
 	static valueIfExists(value, default_value = "") {
