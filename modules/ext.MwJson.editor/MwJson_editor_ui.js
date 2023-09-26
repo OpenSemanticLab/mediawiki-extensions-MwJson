@@ -1,5 +1,16 @@
 /*@nomin*/
 
+mwjson.editor.prototype.addCss = function () {
+    var styleSheet = document.createElement("style");
+    // add a more descriptive i18n label to the addition properties button / burger menu
+    styleSheet.innerText = `
+    button.json-editor-btn-edit_properties::after {
+        content: " ${mw.message("mwjson-editor-select-additional-properties").text()}"
+    }
+    `;
+    document.head.appendChild(styleSheet);
+}
+
 mwjson.editor.prototype.createPopupDialog = function (_config) {
     _config = _config || {}
     var editor = this;

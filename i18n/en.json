@@ -6,6 +6,7 @@
 	},
 	"mw-json-desc": "Jsonschema based Api for Mediawiki",
 	"mw-json-name": "MwJson",
+	"mwjson-editor-select-additional-properties": "select properties",
 	"mwjson-editor-submit-save": "Save",
 	"mwjson-editor-submit-query": "Run query",
 	"mwjson-editor-saving": "Saving",

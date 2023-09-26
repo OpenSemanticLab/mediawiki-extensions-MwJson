@@ -6,6 +6,7 @@
 	},
 	"mw-json-desc": "Jsonschema basierte API für Mediawiki",
 	"mw-json-name": "MwJson",
+	"mwjson-editor-select-additional-properties": "Eigenschaften wählen",
 	"mwjson-editor-submit-save": "Speichern",
 	"mwjson-editor-submit-query": "Suche ausführen",
 	"mwjson-editor-saving": "Speichert",

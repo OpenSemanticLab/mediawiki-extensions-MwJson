@@ -15,6 +15,7 @@ mwjson.editor = class {
 		};
 		this.config = mwjson.util.mergeDeep(defaultConfig, config);
 		this.flags = {'change-after-load': false};
+		this.addCss();
 		if (this.config.container) {
 			this.container = this.config.container;
 			this.config.popup = false;
