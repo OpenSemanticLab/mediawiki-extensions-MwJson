@@ -454,7 +454,7 @@ mwjson.schema = class {
         return {type: ["handlebars"], value: "" +
         '<div class="mw-parser-output">{{#if result.printouts.image.[0].fulltext}}<div class="floatright">' +
         '<img style="height:66" src="./Special:Redirect/file/{{result.printouts.image.[0].fulltext}}?width=100&height=50"></img></div></div><br>{{/if}}' +
-        "<a href='./{{result.fulltext}}'>{{result.printouts.label.[0]}}</a>" + 
+        "{{result.printouts.label.[0]}}<a href='./{{result.fulltext}}' class='external' target='_blank' ></a>" + 
         "{{#if result.printouts.description.[0]}}<br>{{result.printouts.description.[0]}}{{/if}}"
         };
     }
