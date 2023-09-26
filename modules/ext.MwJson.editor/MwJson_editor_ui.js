@@ -101,7 +101,7 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
             editor.config.result_container_id = editor.config.id + '_query';
             this.panel.$element.append($('<div id="' + editor.config.result_container_id + '" style="height:300px;overflow:auto"><div>'));
         }
-        this.panel.$element.append($('<div id="' + editor.config.id + '" style="min-height:500px;"><div>'));
+        this.panel.$element.append($('<div id="' + editor.config.id + '" style="min-height:1000px;"><div>'));
         this.$body.append(this.panel.$element);
     };
 
