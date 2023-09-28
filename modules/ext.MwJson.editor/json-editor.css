@@ -1,41 +1,77 @@
-/* compact design: inline labels and descriptions */
-.json-editor-compact :not(.property-selector) div.form-group {display: flex;}
-.json-editor-compact :not(.property-selector) div.form-group>label {display: flex; align-items: center; margin-right: 10px; width: 200px;}
-.json-editor-compact :not(.property-selector) div.form-group input.form-check-input {right: 50px;}
-.json-editor-compact :not(.property-selector) div.form-group>small.form-text {width: 150px; margin-left: 10px;}
-.json-editor-compact :not(.property-selector) div.form-group>div.autocomplete {width: 100%; }
-
-/* fix general layout */
-.card-title label {margin-right: 10px;}
-.card-title .btn-secondary {margin-right: 10px;}
-
-/* VEForAll */
-/* from .form-control */
-.je-ready .ve-ui-surface-visual {
+/**
+ * Minified by jsDelivr using clean-css v5.3.2.
+ * Original file: /npm/@json-editor/json-editor@2.10.1/src/themes/html.css
+ *
+ * Do NOT use SRI with dynamically generated files! More information: https://www.jsdelivr.com/using-sri-with-dynamic-files
+ */
+.je-form-input-label {
     display: block;
+    margin-bottom: 3px;
+    font-weight: 700
+}
+
+.je-form-input-description {
+    display: inline-block;
+    margin: 0;
+    font-size: .8em;
+    font-style: italic
+}
+
+.je-indented-panel {
+    padding: 5px;
+    margin: 10px;
+    border-radius: 3px;
+    border: 1px solid #ddd
+}
+
+.je-child-editor-holder {
+    margin-bottom: 8px
+}
+
+.je-header-button-holder {
+    display: inline-block;
+    margin-left: 10px;
+    font-size: .8em;
+    vertical-align: middle
+}
+
+.je-table {
+    margin-bottom: 5px;
+    border-bottom: 1px solid #ccc
+}
+
+.je-upload-preview img {
+    float: left;
+    margin: 0 .5rem .5rem 0;
+    max-width: 100%;
+    max-height: 5rem
+}
+
+.je-dropzone {
+    position: relative;
+    margin: .5rem 0;
+    border: 2px dashed #000;
     width: 100%;
-    padding: .375rem .75rem;
-    font-size: 1rem;
-    line-height: 1.5;
-    color: #495057;
-    background-color: #fff;
-    background-clip: padding-box;
-    border: 1px solid #ced4da;
-    border-radius: .25rem;
-    transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+    height: 60px;
+    background: teal;
+    transition: all .5s
 }
 
-/* fix styling issue with skin 'timeless': 
-overwrite margin with more specific selector */
-.form-check input[type='checkbox'] {
-    margin: 0.3em 0em 0em -1.25em;
+.je-dropzone:before {
+    position: absolute;
+    content: attr(data-text);
+    color: rgba(0, 0, 0, .6);
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%)
 }
 
-.mwjson-code-container {
-    display: flex;
-    flex-direction: column;
+.je-dropzone.valid-dropzone {
+    background: green
 }
 
-.mwjson-code-editor-container {
-    flex: 1 0 auto;
+.je-dropzone.invalid-dropzone {
+    background: red
 }
+
+/*# sourceMappingURL=/sm/7ed16052267b375d16046c2eebf6c1e6b94b233b7a2399fefaab320523bb2b3d.map */

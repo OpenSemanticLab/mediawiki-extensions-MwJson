@@ -48,8 +48,9 @@ mwjson.editor = class {
 		//JSONEditor.defaults.language = "de";
 		this.config.JSONEditorConfig = this.config.JSONEditorConfig || {};
 		
+		// object_background: "bg-dark",
 		var defaultJSONEditorConfig = {
-			theme: 'bootstrap4',
+			theme: 'bootstrap5',
 			iconlib: "spectre",
 			remove_button_labels: true,
 			ajax: true,
