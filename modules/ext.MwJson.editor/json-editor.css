@@ -78,7 +78,7 @@
 
 /* transfer bg-color from json-editor.min.js to this file */
 .je-modal {
-    background-color: #eee;
+    background-color: #fff;
 }
 
 /* add bs5 dark mode support for class je-modal */
