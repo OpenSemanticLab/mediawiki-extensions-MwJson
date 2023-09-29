@@ -95,3 +95,9 @@
         transform: translateY(-50%) rotate(359deg)
     }
 }
+
+/* invert all colors except font (color double invert) for bs dark theme */
+html[data-bs-theme="dark"] .autocomplete-result-list {
+    filter: invert(1);
+    color: black;
+}
