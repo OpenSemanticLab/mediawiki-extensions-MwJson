@@ -75,3 +75,13 @@
 }
 
 /*# sourceMappingURL=/sm/7ed16052267b375d16046c2eebf6c1e6b94b233b7a2399fefaab320523bb2b3d.map */
+
+/* transfer bg-color from json-editor.min.js to this file */
+.je-modal {
+    background-color: #eee;
+}
+
+/* add bs5 dark mode support for class je-modal */
+html[data-bs-theme="dark"] .je-modal {
+    background-color: #212529;
+}
