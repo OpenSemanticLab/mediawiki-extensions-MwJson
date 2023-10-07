@@ -123,9 +123,13 @@
         }
     },
     "AutoloadClasses":{
-        "MwJson":"includes/MwJson.php"
+        "MwJson":"includes/MwJson.php",
+		"SpecialSlotResolver": "special/SlotResolver.php"
     },
     "Hooks":{
         "BeforePageDisplay":"MwJson::onBeforePageDisplay"
+    },
+    "SpecialPages": {
+		"SlotResolver": "SpecialSlotResolver"
     }
 }

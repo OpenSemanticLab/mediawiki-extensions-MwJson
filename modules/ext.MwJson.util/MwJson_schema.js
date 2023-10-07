@@ -19,6 +19,7 @@ mwjson.schema = class {
 
         // custom resolver to catch different notation of relative urls
         // see https://apitools.dev/json-schema-ref-parser/docs/plugins/resolvers.html
+        // Temporary solution until new syntax is established
         // testcases
         /*
             /wiki/Category:Item?action=raw&slot=jsonschema
@@ -33,11 +34,12 @@ mwjson.schema = class {
             https://test3.com/wiki/Category:Item //external domain, will not be handled
             https://test.com/Category:Item
             https://test.com/index.php?title=Category:Item
+            ../Category/OSW5044076ed688412391116162b574f017.slot_jsonschema.json //new syntax, will not be handled
         */
         let server = mw.config.get("wgServer")
         server = server.split("//")[server.split("//").length-1];
         server=server.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // escape for use in regex, e. g. '.' => '\.'
-        let regex = new RegExp("^(?<domain>.*" + server + ")?(?<base>[^:]*)\/(.*title=)?(?<title>[^?&]*?)(?<params>[?&].*)?$");
+        let regex = new RegExp("^(?<domain>.*" + server + ")?(?<base>[^:]*)\/(.*title=)?(?<title>[^?&.]*?)(?<params>[?&].*)?$");
         this.title_regex = regex;
         this.resolver = {
             order: 1,
