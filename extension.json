@@ -1,7 +1,7 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.14.0",
+    "version":"0.15.0",
     "author":[
         "[https://github.com/simontaurus Simon Stier]"
     ],
@@ -13,6 +13,7 @@
     "requires":{
         "MediaWiki":">= 1.35",
         "extensions": {
+            "WSSlots": "*",
 			"CodeEditor": "*"
 		}
     },
@@ -124,9 +125,13 @@
         }
     },
     "AutoloadClasses":{
-        "MwJson":"includes/MwJson.php"
+        "MwJson":"includes/MwJson.php",
+		"SpecialSlotResolver": "special/SlotResolver.php"
     },
     "Hooks":{
         "BeforePageDisplay":"MwJson::onBeforePageDisplay"
+    },
+    "SpecialPages": {
+		"SlotResolver": "SpecialSlotResolver"
     }
 }

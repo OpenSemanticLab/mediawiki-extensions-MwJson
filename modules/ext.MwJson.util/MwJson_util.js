@@ -228,16 +228,18 @@ mwjson.util = class {
 		document.body.removeChild(element);
 	  }
 
-	static getAbsolutePageUrl(title, params={}) {
-		return mw.util.getUrl(title, params);
+	static getAbsolutePageUrl(title, params={}, pretty=true) {
+		return mw.config.get("wgServer") + mwjson.util.getRelativePageUrl(title, params, pretty);//mw.util.getUrl(title, params);
 	}
 
-	static getRelativePageUrl(title, params={}, pretty=true) {
+	static getRelativePageUrl(title, params={}, pretty=true, path_relative=false) {
 		let url = "";
 		if (pretty) {
-			url += "./" + encodeURI(title);
+			if (path_relative) url += "./" + encodeURI(title);
+			else url += mw.config.get("wgArticlePath").replace("$1", encodeURI(title));
 			let first = true;
-			for (const p of params) {
+			if (url.includes("?")) first = false; //e. g. index.php?title=...
+			for (const p in params) {
 				if (first) {
 					url += "?";
 					first = false;
@@ -249,7 +251,7 @@ mwjson.util = class {
 		else {
 			url += "." + mw.config.get("wgScriptPath") + "/index.php?title=";
 			url += encodeURIComponent(title);
-			for (const p of params) {
+			for (const p in params) {
 				url += "&" + p + "=" + encodeURIComponent(params[p]);
 			}
 		}
