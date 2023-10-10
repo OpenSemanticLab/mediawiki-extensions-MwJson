@@ -85,3 +85,8 @@
 html[data-bs-theme="dark"] .je-modal {
     background-color: #212529;
 }
+
+/* dark mode for json text editor */
+html[data-bs-theme="dark"] .jsoneditors {
+    filter: invert(0.9);
+}
