@@ -1,7 +1,7 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.15.0",
+    "version":"0.16.0",
     "author":[
         "[https://github.com/simontaurus Simon Stier]"
     ],
@@ -30,11 +30,13 @@
                 "MwJson.css",
                 "bootstrap.min.css",
                 "fontawesome.min.css",
-                "spectre-icons.min.css"
+                "spectre-icons.min.css",
+                "bootstrap5-toggle.min.css"
             ],
             "scripts":[
                 "MwJson.js",
-                "bootstrap.min.js"
+                "bootstrap.min.js",
+                "bootstrap5-toggle.ecmas.min.js"
             ],
             "position":"top"
         },
