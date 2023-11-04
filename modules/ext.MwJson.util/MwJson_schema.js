@@ -158,10 +158,12 @@ mwjson.schema = class {
 		const translateables = ["title", "description", "enum_titles"];
 
         //include all required properties within defaultProperties. see https://github.com/json-editor/json-editor/issues/1275
-        /*if (schema.required) {
+        if (schema.required) {
             if (!schema.defaultProperties) schema.defaultProperties = [];
-            schema.defaultProperties.push(...schema.required)
-        }*/
+             // insert required before existing defaultProperties since order in defaultProperties also defines UI order when propertyOrder is not set
+            schema.defaultProperties.unshift(...schema.required);
+            schema.defaultProperties = [...new Set(schema.defaultProperties)]; // remove duplicates
+        }
 
 		if (schema.properties) {
 			for (const property of Object.keys(schema.properties)) {
