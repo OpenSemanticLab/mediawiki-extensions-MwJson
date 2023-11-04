@@ -160,13 +160,14 @@ mwjson.schema = class {
 
         if (schema.allOf) {
             // apply allOf refs, while storing visited properties to detect overrides
-			if (Array.isArray(schema.allOf)) {
-				for (const subschema of schema.allOf) {
-					this._preprocess({schema: subschema, level: level + 1, visited_properties: visited_properties});
-				}
+			for (const subschema of Array.isArray(schema.allOf) ? schema.allOf : [schema.allOf]) {
+				this._preprocess({schema: subschema, level: level + 1, visited_properties: visited_properties});
 			}
-			else {
-				this._preprocess({schema: schema.allOf, level: level + 1, visited_properties: visited_properties});
+		}
+        if (schema.oneOf) {
+            // apply oneOf refs, while discarding visited properties since the actual applied schema is unknown
+			for (const subschema of Array.isArray(schema.oneOf) ? schema.oneOf : [schema.oneOf]) {
+				this._preprocess({schema: subschema, level: level + 1}); // oneOf is 
 			}
 		}
 
@@ -188,8 +189,11 @@ mwjson.schema = class {
                     if (schema.properties[property].options && schema.properties[property].options[attr+"*"]) { //options
 						if (schema.properties[property].options[attr+"*"][this.config.lang]) schema.properties[property].options[attr] = schema.properties[property].options[attr+"*"][this.config.lang];
 					}
+                    if (schema.properties[property].properties) {  //subobject
+                        this._preprocess({schema: schema.properties[property]});
+                    }
                     if (schema.properties[property].items) { //} && schema.properties[property].items.properties) { //array items
-                        this._preprocess({schema: schema.properties[property].items})
+                        this._preprocess({schema: schema.properties[property].items});
                         /*if (schema.properties[property].items.properties[attr+"*"]) { 
 						    if (schema.properties[property].items.properties[attr+"*"][this.config.lang]) schema.properties[property].items.properties[attr] = schema.properties[property].items.properties[attr+"*"][this.config.lang];
                         }
