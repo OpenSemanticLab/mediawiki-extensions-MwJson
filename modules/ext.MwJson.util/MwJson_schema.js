@@ -156,6 +156,19 @@ mwjson.schema = class {
         var schema = params.schema;
         var level = params.level ? params.level : 0;
 		const translateables = ["title", "description", "enum_titles"];
+        var  visited_properties = params.visited_properties ? params.visited_properties : [];
+
+        if (schema.allOf) {
+            // apply allOf refs, while storing visited properties to detect overrides
+			if (Array.isArray(schema.allOf)) {
+				for (const subschema of schema.allOf) {
+					this._preprocess({schema: subschema, level: level + 1, visited_properties: visited_properties});
+				}
+			}
+			else {
+				this._preprocess({schema: schema.allOf, level: level + 1, visited_properties: visited_properties});
+			}
+		}
 
         //include all required properties within defaultProperties. see https://github.com/json-editor/json-editor/issues/1275
         if (schema.required) {
@@ -202,7 +215,9 @@ mwjson.schema = class {
                     3	Base	    1000	            995000
                     3	Base	    1010	            1007010
                 */
-                if (!schema.properties[property].propertyOrder) schema.properties[property].propertyOrder;
+                if (!schema.properties[property].propertyOrder && !visited_properties.includes(property)) {
+                    schema.properties[property].propertyOrder = 1000; // set only if property was not defined before
+                }
                 if (schema.properties[property].propertyOrder < 0) 
                     //absolute value - is currently not ranked correctly
                     schema.properties[property].propertyOrder = schema.properties[property].propertyOrder; 
@@ -231,16 +246,7 @@ mwjson.schema = class {
                             schema.required = schema.required.filter(function(e) { return e !== property });
                     }
 				}
-			}
-		}
-		if (schema.allOf) {
-			if (Array.isArray(schema.allOf)) {
-				for (const subschema of schema.allOf) {
-					this._preprocess({schema: subschema, level: level + 1});
-				}
-			}
-			else {
-				this._preprocess({schema: schema.allOf, level: level + 1});
+                visited_properties.push(property);
 			}
 		}
         if (schema['@context']) this._context = mwjson.util.mergeDeep(schema['@context'], this._context); // merge nested context over general context
