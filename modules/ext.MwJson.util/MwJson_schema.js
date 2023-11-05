@@ -155,7 +155,7 @@ mwjson.schema = class {
     _preprocess(params) {
         var schema = params.schema;
         var level = params.level ? params.level : 0;
-		const translateables = ["title", "description", "enum_titles"];
+		const translateables = ["title", "description", "enum_titles", "default"]; //ToDo: Just all <key>* keywords?
         var  visited_properties = params.visited_properties ? params.visited_properties : [];
 
         if (schema.allOf) {
