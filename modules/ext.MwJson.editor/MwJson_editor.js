@@ -68,6 +68,7 @@ mwjson.editor = class {
 			disable_array_delete_last_row: false,
 			keep_oneof_values: false,
 			no_additional_properties: true,
+			case_sensitive_property_search: false,
 			form_name_root: this.jsonschema.getSchema().id
 		}
 		this.config.JSONEditorConfig = mwjson.util.mergeDeep(defaultJSONEditorConfig, this.config.JSONEditorConfig);
