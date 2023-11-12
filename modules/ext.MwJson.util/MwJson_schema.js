@@ -448,7 +448,7 @@ mwjson.schema = class {
                 }
                 if (subschema.options.autocomplete.query) res += subschema.options.autocomplete.query;
                 else if (subschema.options.autocomplete.category) {
-                    res += "[[" + subschema.options.autocomplete.category + "]]|?Display_title_of=label|?HasImage=image|HasDescription=description"
+                    res += "[[" + subschema.options.autocomplete.category + "]][[Display_title_of_normalized::like:*{{{_user_input_normalized}}}*]]|?Display_title_of=label|?HasImage=image|?HasDescription=description"
                 }
                 else if (subschema.options.autocomplete.property) res += "[[" + subschema.options.autocomplete.property + ":+]]"
                 return res;
@@ -466,10 +466,11 @@ mwjson.schema = class {
             }
         }
         return {type: ["handlebars"], value: "" +
-        '<div class="mw-parser-output">{{#if result.printouts.image.[0].fulltext}}<div class="floatright">' +
-        '<img style="height:66" src="./Special:Redirect/file/{{result.printouts.image.[0].fulltext}}?width=100&height=50"></img></div></div><br>{{/if}}' +
-        "{{result.printouts.label.[0]}}<a href='./{{result.fulltext}}' class='external' target='_blank' ></a>" + 
-        "{{#if result.printouts.description.[0]}}<br>{{result.printouts.description.[0]}}{{/if}}"
+        '<div class="mw-parser-output" {{#if result.printouts.image.[0].fulltext}}style="min-height: 66px;"{{/if}}>' +
+        '{{#if result.printouts.image.[0].fulltext}}<div class="floatright">' +
+        '<img style="height:66px" src="./Special:Redirect/file/{{result.printouts.image.[0].fulltext}}?width=100&height=50"></img></div>{{/if}}' +
+        "<strong>{{result.printouts.label.[0]}}<a href='./{{result.fulltext}}' class='external' target='_blank' ></a></strong>" + 
+        "{{#if result.printouts.description.[0]}}<br><em>{{result.printouts.description.[0]}}</em>{{/if}}</div>"
         };
     }
     static getAutocompleteLabelTemplate(subschema) {

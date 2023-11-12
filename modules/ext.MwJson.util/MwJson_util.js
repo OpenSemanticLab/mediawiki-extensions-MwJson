@@ -86,6 +86,11 @@ mwjson.util = class {
 		return str.replace(/[^a-zA-Z0-9]/g, "");
 	}
 
+	// makes all chars lowercase and removes non-alphanumeric
+	static normalizeString(value) {
+		return value.toLowerCase().replace(/[^0-9a-z]/gi, '');
+	}
+
 	static valueIfExists(value, default_value = "") {
 		if (value) return value;
 		else return default_value;
@@ -283,5 +288,31 @@ mwjson.util = class {
 		if (config.accesskey) $link.attr('accesskey', config.accesskey);
 		else $link.removeAttr('accesskey');
 		$(defaultConfig.location).find('ul').append($menu_entry); //insert entry
+	}
+
+	// filters result.printouts[key].["Language code"].item[0] for the preferred lang
+	// falls back to en if preferred lang not found
+	// stores result in plain string array compatible with non-multilang properties
+	static normalizeSmwMultilangResult(result, preferred_lang_code="en") {
+		if (!result.printouts) return "";
+		// normalize multilanguage printouts (e. g. description)
+		for (var key in result.printouts) {
+			var is_multilang = false;
+			var selected_value = "";
+			var default_value = "";
+			for (var e of Array.isArray(result.printouts[key]) ? result.printouts[key] : [result.printouts[key]]){
+				if (e.Text && e["Language code"]) {
+					is_multilang = true;
+					if (e["Language code"].item[0] == preferred_lang_code) selected_value = e.Text.item[0];
+					if (e["Language code"].item[0] == "en") default_value = e.Text.item[0];
+
+				}
+			}
+			if (is_multilang) {
+				if (selected_value !== "") result.printouts[key] = [selected_value];
+				else result.printouts[key] = [default_value];
+			}
+		}
+		return result;
 	}
 }

@@ -69,7 +69,9 @@ mwjson.editor = class {
 			keep_oneof_values: false,
 			no_additional_properties: true,
 			case_sensitive_property_search: false,
-			form_name_root: this.jsonschema.getSchema().id
+			form_name_root: this.jsonschema.getSchema().id,
+			//custom settings
+			user_language: this.config.lang,
 		}
 		this.config.JSONEditorConfig = mwjson.util.mergeDeep(defaultJSONEditorConfig, this.config.JSONEditorConfig);
 		this.config.JSONEditorConfig.schema = this.jsonschema.getSchema(),
@@ -705,13 +707,19 @@ mwjson.editor = class {
 						query = query.replace('$(' + key + ')', jseditor_editor.watched_values[key]);
 					}
 
-					var jsondata = jseditor_editor.jsoneditor.getValue();
-					jsondata['_user_input'] = input;
+					//create a copy here since we add addition properties
+					var jsondata = mwjson.util.deepCopy(jseditor_editor.jsoneditor.getValue());
+					jsondata['_user_input'] = input; 
+					jsondata['_user_input_lowercase'] = input.toLowerCase(); 
+					jsondata['_user_input_normalized'] = mwjson.util.normalizeString(input); 
+					jsondata['_user_lang'] = jseditor_editor.jsoneditor.options.user_language; 
 					var template = Handlebars.compile(query);
 					query = template(jsondata);
 					var result_property = mwjson.schema.getAutocompleteResultProperty(jseditor_editor.schema);
 					console.log("Search with schema: " + query);
-					var url = mw.config.get("wgScriptPath") + `/api.php?action=ask&query=${query}|limit=10000&format=json`;
+					var url = mw.config.get("wgScriptPath") + `/api.php?action=ask&query=${query}`;
+					if (!url.includes("|limit=")) url += "|limit=100";
+					url += "&format=json";
 					//replace params
 					console.log("URL: " + url);
 
@@ -735,7 +743,7 @@ mwjson.editor = class {
 								}
 								//filter list
 								resultList = resultList.filter(result => {
-									return JSON.stringify(result).toLowerCase().includes(input.toLowerCase()); //slow but generic
+									return mwjson.util.normalizeString(JSON.stringify(result)).includes(mwjson.util.normalizeString(input)); //slow but generic
 								});
 
 								resolve(resultList);
@@ -743,6 +751,10 @@ mwjson.editor = class {
 					});
 				},
 				renderResult_smw: (jseditor_editor, result, props) => {
+					if (!result.printouts) return "";
+					// normalize multilanguage printouts (e. g. description)
+					result = mwjson.util.normalizeSmwMultilangResult(result, jseditor_editor.jsoneditor.options.user_language);
+
 					var previewTemplate = mwjson.util.deepCopy(mwjson.schema.getAutocompletePreviewTemplate(jseditor_editor.schema)); //use custom value
 					if (previewTemplate.type.shift() === 'handlebars') {
 						if (previewTemplate.type[0] === 'wikitext') previewTemplate.value = previewTemplate.value.replaceAll("\\{", "&#123;").replaceAll("\\}", "&#125;"); //escape curly-brackets with html entities. ToDo: Do this once for the whole schema
