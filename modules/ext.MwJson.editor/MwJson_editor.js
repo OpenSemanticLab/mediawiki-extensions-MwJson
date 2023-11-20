@@ -79,6 +79,7 @@ mwjson.editor = class {
 
 		//create editor
 		this.jsoneditor = new JSONEditor(this.container, this.config.JSONEditorConfig);
+		this.jsoneditor.mwjson_editor = this; //store back ref
 		console.log(this.config.data);
 
 		// listen for loaded
@@ -673,7 +674,22 @@ mwjson.editor = class {
 		ace.config.set("basePath", mw.config.get("wgScriptPath") + "/extensions/MwJson/modules/ext.MwJson.editor.ace");
 		ace.config.set("workerPath", mw.config.get("wgScriptPath") + "/extensions/MwJson/modules/ext.MwJson.editor.ace");
 		ace.config.setModuleUrl('ace/mode/json_worker', mw.config.get("wgScriptPath") + "/extensions/MwJson/modules/ext.MwJson.editor.ace/worker-json.js");
-		window.JSONEditor.defaults.options.upload.upload_handler = "fileUpload";
+		// see https://github.com/json-editor/json-editor/blob/master/README_ADDON.md#upload
+		// ToDo: add translations
+		window.JSONEditor.defaults.options.upload = {
+			title: 	"Browse", // string, Title of the Browse button, default: "Browse"
+			auto_upload: true, // boolean, Trigger file upload button automatically, default: false
+			allow_reupload: true, // boolean, Allow reupload of file (overrides the readonly state), default: false
+			hide_input: false, // boolean, Hide the Browse button and name display (Only works if 'enable_drag_drop' is true), default: false
+			enable_drag_drop: true, // boolean, Enable Drag&Drop uploading., default: false
+			drop_zone_top: false, // boolean, Position of dropzone. true=before button input, false=after button input, default: false
+			drop_zone_text: "Drag & Drop", // string, Text displayed in dropzone box, default: "Drag & Drop file here"
+			//alt_drop_zone: "", // string, Alternate DropZone DOM Selector (Can be created inside another property) 	
+			//mime_type: false, // string/array, If set, restrict upload to mime type(s) 	
+			max_upload_size: 0, // integer, Maximum file size allowed. 0 = no limit, default: 0
+			upload_handler: "fileUpload", // function, Callback function for handling uploads to server 	
+			icon: "upload", // undocumented, but missing if not set
+		};
 	}
 
 	static setCallbacks() {
@@ -836,12 +852,34 @@ mwjson.editor = class {
 			},
 			upload: {
 				fileUpload: (jseditor, type, file, cbs) => {
-					console.log("Upload file", file);
+					var mwjson_editor = jseditor.jsoneditor.mwjson_editor; //get the owning mwjson editor class instance
 					const label = file.name;
-					var target = mwjson.util.OslId() + "." + file.name.split('.').pop();
+					var target = mwjson.util.OswId() + "." + file.name.split('.').pop();
+					if (jseditor.value && jseditor.value !== "") target = jseditor.value; // reupload
+					if (jseditor.key === "file" && mwjson_editor.jsonschema.subschemas_uuids.includes("11a53cdf-bdc2-4524-bf8a-c435cbf65d9d")) { //uuid of Category:WikiFile
+						mwjson_editor.config.target_namespace = "File";
+						if (mwjson_editor.config.target && mwjson_editor.config.target !== "") {
+							// the file page already exists
+							target = mwjson_editor.config.target.replace(mwjson_editor.config.target_namespace + ":", "");
+							//console.log("set target to config.target: ", target);
+						}
+						else {
+							// this file page is not yet created => set the page name
+							mwjson_editor.config.target = mwjson_editor.config.target_namespace + ":" + target;
+							//console.log("set config.target to target: ", mwjson_editor.config.target);
+						}
+						// set label from file label if not set yet
+						if (jseditor.jsoneditor.editors["root.label.0.text"]) {
+							if (!jseditor.jsoneditor.editors["root.label.0.text"].value || jseditor.jsoneditor.editors["root.label.0.text"].value === "") {
+								jseditor.jsoneditor.editors["root.label.0.text"].setValue(label);
+								jseditor.jsoneditor.editors["root.label.0.text"].change();
+							}
+						}
+					}
+
 					Object.defineProperty(file, 'name', {writable: true, value: target}); //name is readonly, so file.name = target does not work
 					mwjson.api.getFilePage(target).done((page) => {
-						console.log("File does exists");
+						//console.log("File does exists");
 						page.file = file;
 						page.file.contentBlob = file;
 						page.file.changed = true;
@@ -854,17 +892,15 @@ mwjson.editor = class {
 							cbs.failure('Upload failed:' + error);
 						});
 					}).fail(function (error) {
-						console.log("File does not exists");
+						//console.log("File does not exists");
 						mwjson.api.getPage("File:" + target).done((page) => {
 							page.file = file;
 							page.file.contentBlob = file;
 							page.file.changed = true;
 							mwjson.api.updatePage(page).done((page) => {
-								console.log("Upload succesful");
 								cbs.success('File:' + target);
 								mw.hook( 'jsoneditor.file.uploaded' ).fire({exists: false, name: target, label: file.name});
 							}).fail(function (error) {
-								console.log("Upload failed:", error);
 								cbs.failure('Upload failed:' + error);
 							});
 						});
