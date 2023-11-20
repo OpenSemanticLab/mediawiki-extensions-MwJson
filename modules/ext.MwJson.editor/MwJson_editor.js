@@ -249,8 +249,18 @@ mwjson.editor = class {
 		});
 
 		// listen for array changes
-		this.jsoneditor.on('addRow', editor => {
-			//console.log('addRow', editor)
+		this.jsoneditor.on('moveRow', editor => {
+			// since the input elements stay in place but the editors are rewired
+			// we need to reset the input elements 
+			for (const subeditor_key of Object.keys(editor.jsoneditor.editors)) {
+				var subeditor = editor.jsoneditor.editors[subeditor_key];
+				if (!subeditor) continue;
+				if (subeditor.format === 'autocomplete') {
+					subeditor.input.value_label = null;
+					subeditor.input.value_id = null;
+					//subeditor.change();
+				}
+			}
 		});
 	}
 
