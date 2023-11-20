@@ -1,7 +1,7 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.19.3",
+    "version":"0.20.0",
     "author":[
         "[https://github.com/simontaurus Simon Stier]"
     ],
@@ -61,6 +61,7 @@
             "localBasePath":"modules/ext.MwJson.api",
             "remoteExtPath":"MwJson/modules/ext.MwJson.api",
             "scripts":[
+                "MwJson_cache.js",
                 "MwJson_api.js"
             ],
             "dependencies": [

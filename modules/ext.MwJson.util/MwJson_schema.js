@@ -4,7 +4,8 @@ mwjson.schema = class {
     constructor(args) {
         var defaultConfig = {
 			mode: "default", // options: default, query
-			lang: "en"
+			lang: "en",
+            use_cache: true, // use local store schema cache
 		};
 		this.config = mwjson.util.mergeDeep(defaultConfig, args.config);
         this.debug = mwjson.util.defaultArg(args.debug, false);
@@ -16,6 +17,12 @@ mwjson.schema = class {
         this._context = {};
         this.subschemas_uuids = [];
         this.data_source_maps = [];
+
+        if (this.config.use_cache) {
+            this.cache = new mwjson.Cache("schema", {debug: true});
+            this.cache.fetchHashes();
+            this.cache.cleanup(); // this will prevent infinite grow
+        }
 
         // custom resolver to catch different notation of relative urls
         // see https://apitools.dev/json-schema-ref-parser/docs/plugins/resolvers.html
@@ -46,8 +53,10 @@ mwjson.schema = class {
             canRead: regex,
             read: (file, callback, $refs) => {
                 let url = file.url;
+                //console.log("Fetch: ", url);
                 let query = new mw.Uri(file.url).query;
                 let match = regex.exec(file.url);
+                let title = null;
                 if (match && match.groups && match.groups.title) {
                     url = match.groups.title;
                     if ("title" in query) {
@@ -55,8 +64,14 @@ mwjson.schema = class {
                     }
                     // generate a guaranteed valid url to the target page and append query params (except 'title')
                     url = mw.util.getUrl( match.groups.title, query );
+                    title = match.groups.title;
+
                 }
-                fetch(url)
+                if (this.config.use_cache && title) {
+                    //console.log("Fetch from cache: ", match.groups.title);
+                    this.cache.get(title).then((item) => callback(null, item.value));
+                }
+                else fetch(url)
                     .then(response => {
                         if (!response.ok) {
                             callback(new Error("HTTP error " + response.status));
