@@ -166,6 +166,10 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
             .first(function () {
                 // Perform any cleanup as needed
                 this.manager.$element.remove(); //delete dialog DOM
+                // prevent scrolling back to the last selected elements
+                // this is often the top of the page which is not intended 
+                // when the user has already scrolled down
+                this.manager.$returnFocusTo = null; 
             }, this);
     };
 
