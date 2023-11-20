@@ -11,7 +11,9 @@ mwjson.editor = class {
 			lang: mw.config.get('wgUserLanguage'),
 			id: 'json-editor-' + mwjson.util.getShortUid(),
 			onsubmit: (json) => this.onsubmit(json),
-			onchange: (json) => {}
+			onchange: (json) => {},
+			onEditInline: null, //callback to edit a connected entity directly from the current entity edit form
+			onCreateInline: null, //callback to create a new connected entity directly from the current entity edit form
 		};
 		this.config = mwjson.util.mergeDeep(defaultConfig, config);
 		this.flags = {'change-after-load': false};
@@ -127,18 +129,101 @@ mwjson.editor = class {
 
 				//collect autocomplete field values to fetch labels
 				if (subeditor.format === 'autocomplete') {// && this.flags["change-after-load"]) {
-					console.log("Autocomplete Editor:", subeditor);
-					console.log("Dirty: ", subeditor.is_dirty);
+					//console.log("Autocomplete Editor:", subeditor);
+					//console.log("Dirty: ", subeditor.is_dirty);
 					if (input.value_id && input.value_label) { //label already fetched 
 						input.value = input.value_label;
 						subeditor.value = input.value_id; //will be applied on the next .getValue() call
-						if (subeditor.is_dirty) subeditor.change(); //resets aborted user input
+						if (subeditor.is_dirty) subeditor.change(); //resets aborted user input. ToDo: Call onChange(true)?
 						subeditor.is_dirty = false;
-						
 					}
 					else if (subeditor.value !== ""){
 						labeled_inputs.push({input: input, value_id: subeditor.value});
 						label_requests.push(subeditor.value);
+					}
+
+
+					// create button to create an instance of the target category inline of not explicite disabled
+					if (!(subeditor.options.autocomplete.create_inline === false) && !subeditor.inline_create_build && this.config.onCreateInline && this.config.onEditInline){
+						subeditor.inline_create_build = true;
+
+						// in order to add a button beside the autocomplete input field we have to rearrange the elements
+						var $autocomplete_div = $input.parent();
+						var $form_group = $input.parent().parent();
+						var $form_group_label = $input.parent().parent().find("label");
+						var $container = $(`<div style="display: flex;"></div>`)
+						var $create_inline_button = $(`<div class="col-md-1"><button type="button" title="Create inline" class="btn btn-secondary"><i class="fa-regular fa-share-from-square"></i></button></div>`);
+						if ($form_group_label.length) {
+							$container.insertAfter($form_group_label); // normal layout
+							$autocomplete_div.addClass("col-md-11");
+						}
+						else $form_group.append($container); // table layout
+						$container.append($autocomplete_div.detach());
+						$container.append($create_inline_button);
+
+						$create_inline_button.on("click", (function (subeditor, e) {
+							//console.log("Click ", subeditor);
+							var categories = subeditor.options.autocomplete.category;
+							if (!Array.isArray(categories)) categories = [categories];
+							if (subeditor.value) {
+								//osl.ui.editData({source_page: subeditor.value, reload: false}).then((page) => {
+								this.config.onEditInline({page_title: subeditor.value}).then((page) => {
+									//console.log(page);
+									subeditor.value = page.title;
+									// force label refreshing
+									// we could also get the label from the returned page object
+									subeditor.input.value_label = null;
+									//subeditor.change();
+									subeditor.onChange(true)
+								});
+							}
+							else {
+								//osl.ui.createOrQueryInstance(categories, "inline").then((page) => {
+								this.config.onCreateInline({categories: categories}).then((page) => {
+									//console.log(page);
+									subeditor.value = page.title;
+									//subeditor.change();
+									subeditor.onChange(true)
+								});
+							}
+						}).bind(this, subeditor));
+					}
+				}
+
+				//collect autocomplete field values to fetch labels
+				if (subeditor.schema?.format === 'url' && subeditor.schema?.options?.upload) {
+					if (!(subeditor.schema?.options?.upload?.create_inline === false) && !subeditor.inline_create_build && this.config.onCreateInline && this.config.onEditInline) {
+						subeditor.inline_create_build = true;
+						// in order to add a button beside the autocomplete input field we have to rearrange the elements
+						var $container = $input.parent().find(".input-group");
+						$input.parent().find(".json-editor-btn-upload").removeClass('json-editor-btn-upload');
+
+						var $create_inline_button = $(`<button type="button" title="Create inline" class="btn btn-secondary"><i class="fa-regular fa-share-from-square"></i></button>`);
+						$container.append($create_inline_button);
+						$create_inline_button.on("click", (function (subeditor, e) {
+							//console.log("Click ", subeditor);
+							var categories = subeditor.schema?.range ? subeditor.schema?.range : "Category:OSW11a53cdfbdc24524bf8ac435cbf65d9d"; // WikiFile default
+							if (!Array.isArray(categories)) categories = [categories];
+							if (subeditor.value) {
+								//osl.ui.editData({source_page: subeditor.value, reload: false}).then((page) => {
+								this.config.onEditInline(subeditor.value).then((page) => {
+									//console.log(page);
+									subeditor.value = page.title;
+									// force label refreshing
+									// we could also get the label from the returned page object
+									subeditor.input.value_label = null;
+									subeditor.change();
+								});
+							}
+							else {
+								//osl.ui.createOrQueryInstance(categories, "inline").then((page) => {
+								this.config.onCreateInline(categories).then((page) => {
+									//console.log(page);
+									subeditor.value = page.title;
+									subeditor.change();
+								});
+							}
+						}).bind(this, subeditor));
 					}
 				}
 

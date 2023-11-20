@@ -19,7 +19,7 @@ mwjson.schema = class {
         this.data_source_maps = [];
 
         if (this.config.use_cache) {
-            this.cache = new mwjson.Cache("schema", {debug: true});
+            this.cache = new mwjson.Cache("schema", {debug: false});
             this.cache.fetchHashes();
             this.cache.cleanup(); // this will prevent infinite grow
         }
