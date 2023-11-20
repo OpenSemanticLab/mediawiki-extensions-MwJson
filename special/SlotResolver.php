@@ -15,56 +15,12 @@ class SpecialSlotResolver extends SpecialPage {
 		parent::__construct( 'SlotResolver', '' );
 	}
 
-	public function _execute( $par ) {
-        global $wgScriptPath;
-        global $wgOut;
-        
-        $parts = explode("/", $par);
-        
-
-		$redirect_url = "";
-		$msg = "";
-
-        $page = "";
-        $slot = "main";
-        $content = "";
-        if ($parts[1]) $slot = $parts[1];
-        if ($parts[0]) {
-            $page = $parts[0];
-            $query = ["title" => $page, "action" => "raw", "slot" => $slot];
-            //$redirect_url = wfAppendQuery( wfScript( 'index' ), $query );// $page . "&action=raw&slot=" . $slot;
-            //$msg = wfAppendQuery( wfScript( 'index' ), $query );// $page . "&action=raw&slot=" . $slot;
-            //$redirect_url = "/wiki/" . $page . "?action=raw&slot=" . $slot;
-            $msg = "/wiki/" . $page . "?action=raw&slot=" . $slot;
-
-
-            //create a WikiPage object from the title string
-            $wikiPage = new WikiPage(Title::newFromText($page));
-
-            $content = WSSlots::getSlotContent( $wikiPage, $slot )->getText();
-        }
-
-
-		if ( $redirect_url != "") {
-            header('Content-Type: application/schema+json');
-            $out->redirect( $redirect_url, '302' ); //https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
-        }
-        elseif ( $content ) {
-            $wgOut->disable();
-            ob_start();
-            header('Content-Type: application/schema+json; charset=UTF-8');
-            echo($content);
-        }
-		else {
-            $out = $this->getOutput();
-            $out->setPageTitle("Slot Resolver");
-            $out->addHTML($msg);
-        }
-	}
 
     public function execute( $par ) {
         global $wgScriptPath;
         global $wgOut;
+
+        $this->setHeaders();
         
         // extract params from <ns>/<file>
         //e.g. Category/AnnotationProperty.slot_jsonschema.json
@@ -89,6 +45,7 @@ class SpecialSlotResolver extends SpecialPage {
         $content = WSSlots::getSlotContent( $wikiPage, $slot )->getText();
 
 		if ( $redirect_url != "") {
+            $out = $this->getOutput();
             // redirect (temp. moved)
             $out->redirect( $redirect_url, '302' ); //https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
         }
@@ -100,6 +57,7 @@ class SpecialSlotResolver extends SpecialPage {
                 header('Content-Type: application/json; charset=UTF-8');
             }
             echo($content);
+            exit;
         }
 		else {
             // print result
