@@ -468,7 +468,7 @@ mwjson.schema = class {
         return {type: ["handlebars"], value: "" +
         '<div class="mw-parser-output" {{#if result.printouts.image.[0].fulltext}}style="min-height: 66px;"{{/if}}>' +
         '{{#if result.printouts.image.[0].fulltext}}<div class="floatright">' +
-        '<img style="height:66px" src="./Special:Redirect/file/{{result.printouts.image.[0].fulltext}}?width=100&height=50"></img></div>{{/if}}' +
+        '<img style="height:66px" src="' + mw.config.get("wgScriptPath") + '/index.php?title=Special:Redirect/file/{{result.printouts.image.[0].fulltext}}&width=100&height=50"></img></div>{{/if}}' +
         "<strong>{{result.printouts.label.[0]}}<a href='./{{result.fulltext}}' class='external' target='_blank' ></a></strong>" + 
         "{{#if result.printouts.description.[0]}}<br><em>{{result.printouts.description.[0]}}</em>{{/if}}</div>"
         };
