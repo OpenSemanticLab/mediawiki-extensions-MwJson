@@ -653,6 +653,7 @@ mwjson.editor = class {
 	static init() {
 
 		const mw_modules = [
+			'ext.mwjson.editor.ace',
 			'ext.codeEditor.ace', //loading ace.min.js leads to styling issues (css conflict with codeEditor?)
 			'ext.veforall.main',
 			'ext.geshi.visualEditor',
@@ -687,52 +688,17 @@ mwjson.editor = class {
 				})
 			).done(function () {
 
-				//fetch all i18n msgs
-				var msg_promises = [];
-				
-				var msgs = [
-					"mwjson-editor-submit-save",
-					"mwjson-editor-submit-query",
-					"mwjson-editor-saving",
-					"mwjson-editor-fields-contain-error",
-					"mwjson-editor-fix-all-errors",
-					"mwjson-editor-save-anyway",
-					"mwjson-editor-do-not-close-window",
-					"mwjson-editor-saved",
-					"mwjson-editor-error",
-					"mwjson-editor-error-occured-while-saving",
-				];
-				var msg_counter = msgs.length;
 				for (var key of Object.keys(JSONEditor.defaults.languages.en)) {
-					msgs.push("json-editor-" + key);
-					msg_counter += 1;
-					if (msg_counter >= 50) { //split in packages of max 50 msgs due to api limit for standard users
-						msg_promises.push(new mw.Api().loadMessagesIfMissing(msgs));
-						msgs = [];
-						msg_counter = 0;
-					}
+					//replace with mediawiki i18n
+					var msg = mw.message("json-editor-" + key);
+					if (msg.exists())
+						JSONEditor.defaults.languages.en[key] = msg.text().replaceAll('((', '{{').replaceAll('))', '}}');
+					else console.warn("i18n message not defined: " + "'json-editor-" + key + "'");
 				}
-				if (msgs.length > 0) msg_promises.push(new mw.Api().loadMessagesIfMissing(msgs)); //fetch remaining msgs
-
-				$.when(
-					mw.loader.using('ext.mwjson.editor.ace'),
-					//$.getScript("https://cdn.jsdelivr.net/npm/ace-builds@latest/src-noconflict/theme-vibrant_ink.js"),  //depends on ace loaded
-					//$.getScript("https://cdn.jsdelivr.net/npm/ace-builds@latest/src-noconflict/mode-json.js"),
-					//$.getScript("https://cdn.jsdelivr.net/npm/ace-builds@latest/src-noconflict/mode-handlebars.js"),
-					Promise.allSettled(msg_promises),
-					$.Deferred(function (deferred) {
-						$(deferred.resolve);
-					})
-				).done(function () {
-					for (var key of Object.keys(JSONEditor.defaults.languages.en)) {
-						//replace with mediawiki i18n
-						JSONEditor.defaults.languages.en[key] = mw.message("json-editor-" + key).text().replaceAll('((', '{{').replaceAll('))', '}}');
-					}
-					mwjson.editor.setCallbacks();
-					mwjson.editor.setDefaultOptions();
-					console.log("JsonEditor initialized");
-					deferred.resolve();
-				});
+				mwjson.editor.setCallbacks();
+				mwjson.editor.setDefaultOptions();
+				//console.log("JsonEditor initialized");
+				deferred.resolve();
 			});
 		}
 		else deferred.resolve(); //resolve immediately
