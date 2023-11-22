@@ -142,9 +142,11 @@ mwjson.editor = class {
 						label_requests.push(subeditor.value);
 					}
 
+					var categories = subeditor.schema?.range;
+					if (!categories) categories = subeditor.schema?.options?.autocomplete?.category; //legacy
 
 					// create button to create an instance of the target category inline of not explicite disabled
-					if (!(subeditor.options.autocomplete.create_inline === false) && !subeditor.inline_create_build && this.config.onCreateInline && this.config.onEditInline){
+					if (!(subeditor.schema?.options?.autocomplete?.create_inline === false) && categories && !subeditor.inline_create_build && this.config.onCreateInline && this.config.onEditInline){
 						subeditor.inline_create_build = true;
 
 						// in order to add a button beside the autocomplete input field we have to rearrange the elements
@@ -152,7 +154,7 @@ mwjson.editor = class {
 						var $form_group = $input.parent().parent();
 						var $form_group_label = $input.parent().parent().find("label");
 						var $container = $(`<div style="display: flex;"></div>`)
-						var $create_inline_button = $(`<div class="col-md-1"><button type="button" title="Create inline" class="btn btn-secondary"><i class="fa-regular fa-share-from-square"></i></button></div>`);
+						var $create_inline_button = $(`<div class="col-md-1"><button type="button" title="Create inline" class="btn btn-secondary"><i class="icon icon-share"></i></button></div>`);
 						if ($form_group_label.length) {
 							$container.insertAfter($form_group_label); // normal layout
 							$autocomplete_div.addClass("col-md-11");
@@ -163,7 +165,7 @@ mwjson.editor = class {
 
 						$create_inline_button.on("click", (function (subeditor, e) {
 							//console.log("Click ", subeditor);
-							var categories = subeditor.options.autocomplete.category;
+							
 							if (!Array.isArray(categories)) categories = [categories];
 							if (subeditor.value) {
 								//osl.ui.editData({source_page: subeditor.value, reload: false}).then((page) => {
@@ -198,7 +200,7 @@ mwjson.editor = class {
 						var $container = $input.parent().find(".input-group");
 						$input.parent().find(".json-editor-btn-upload").removeClass('json-editor-btn-upload');
 
-						var $create_inline_button = $(`<button type="button" title="Create inline" class="btn btn-secondary"><i class="fa-regular fa-share-from-square"></i></button>`);
+						var $create_inline_button = $(`<button type="button" title="Create inline" class="btn btn-secondary"><i class="icon icon-share"></i></button>`);
 						$container.append($create_inline_button);
 						$create_inline_button.on("click", (function (subeditor, e) {
 							//console.log("Click ", subeditor);
