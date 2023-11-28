@@ -165,9 +165,11 @@ mwjson.editor = class {
 
 						$create_inline_button.on("click", (function (subeditor, e) {
 							//console.log("Click ", subeditor);
-							
+							var categories = subeditor.schema?.range ? subeditor.schema?.range : subeditor.schema?.options?.autocomplete?.category;
 							if (!Array.isArray(categories)) categories = [categories];
-							if (subeditor.value) {
+							// note: is_dirty === true indicates there is some user input in the field but no element from the suggestion list was picked
+							// so subeditor.value would be the search string and no valid page name
+							if (subeditor.value && !subeditor.is_dirty) {
 								//osl.ui.editData({source_page: subeditor.value, reload: false}).then((page) => {
 								this.config.onEditInline({page_title: subeditor.value}).then((page) => {
 									//console.log(page);
@@ -184,6 +186,9 @@ mwjson.editor = class {
 								this.config.onCreateInline({categories: categories}).then((page) => {
 									//console.log(page);
 									subeditor.value = page.title;
+									// force label refreshing
+									// we could also get the label from the returned page object
+									subeditor.input.value_label = null;
 									//subeditor.change();
 									subeditor.onChange(true)
 								});
@@ -206,9 +211,11 @@ mwjson.editor = class {
 							//console.log("Click ", subeditor);
 							var categories = subeditor.schema?.range ? subeditor.schema?.range : "Category:OSW11a53cdfbdc24524bf8ac435cbf65d9d"; // WikiFile default
 							if (!Array.isArray(categories)) categories = [categories];
-							if (subeditor.value) {
+							// note: is_dirty === true indicates there is some user input in the field but no element from the suggestion list was picked
+							// so subeditor.value would be the search string and no valid page name
+							if (subeditor.value && !subeditor.is_dirty) {
 								//osl.ui.editData({source_page: subeditor.value, reload: false}).then((page) => {
-								this.config.onEditInline(subeditor.value).then((page) => {
+								this.config.onEditInline({page_title: subeditor.value}).then((page) => {
 									//console.log(page);
 									subeditor.value = page.title;
 									// force label refreshing
@@ -219,9 +226,12 @@ mwjson.editor = class {
 							}
 							else {
 								//osl.ui.createOrQueryInstance(categories, "inline").then((page) => {
-								this.config.onCreateInline(categories).then((page) => {
+								this.config.onCreateInline({categories: categories}).then((page) => {
 									//console.log(page);
 									subeditor.value = page.title;
+									// force label refreshing
+									// we could also get the label from the returned page object
+									subeditor.input.value_label = null;
 									subeditor.change();
 								});
 							}
