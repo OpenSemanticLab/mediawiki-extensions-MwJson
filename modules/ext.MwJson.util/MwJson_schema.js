@@ -482,16 +482,40 @@ mwjson.schema = class {
             return subschema.query; 
         }
         else if (subschema.options) {
+            // ToDo: move to jsoneditor options
+            const defaultFilter = "[[Display_title_of_normalized::like:*{{{_user_input_normalized}}}*]]";
+            const defaultProperties = {
+                "label": "Display_title_of",
+                "image": "HasImage",
+                "description": "HasDescription"
+            }
+            const defaultOptions = {
+                "limit": "100"
+            }
             if (subschema.options.autocomplete) {
                 var res = "";
                 if (subschema.options.autocomplete.query_filter_property) {
                     res += "[[" + subschema.options.autocomplete.query_filter_property + "::like:*{{{_user_input}}}*]]"
                 }
-                if (subschema.options.autocomplete.query) res += subschema.options.autocomplete.query;
+                if (subschema.options.autocomplete.query) {
+                    res += subschema.options.autocomplete.query;
+                }
                 else if (subschema.options.autocomplete.category) {
+                    res += "[[" + subschema.options.autocomplete.category + "]]"
                     res += "[[" + subschema.options.autocomplete.category + "]][[Display_title_of_normalized::like:*{{{_user_input_normalized}}}*]]|?Display_title_of=label|?HasImage=image|?HasDescription=description"
                 }
                 else if (subschema.options.autocomplete.property) res += "[[" + subschema.options.autocomplete.property + ":+]]"
+
+                if (!res.includes("_user_input")) res = res.replace(/(?<!\|)\|(?!\|)/, defaultFilter + "|"); // inject before first property selector or param (match the first non-doubled '|')
+                if (!res.includes("_user_input")) res += defaultFilter; // no property selector or param found: just append it
+
+                for (const key of Object.keys(defaultProperties)) {
+                    if (!res.match(RegExp("\\|\\s*\\?\\s*\\S+\\s*=\\s*" + key))) res += "|?" + defaultProperties[key] + "=" + key; // add e. g. '|?Display_title_of=label' if not present
+                }
+                for (const key of Object.keys(defaultOptions)) {
+                    if (!res.match(RegExp("\\|\\s*\\s*\\S+\\s*=\\s*" + key))) res += "|" + key + "=" + defaultOptions[key]; // add e. g. '|?Display_title_of=label' if not present
+                }
+
                 return res;
             }
         }
