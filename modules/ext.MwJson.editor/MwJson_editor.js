@@ -353,19 +353,35 @@ mwjson.editor = class {
 			}
 		});
 
-		// listen for array changes
-		this.jsoneditor.on('moveRow', editor => {
-			// since the input elements stay in place but the editors are rewired
-			// we need to reset the input elements 
-			for (const subeditor_key of Object.keys(editor.jsoneditor.editors)) {
-				var subeditor = editor.jsoneditor.editors[subeditor_key];
-				if (!subeditor) continue;
+		var resetAutocompleteEditors = () => {
+			var all_editors = [];
+			for (var subeditor_path of Object.keys(this.jsoneditor.editors)) {
+				var e = this.jsoneditor.editors[subeditor_path]
+				if (e) {
+					all_editors.push(e)
+					if (e.editors) all_editors = all_editors.concat(e.editors); // actual multiple editors due to oneOf schema
+				}
+			}
+
+			for (var subeditor of all_editors) {
 				if (subeditor.format === 'autocomplete') {
 					subeditor.input.value_label = null;
 					subeditor.input.value_id = null;
 					//subeditor.change();
 				}
 			}
+		}
+
+		// listen for array changes
+		this.jsoneditor.on('moveRow', editor => {
+			// since the input elements stay in place but the editors are rewired
+			// we need to reset the input elements 
+			resetAutocompleteEditors();
+		});
+		this.jsoneditor.on('deleteRow', value => {
+			// since the input elements stay in place but the editors are rewired
+			// we need to reset the input elements 
+			resetAutocompleteEditors()
 		});
 	}
 
