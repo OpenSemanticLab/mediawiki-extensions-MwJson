@@ -182,7 +182,14 @@ mwjson.schema = class {
         if (schema.oneOf) {
             // apply oneOf refs, while discarding visited properties since the actual applied schema is unknown
 			for (const subschema of Array.isArray(schema.oneOf) ? schema.oneOf : [schema.oneOf]) {
-				this._preprocess({schema: subschema, level: level + 1}); // oneOf is 
+				this._preprocess({schema: subschema, level: level + 1}); 
+			}
+		}
+        if (schema.anyOf) {
+            console.log("anyOf");
+            // apply anyOf refs, while discarding visited properties since the actual applied schema is unknown
+			for (const subschema of Array.isArray(schema.anyOf) ? schema.anyOf : [schema.anyOf]) {
+				this._preprocess({schema: subschema, level: level + 1});
 			}
 		}
 
@@ -194,8 +201,25 @@ mwjson.schema = class {
             schema.defaultProperties = [...new Set(schema.defaultProperties)]; // remove duplicates
         }
 
+        // translate attributes on schema level ("title", "description")
+        for (const attr of translateables) {
+            if (schema[attr+"*"]) {
+                if (schema[attr+"*"][this.config.lang]) schema[attr] = schema[attr+"*"][this.config.lang];
+            }
+        }
+
+        // translate attributes on property level ("title", "description", "enum_titles", "default", "inputAttributes")
 		if (schema.properties) {
 			for (const property of Object.keys(schema.properties)) {
+
+                // handle properties of type object and oneOf/anyOf on property level
+                this._preprocess({schema: schema.properties[property]});
+
+                // handle array items
+                if (schema.properties[property].items) { //} && schema.properties[property].items.properties) {
+                    this._preprocess({schema: schema.properties[property].items});
+                }
+
                 // use text values in user language if provided
 				for (const attr of translateables) {
 					if (schema.properties[property][attr+"*"]) { //objects
