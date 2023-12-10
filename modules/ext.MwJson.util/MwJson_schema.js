@@ -170,7 +170,7 @@ mwjson.schema = class {
     _preprocess(params) {
         var schema = params.schema;
         var level = params.level ? params.level : 0;
-		const translateables = ["title", "description", "enum_titles", "default"]; //ToDo: Just all <key>* keywords?
+		const translateables = ["title", "description", "enum_titles", "default", "inputAttributes"]; //ToDo: Just all <key>* keywords?
         var  visited_properties = params.visited_properties ? params.visited_properties : [];
 
         if (schema.allOf) {
@@ -201,8 +201,10 @@ mwjson.schema = class {
 					if (schema.properties[property][attr+"*"]) { //objects
 						if (schema.properties[property][attr+"*"][this.config.lang]) schema.properties[property][attr] = schema.properties[property][attr+"*"][this.config.lang];
 					}
-                    if (schema.properties[property].options && schema.properties[property].options[attr+"*"]) { //options
-						if (schema.properties[property].options[attr+"*"][this.config.lang]) schema.properties[property].options[attr] = schema.properties[property].options[attr+"*"][this.config.lang];
+                    if (schema.properties[property].options) { //options
+                        if (schema.properties[property].options[attr+"*"])
+						    if (schema.properties[property].options[attr+"*"][this.config.lang]) 
+                                schema.properties[property].options[attr] = schema.properties[property].options[attr+"*"][this.config.lang];
 					}
                     if (schema.properties[property].properties) {  //subobject
                         this._preprocess({schema: schema.properties[property]});
