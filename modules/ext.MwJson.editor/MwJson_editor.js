@@ -137,11 +137,34 @@ mwjson.editor = class {
 				//collect autocomplete field values to fetch labels
 				if (subeditor.format === 'autocomplete') {// && this.flags["change-after-load"]) {
 					//console.log("Autocomplete Editor:", subeditor);
-					//console.log("Dirty: ", subeditor.is_dirty);
-					if (input.value_id && input.value_label) { //label already fetched 
+					//console.log("Dirty: ", subeditor.is_dirty, input.value, input.value_id, input.value_label, subeditor.value);
+					if (subeditor.is_dirty && subeditor.value && subeditor.value !== "" && !input.value_id) {
+						//field was not filled yet.
+						//user has entered a value in the field but did not select a result from the suggestion list
+						//reset the state if the input to empty
+						subeditor.is_dirty = false;
+						input.value = "";
+						subeditor.value = "";
+						subeditor.onChange(true);
+					}
+					else if (subeditor.is_dirty && input.value === "" && subeditor.value === "") {
+						//field was already filled yet.
+						//user has removed the value from field so it's now empty
+						//reset the state if the input to empty
+						subeditor.is_dirty = false;
+						input.value_id = null;
+						input.value_label = null;
+						subeditor.onChange(true);
+					}
+					else if (input.value_id && input.value_label) { //label already fetched 
 						input.value = input.value_label;
 						subeditor.value = input.value_id; //will be applied on the next .getValue() call
-						if (subeditor.is_dirty) subeditor.change(); //resets aborted user input. ToDo: Call onChange(true)?
+						if (subeditor.is_dirty) {
+							//field was already filled yet.
+							//user has entered a new value in the field but did not select a result from the suggestion list
+							//reset the field to the previous value
+							subeditor.onChange(true);
+						}
 						subeditor.is_dirty = false;
 					}
 					else if (subeditor.value !== ""){
