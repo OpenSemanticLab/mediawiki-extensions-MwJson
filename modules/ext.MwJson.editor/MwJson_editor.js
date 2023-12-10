@@ -120,9 +120,16 @@ mwjson.editor = class {
 			var labeled_inputs = [];
 			var label_requests = [];
 
+			var all_editors = [];
 			for (var subeditor_path of Object.keys(this.jsoneditor.editors)) {
-				var subeditor = this.jsoneditor.editors[subeditor_path];
-				if (!subeditor) continue;
+				var e = this.jsoneditor.editors[subeditor_path]
+				if (e) {
+					all_editors.push(e)
+					if (e.editors) all_editors = all_editors.concat(e.editors); // actual multiple editors due to oneOf schema
+				}
+			}
+
+			for (var subeditor of all_editors) {
 
 				var input = subeditor.input
 				var $input = $(input);
@@ -452,10 +459,18 @@ mwjson.editor = class {
 	getSyntaxErrors() {
 		const promise = new Promise((resolve, reject) => {
 		var errors = []
-			var validation_promises = [];
+		var validation_promises = [];
+
+		var all_editors = [];
 		for (var subeditor_path of Object.keys(this.jsoneditor.editors)) {
-			var subeditor = this.jsoneditor.editors[subeditor_path];
-			if (!subeditor) continue;
+			var e = this.jsoneditor.editors[subeditor_path]
+			if (e) {
+				all_editors.push(e)
+				if (e.editors) all_editors = all_editors.concat(e.editors); // actual multiple editors due to oneOf schema
+			}
+		}
+
+		for (var subeditor of all_editors) {
 			if(subeditor.ace_editor_instance) {
 				for (var error of subeditor.ace_editor_instance.getSession().getAnnotations()) {
 					if (error.type == 'error') {
