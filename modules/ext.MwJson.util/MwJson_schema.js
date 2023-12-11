@@ -286,10 +286,34 @@ mwjson.schema = class {
                     if (this.config.mode === "query" && schema.properties[property].options.hidden) {
                         //remove hidden fields completely
                         delete schema.properties[property];
-                        if (schema.required)
+
+                        // remove it also from required and defaultProperties
+                        if (schema.required) {
                             schema.required = schema.required.filter(function(e) { return e !== property });
+                            if (schema.required.length == 0) delete schema.required;
+                        }
+                        if (schema.defaultProperties) {
+                            schema.defaultProperties = schema.defaultProperties.filter(function(e) { return e !== property });
+                            if (schema.defaultProperties.length == 0) delete schema.defaultProperties;
+                        }
                     }
 				}
+                // remove query properties in default mode
+                if (this.config.mode === "default") {
+                    if (schema.properties[property].options) {
+						if (schema.properties[property].options.conditional_visible && schema.properties[property].options.conditional_visible.modes) {
+							if (!schema.properties[property].options.conditional_visible.modes.includes(this.config.mode)) {
+                                delete schema.properties[property];
+        
+                                // remove it also from required and defaultProperties
+                                if (schema.required)
+                                    schema.required = schema.required.filter(function(e) { return e !== property });
+                                if (schema.defaultProperties)
+                                    schema.defaultProperties = schema.defaultProperties.filter(function(e) { return e !== property });
+                            }
+						}
+					} 
+                }
                 visited_properties.push(property);
 			}
 		}
