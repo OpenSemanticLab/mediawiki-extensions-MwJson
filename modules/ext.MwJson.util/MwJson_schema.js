@@ -186,7 +186,6 @@ mwjson.schema = class {
 			}
 		}
         if (schema.anyOf) {
-            console.log("anyOf");
             // apply anyOf refs, while discarding visited properties since the actual applied schema is unknown
 			for (const subschema of Array.isArray(schema.anyOf) ? schema.anyOf : [schema.anyOf]) {
 				this._preprocess({schema: subschema, level: level + 1});
@@ -507,8 +506,9 @@ mwjson.schema = class {
         }
         else if (subschema.options?.autocomplete?.property) res += "[[" + subschema.options.autocomplete.property + ":+]]"
 
-        if (!res.includes("_user_input")) res = res.replace(/(?<!\|)\|(?!\|)/, defaultFilter + "|"); // inject before first property selector or param (match the first non-doubled '|')
+        if (!res.includes("_user_input")) res = res.replace(/(?<!\|)\|(?!\|)/, defaultFilter + "|"); // inject before first property selector or param (match the first non-doubled '|') [[A]]|?... => [[A]][[...like...]]|?...
         if (!res.includes("_user_input")) res += defaultFilter; // no property selector or param found: just append it
+        res = res.replaceAll(/\]\s*OR\s*\[/g, "]"+defaultFilter + "OR["); // inject on every OR condition: [[A]]OR[[B]][[...like...]]=>[[A]][[...like...]]OR[[B]][[...like...]]
 
         for (const key of Object.keys(defaultProperties)) {
             if (!res.match(RegExp("\\|\\s*\\?\\s*\\S+\\s*=\\s*" + key))) res += "|?" + defaultProperties[key] + "=" + key; // add e. g. '|?Display_title_of=label' if not present
