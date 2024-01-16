@@ -1,7 +1,7 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.24.1",
+    "version":"0.24.2",
     "author":[
         "[https://github.com/simontaurus Simon Stier]"
     ],
@@ -92,6 +92,7 @@
             "scripts":[
                 "handlebars.min.js",
                 "autocomplete.min.js",
+                "imask.min.js",
                 "json-editor.min.js",
                 "jsoneditor.min.js",
                 "MwJson_editor.js",
