@@ -91,3 +91,8 @@ html[data-bs-theme="dark"] .je-modal {
 html[data-bs-theme="dark"] .jsoneditors {
     filter: invert(0.9);
 }
+
+/* dark mode for signature canvas */
+html[data-bs-theme="dark"] .signature {
+    filter: invert(0.9);
+}
