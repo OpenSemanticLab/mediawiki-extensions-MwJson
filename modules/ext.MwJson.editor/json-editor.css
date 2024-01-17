@@ -170,6 +170,7 @@ button.json-editor-btn-edit_properties::after {
     border-top-right-radius: 8px;
 }
 
+/* hover effect save button */
 .oo-ui-processDialog-actions-primary .oo-ui-actionWidget>.oo-ui-buttonElement-button:hover {
     background-color: rgb(61, 118, 231);
     color: #fff;
