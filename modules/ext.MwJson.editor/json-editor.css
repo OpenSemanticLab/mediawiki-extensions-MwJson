@@ -92,7 +92,85 @@ html[data-bs-theme="dark"] .jsoneditors {
     filter: invert(0.9);
 }
 
-/* dark mode for signature canvas */
-html[data-bs-theme="dark"] .signature {
-    filter: invert(0.9);
+/* add margin to row set of json editor forms */
+.row>div:not([style*="display: none;"]) {
+    margin-bottom: 1rem;
+}
+
+/* add margin to comment / change description */
+.oo-ui-fieldLayout-body {
+    margin: 0.5rem 0;
+}
+
+/* add space between burger menu and select properties */
+.icon-menu {
+    padding: 8px 0 8px 0;
+    margin: 0 6px;
+}
+
+/* button radius: "select properties" */
+.btn-group>.btn-group:not(:first-child)>.btn,
+.btn-group>.btn:nth-child(n+3),
+.btn-group>:not(.btn-check)+.btn {
+    border-top-left-radius: 0.2rem;
+    border-bottom-left-radius: 0.2rem;
+    margin-left: 6px;
+}
+
+/* space between category header and "select properties" button */
+.btn-group>.btn-group:not(:first-child),
+.btn-group>:not(.btn-check:first-child)+.btn {
+    margin-left: calc(var(--bs-border-width)*8);
+}
+
+/* vertical align of "select properties" button ->  */
+.btn-group,
+.btn-group-vertical {
+    vertical-align: unset;
+}
+
+/* space between categroy header and description */
+.card-title {
+    margin-bottom: 8px;
+}
+
+/* space after "select properties" and button border */
+button.json-editor-btn-edit_properties::after {
+    margin-right: 8px;
+}
+
+/* remove unnecessary border under "Text" "Lang code" and between "value required" and "add button" */
+.table> :not(caption)>*>* {
+    border-bottom-width: 0;
+}
+
+/* button size - delete/ add property instance  */
+.btn-group-vertical>.btn,
+.btn-group>.btn {
+    flex: 0.1 1 auto;
+}
+
+/* button radius - add property instance */
+.btn-group>.btn-group:not(:last-child)>.btn,
+.btn-group>.btn.dropdown-toggle-split:first-child,
+.btn-group>.btn:not(:last-child):not(.dropdown-toggle) {
+    border-top-right-radius: 0.2rem;
+    border-bottom-right-radius: 0.2rem;
+}
+
+/* margin input field - select properties dropdown */
+.property-selector-input {
+    margin: .5rem .3rem;
+}
+
+/* Data-Editor Save button color */
+.oo-ui-processDialog-actions-primary .oo-ui-actionWidget>.oo-ui-buttonElement-button {
+    background-color: #36c;
+    color: #fff;
+    border-top-right-radius: 8px;
+}
+
+.oo-ui-processDialog-actions-primary .oo-ui-actionWidget>.oo-ui-buttonElement-button:hover {
+    background-color: rgb(61, 118, 231);
+    color: #fff;
 }
