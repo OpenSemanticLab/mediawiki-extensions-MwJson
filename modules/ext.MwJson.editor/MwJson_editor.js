@@ -174,9 +174,10 @@ mwjson.editor = class {
 
 					var categories = subeditor.schema?.range;
 					if (!categories) categories = subeditor.schema?.options?.autocomplete?.category; //legacy
+					var super_categories = subeditor.schema?.subclassof_range; //indicates to create a new category of type range (MetaCategory) as subcategory of subclassof_range
 
 					// create button to create an instance of the target category inline of not explicite disabled
-					if (!(subeditor.schema?.options?.autocomplete?.create_inline === false) && categories && !subeditor.inline_create_build && this.config.onCreateInline && this.config.onEditInline){
+					if (!(subeditor.schema?.options?.autocomplete?.create_inline === false) && (categories || super_categories) && !subeditor.inline_create_build && this.config.onCreateInline && this.config.onEditInline){
 						subeditor.inline_create_build = true;
 
 						// in order to add a button beside the autocomplete input field we have to rearrange the elements
@@ -196,7 +197,9 @@ mwjson.editor = class {
 						$create_inline_button.on("click", (function (subeditor, e) {
 							//console.log("Click ", subeditor);
 							var categories = subeditor.schema?.range ? subeditor.schema?.range : subeditor.schema?.options?.autocomplete?.category;
-							if (!Array.isArray(categories)) categories = [categories];
+							if (categories && !Array.isArray(categories)) categories = [categories];
+							var super_categories = subeditor.schema?.subclassof_range;
+							if (super_categories && !Array.isArray(super_categories)) super_categories = [super_categories];
 							// note: is_dirty === true indicates there is some user input in the field but no element from the suggestion list was picked
 							// so subeditor.value would be the search string and no valid page name
 							if (subeditor.value && !subeditor.is_dirty) {
@@ -213,7 +216,7 @@ mwjson.editor = class {
 							}
 							else {
 								//osl.ui.createOrQueryInstance(categories, "inline").then((page) => {
-								this.config.onCreateInline({categories: categories}).then((page) => {
+								this.config.onCreateInline({categories: categories, super_categories: super_categories}).then((page) => {
 									//console.log(page);
 									subeditor.value = page.title;
 									// force label refreshing

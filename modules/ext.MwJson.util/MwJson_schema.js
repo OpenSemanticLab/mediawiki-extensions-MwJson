@@ -522,8 +522,21 @@ mwjson.schema = class {
         if (subschema.options?.autocomplete?.query) {
             res += subschema.options.autocomplete.query;
         }
-        else if (subschema.range && mwjson.util.isString(subschema.range)) { // ToDo: handle multiple entries connected with OR or AND
-            res += "[[" + subschema.range + "]]"
+        else if (
+            (subschema.range && mwjson.util.isString(subschema.range))
+            || (subschema.subclassof_range && mwjson.util.isString(subschema.subclassof_range))
+            ) { // ToDo: handle multiple entries connected with OR or AND
+            if (subschema.subclassof_range) {
+                //if (subschema.range) res += "[[SubClassOf.HasMetaCategory::" + subschema.range + "]]" + "OR[[SubClassOf.SubClassOf.HasMetaCategory::" + subschema.range + "]]"
+                //else 
+                res += "[[SubClassOf::" + subschema.subclassof_range + "]]" 
+                + "OR[[SubClassOf.SubClassOf::" + subschema.subclassof_range + "]]"
+                + "OR[[SubClassOf.SubClassOf.SubClassOf::" + subschema.subclassof_range + "]]"
+                + "OR[[SubClassOf.SubClassOf.SubClassOf::" + subschema.subclassof_range + "]]"
+                + "OR[[SubClassOf.SubClassOf.SubClassOf.SubClassOf::" + subschema.subclassof_range + "]]"
+                + "OR[[SubClassOf.SubClassOf.SubClassOf.SubClassOf.SubClassOf::" + subschema.subclassof_range + "]]"
+            }
+            else res += "[[" + subschema.range + "]]"
         }
         else if (subschema.options?.autocomplete?.category) {
             res += "[[" + subschema.options.autocomplete.category + "]]"
