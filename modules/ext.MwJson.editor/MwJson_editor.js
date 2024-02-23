@@ -9,6 +9,7 @@ mwjson.editor = class {
 			submit_enabled: true, //if true, add save button
 			allow_submit_with_errors: true,
 			lang: mw.config.get('wgUserLanguage'),
+			user_id: mw.config.get('wgUserName'),
 			id: 'json-editor-' + mwjson.util.getShortUid(),
 			onsubmit: (json) => this.onsubmit(json),
 			onchange: (json) => {},
@@ -133,6 +134,12 @@ mwjson.editor = class {
 
 				var input = subeditor.input
 				var $input = $(input);
+
+				if (subeditor.schema?.format === "dynamic_template") {
+					var jseditor_editor = subeditor;
+					var watched_values = subeditor.watched_values;
+					this.formatDynamicTemplate(jseditor_editor, watched_values);
+				}
 
 				//collect autocomplete field values to fetch labels
 				if (subeditor.format === 'autocomplete') {// && this.flags["change-after-load"]) {
@@ -409,6 +416,104 @@ mwjson.editor = class {
 			// we need to reset the input elements 
 			resetAutocompleteEditors()
 		});
+	// adds suppport for {{_global_index_}}
+	async formatDynamicTemplate(jseditor_editor, watched_values) {
+		watched_values["_current_user_"] = jseditor_editor.jsoneditor.mwjson_editor.config.user_id;
+		watched_values["_current_subject_"] = jseditor_editor.jsoneditor.mwjson_editor.config.target;
+		var index = jseditor_editor.parent?.key;
+		watched_values["i1"] = index ? index * 1 + 1 : 0;
+		watched_values["_array_index_"] = index ? index * 1 + 1 : 0;
+		watched_values["i01"] = index ? index * 1 + 1 : 0;
+		//var postqueries = [];
+		//todo: use jseditor_editor.formname // root[<key>]
+		let set_value = this.config.data;
+		let set = true;
+		if (this.config.data) {
+			let path = jseditor_editor.path.split('.'); // e.g. "root.samples.1.id"
+			path.shift(); //remove first element ('root')
+			for (let e of path) {
+				//test for integer, see https://stackoverflow.com/questions/10834796/validate-that-a-string-is-a-positive-integer
+				if (0 === e % (!isNaN(parseFloat(e)) && 0 < ~~e)) set_value = set_value[parseInt(e, 10)]; // array index
+				else set_value = set_value[e]; // object key
+				if (!set_value || set_value === "") {
+					set = false;
+					break; // path does not exist or is empty
+				}
+			}
+		}
+		else set = false;
+		//let set = (this.config.data && this.config.data[jseditor_editor.key] && this.config.data[jseditor_editor.key] !== "")
+		console.log("Set ", jseditor_editor.key, " ", jseditor_editor.formname, " ", set);
+		let override = jseditor_editor.schema?.options?.dynamic_template?.override;
+		if (!set || override === true) {
+			//retriev the existing property value with the highest value for the unique number
+			var context = {
+				property: "HasId",
+				number_pattern: "0000",
+				increment: 1,
+				debug: true,
+
+			};
+			if (!jseditor_editor.schema?.dynamic_template) return;
+			if (jseditor_editor.schema?.options?.data_maps) {
+				for (const map of jseditor_editor.schema.options.data_maps) {
+					let query_url = Handlebars.compile(map.query)(watched_values);
+					query_url = mw.config.get("wgScriptPath") + `/api.php?action=ask&format=json&query=` + query_url;
+					let result = await (await fetch(query_url)).json();
+
+					var value = mwjson.extData.getValue(result, map.source_path, "jsonpath");
+					if (map.template) value = Handlebars.compile(map.template)(value);
+					if (map.storage_path) watched_values[map.storage_path] = value; //ToDo: support nested
+					if (map.target_path) {
+						var target_editor = Handlebars.compile(map.target_path)(watched_values);
+						//for (const key in jseditor_editor.watched_values) target_editor = target_editor.replace('$(' + key + ')', jseditor_editor.watched[key]);
+						if (jseditor_editor.jsoneditor.editors[target_editor]) {
+							jseditor_editor.jsoneditor.editors[target_editor].setValue(value);
+						}
+					}
+				}
+			}
+			let fetch_global_index = false;
+			if (jseditor_editor.schema.dynamic_template.includes("{{{_global_index_}}}")) {
+				fetch_global_index = true;
+				context.value = Handlebars.compile(jseditor_editor.schema.dynamic_template.replace("{{{_global_index_}}}", "%_global_index_%"))(watched_values);
+			}
+			else if (jseditor_editor.schema.dynamic_template.includes("{{_global_index_}}")) {
+				fetch_global_index = true;
+				context.value = Handlebars.compile(jseditor_editor.schema.dynamic_template.replace("{{_global_index_}}", "%_global_index_%"))(watched_values);
+			}
+			if (fetch_global_index) {
+				var query = mw.config.get("wgScriptPath") + `/api.php?action=ask&query=[[${context.property}::~${context.value.replace("%_global_index_%", "*")}]]|?${context.property}|sort=${context.property}|order=desc|limit=1&format=json`;
+				//var receiveHighestExistingValuesQuery = $.ajax({url : query, dataType: "json", cache: false,
+				//	success : (data) => {
+				//let query1 = mw.config.get("wgScriptPath") + `/api.php?action=ask&query=[[User:${watched_values["_current_user_"]}]]|?HasAbbreviation=abbreviation&format=json`;
+				//let data1 = await (await fetch(query1)).json()
+				//console.log(data1);
+				let data = await (await fetch(query)).json();
+				var number_start = context.increment;
+				context.unique_number_string = "" + number_start;
+				for (var key in data.query.results) {
+
+					if (data.query.results[key].printouts[context.property][0] !== undefined) {
+						context.highestExistingValue = data.query.results[key].printouts[context.property][0];
+						if (context.debug) console.log("highestExistingValue:" + context.highestExistingValue);
+						var regex = new RegExp(context.value.replace("%_global_index_%", "([0-9]*)"), "g");
+						context.unique_number_string = regex.exec(context.highestExistingValue)[1];
+						context.unique_number_string = "" + (parseInt(context.unique_number_string) + context.increment);
+					}
+				}
+				context.unique_number_string = (context.number_pattern + context.unique_number_string).substr(-context.number_pattern.length);
+				watched_values["_global_index_"] = context.unique_number_string
+				//context.value = context.value.replace("*", context.unique_number_string);
+			}
+			context.value = Handlebars.compile(jseditor_editor.schema.dynamic_template)(watched_values);
+			//$(context.field).val(context.value);
+			console.log("Set value", context)
+			jseditor_editor.setValue(context.value)
+		}
+		else {
+			if (set_value && set_value !== "") jseditor_editor.setValue(set_value);
+		}
 	}
 
 	createUI() {
@@ -818,6 +923,12 @@ mwjson.editor = class {
 				var t = new Date()
 				t.setDate(t.getDate())
 				return t.toISOString().split('T')[0] + 'T00:00'
+			},
+			"template": {
+				"dynamic_template": (jseditor_editor, watched_values) => {
+					jseditor_editor.jsoneditor.mwjson_editor.formatDynamicTemplate(jseditor_editor, watched_values);
+					return "";
+				},
 			},
 			"autocomplete": {
 				// This is callback functions for the "autocomplete" editor
