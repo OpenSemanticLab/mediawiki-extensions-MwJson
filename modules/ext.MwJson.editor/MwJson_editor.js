@@ -1104,6 +1104,100 @@ mwjson.editor = class {
 			return result;
 		});
 
-		console.log("Callbacks set");
+		// register pattern formator
+		// {{#patternformat pattern}}<string>{{/substring}}
+		// e. g. {{#patternformat '00.00'}}{{test}}{{/patternformat}}
+		// e. g. {{#patternformat '00'}}2{{/patternformat}} => 02
+		// or {{patternformat pattern value}}
+		// e. g. {{patternformat '0.0' test}}
+		// e. g. {{patternformat '0.0000' 1.129141 }} => 1.1291
+		// e. g. {{patternformat '00.0000' '1.1' }} => 01.1000
+		// e. g. {{patternformat '_____' 'abc' }} => __abc
+		Handlebars.registerHelper('patternformat', function (pattern, value_or_options, options) {
+			let value = "";
+			if (!options && !value_or_options) return value; // no pattern given
+			if (!options) { // helper used as block
+				options = value_or_options
+				value = options.fn(this);
+			}
+			else value = value_or_options; // helper used as function
+			if (typeof (value) == 'number') value = value.toString();
+
+			let pre_pattern = pattern.split('.')[0] //format for int
+			let post_pattern = ""
+			if (pattern.includes('.')) post_pattern = pattern.split('.')[1]
+			if (post_pattern !== "") {
+				//format floats with rounding
+				value = "" + parseFloat(value).toFixed(post_pattern.length);
+				if (pre_pattern !== "") value = (pre_pattern + value.split('.')[0]).substr(-pre_pattern.length) + '.' + value.split('.')[1];
+			}
+			else {
+				//format integers or strings with leading chars
+				value = (pre_pattern + value).substr(-pre_pattern.length);
+			}
+			return value
+		})
+
+		// register current datetime
+		// {{now}}
+		// e. g. {{now}} => 2024-02-04T04:31:08.050Z 
+		// consider: https://github.com/userfrosting/UserFrosting/issues/756
+		Handlebars.registerHelper('__now__', function (options) {
+			return new Date(Date.now()).toISOString();
+		})
+		// register alias
+		Handlebars.registerHelper('now', function (options) {
+			return Handlebars.helpers.__now__.apply(options);
+		})
+
+
+		// register current datetime
+		// {{__uuid__}}
+		// e. g. {{__uuid__}} => ad56b31f-9fe5-466a-8be7-89bce58045f1
+		Handlebars.registerHelper('uuid', function (options) {
+			//return mwjson.util.uuidv4();
+			return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+				(c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+			);
+			//return crypto.randomUUID().toString(); //only works in safe env: localhost or https
+		})
+
+		// register date formater
+		// {{__format_datetime__ <format> <date>}}
+		// e. g. {{__format_datetime__ 'Y' (__now__)}} => 2024
+		// consider: https://support.helpdocs.io/article/kvaf7f4kf9-handlebars-helpers-for-custom-templates
+		Handlebars.registerHelper('dateformat', function (format, date, options) {
+			if (!options) {
+				options = format;
+				format = "YYYY-MM-DD HH:MM"
+			}
+			//return new Date(Date.parse(date)).toISOString()
+			date = new Date(Date.parse(date));
+			let result = flatpickr.formatDate(date, format);
+			return result;
+		})
+
+		// register math callback
+		// {{calc (calc 1 '+' 1) '*' 10}} => 20
+		// {{#calc 3 '*'}}2{{/calc}} => 6
+		Handlebars.registerHelper("calc", function (lvalue, operator, rvalue, options) {
+			if (!options) {
+				options = rvalue;
+				//rvalue = operator;
+				//operator = lvalue;
+				//lvalue = options.fn(this);
+				rvalue = options.fn(this);
+			}
+			lvalue = parseFloat(lvalue);
+			rvalue = parseFloat(rvalue);
+
+			return {
+				"+": lvalue + rvalue,
+				"-": lvalue - rvalue,
+				"*": lvalue * rvalue,
+				"/": lvalue / rvalue,
+				"%": lvalue % rvalue
+			}[operator];
+		});
 	};
 }
