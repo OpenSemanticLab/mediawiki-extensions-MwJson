@@ -416,7 +416,40 @@ mwjson.editor = class {
 			// we need to reset the input elements 
 			resetAutocompleteEditors()
 		});
-	// adds suppport for {{_global_index_}}
+
+		// problem: is called both when row is added or created
+		// removing ignored properties conflicts with defaultProperties
+		this.jsoneditor.on('addRow', editor => {
+			//console.log('addRow', editor);
+			let ignored_properties = [];
+			if (editor.schema?.options?.copy_ignore) ignored_properties = ignored_properties.concat(editor.schema?.options?.copy_ignore);
+			if (editor.parent?.schema?.options?.array_copy_ignore) ignored_properties = ignored_properties.concat(editor.parent?.schema?.options?.array_copy_ignore);
+			let value = mwjson.util.deepCopy(editor.getValue());
+			let changed = false;
+			for (let p of ignored_properties) {
+				let keep = (editor.schema?.required?.includes(p) || editor.schema?.defaultProperties?.includes(p))
+				let default_value = null
+				if (Object.hasOwn(value, p)) {
+					if (value[p] && typeof value[p] === 'string') default_value = "";
+					//if (value[p]) keep ? value[p] = default_value : delete value[p];
+					if (value[p] && keep) { console.log("default", default_value); value[p] = default_value; }
+					if (value[p] && !keep) { console.log("delete"); delete value[p]; }
+					console.log("Remove", p, keep, "=>", value);
+					changed = true
+				}
+				//value[p] = default_value
+			}
+			console.log(JSON.stringify(value));
+			if (changed) editor.setValue(value);
+		});
+
+		this.jsoneditor.on('copyRow', value => {
+			// not implemented (yet) by json-editor
+			//console.log('copyRow', value);
+		});
+	}
+
+	// adds suppport for backend supplied variables like {{_global_index_}}
 	async formatDynamicTemplate(jseditor_editor, watched_values) {
 		watched_values["_current_user_"] = jseditor_editor.jsoneditor.mwjson_editor.config.user_id;
 		watched_values["_current_subject_"] = jseditor_editor.jsoneditor.mwjson_editor.config.target;
