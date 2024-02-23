@@ -1286,19 +1286,19 @@ mwjson.editor = class {
 		// {{now}}
 		// e. g. {{now}} => 2024-02-04T04:31:08.050Z 
 		// consider: https://github.com/userfrosting/UserFrosting/issues/756
-		Handlebars.registerHelper('__now__', function (options) {
+		Handlebars.registerHelper('_now_', function (options) {
 			return new Date(Date.now()).toISOString();
 		})
 		// register alias
-		Handlebars.registerHelper('now', function (options) {
-			return Handlebars.helpers.__now__.apply(options);
-		})
+		//Handlebars.registerHelper('now', function (options) {
+		//	return Handlebars.helpers.__now__.apply(options);
+		//})
 
 
 		// register current datetime
 		// {{__uuid__}}
 		// e. g. {{__uuid__}} => ad56b31f-9fe5-466a-8be7-89bce58045f1
-		Handlebars.registerHelper('uuid', function (options) {
+		Handlebars.registerHelper('_uuid_', function (options) {
 			//return mwjson.util.uuidv4();
 			return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
 				(c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
