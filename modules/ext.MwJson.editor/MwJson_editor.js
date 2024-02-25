@@ -192,10 +192,10 @@ mwjson.editor = class {
 						var $form_group = $input.parent().parent();
 						var $form_group_label = $input.parent().parent().find("label");
 						var $container = $(`<div style="display: flex;"></div>`)
-						var $create_inline_button = $(`<div class="col-md-1"><button type="button" title="Create inline" class="btn btn-secondary"><i class="icon icon-share"></i></button></div>`);
+						var $create_inline_button = $(`<div class="col-md-3"><button type="button" class="inline-edit-btn btn btn-secondary"></button></div>`);
 						if ($form_group_label.length) {
 							$container.insertAfter($form_group_label); // normal layout
-							$autocomplete_div.addClass("col-md-11");
+							$autocomplete_div.addClass("col-md-9");
 						}
 						else $form_group.append($container); // table layout
 						$container.append($autocomplete_div.detach());
@@ -245,7 +245,7 @@ mwjson.editor = class {
 						var $container = $input.parent().find(".input-group");
 						$input.parent().find(".json-editor-btn-upload").removeClass('json-editor-btn-upload');
 
-						var $create_inline_button = $(`<button type="button" title="Create inline" class="btn btn-secondary"><i class="icon icon-share"></i></button>`);
+						var $create_inline_button = $(`<button type="button" title="Create inline" class="inline-edit-btn btn btn-secondary"></button>`);
 						$container.append($create_inline_button);
 						$create_inline_button.on("click", (function (subeditor, e) {
 							//console.log("Click ", subeditor);
@@ -277,6 +277,19 @@ mwjson.editor = class {
 							}
 						}).bind(this, subeditor));
 					}
+				}
+
+				// change label of inline create btn depending on the fields state
+				if (
+					(!(subeditor.schema?.options?.autocomplete?.create_inline === false) && (categories || super_categories) && this.config.onCreateInline && this.config.onEditInline)
+					|| (!(subeditor.schema?.options?.upload?.create_inline === false) && subeditor.schema?.format === 'url' && subeditor.schema?.options?.upload && this.config.onCreateInline && this.config.onEditInline)
+					){
+					var label = mw.message("mwjson-editor-create-inline-label").text() + " " + '<i class="icon icon-plus"></i>';
+					var tooltip = mw.message("mwjson-editor-create-inline-tooltip").text();
+					if (subeditor.value && !subeditor.is_dirty) label = mw.message("mwjson-editor-edit-inline-label").text() + " " + '<i class="icon icon-edit"></i>';
+					if (subeditor.value && !subeditor.is_dirty) tooltip = mw.message("mwjson-editor-edit-inline-tooltip").text();
+					$input.parent().parent().find(".inline-edit-btn").html(label);
+					$input.parent().parent().find(".inline-edit-btn").attr('title', tooltip);
 				}
 
 				//BUG: Does not save value in original text field (only if source mode is toggled). See PageForms extension
