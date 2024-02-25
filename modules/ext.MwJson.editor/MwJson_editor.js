@@ -135,7 +135,7 @@ mwjson.editor = class {
 				var input = subeditor.input
 				var $input = $(input);
 
-				if (subeditor.schema?.format === "dynamic_template") {
+				if (subeditor.schema?.dynamic_template) {
 					var jseditor_editor = subeditor;
 					var watched_values = subeditor.watched_values;
 					this.formatDynamicTemplate(jseditor_editor, watched_values);
