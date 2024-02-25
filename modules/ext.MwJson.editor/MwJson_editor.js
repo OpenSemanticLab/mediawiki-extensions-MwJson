@@ -192,10 +192,10 @@ mwjson.editor = class {
 						var $form_group = $input.parent().parent();
 						var $form_group_label = $input.parent().parent().find("label");
 						var $container = $(`<div style="display: flex;"></div>`)
-						var $create_inline_button = $(`<div class="col-md-3"><button type="button" class="inline-edit-btn btn btn-secondary"></button></div>`);
+						var $create_inline_button = $(`<div class="col-md-2"><button type="button" class="inline-edit-btn btn btn-secondary"></button></div>`);
 						if ($form_group_label.length) {
 							$container.insertAfter($form_group_label); // normal layout
-							$autocomplete_div.addClass("col-md-9");
+							$autocomplete_div.addClass("col-md-10");
 						}
 						else $form_group.append($container); // table layout
 						$container.append($autocomplete_div.detach());
@@ -245,7 +245,7 @@ mwjson.editor = class {
 						var $container = $input.parent().find(".input-group");
 						$input.parent().find(".json-editor-btn-upload").removeClass('json-editor-btn-upload');
 
-						var $create_inline_button = $(`<button type="button" title="Create inline" class="inline-edit-btn btn btn-secondary"></button>`);
+						var $create_inline_button = $(`<button type="button" class="inline-edit-btn btn btn-secondary"></button>`);
 						$container.append($create_inline_button);
 						$create_inline_button.on("click", (function (subeditor, e) {
 							//console.log("Click ", subeditor);
