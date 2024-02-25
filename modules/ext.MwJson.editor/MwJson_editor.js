@@ -15,6 +15,11 @@ mwjson.editor = class {
 			onchange: (json) => {},
 			onEditInline: null, //callback to edit a connected entity directly from the current entity edit form
 			onCreateInline: null, //callback to create a new connected entity directly from the current entity edit form
+			getSubjectId: (params) => { //callback to determine the currently edited subjects @id
+				//params.jsondata : Current json content of the editor
+				//params.editor : The mwjson editor instance
+				return params.editor.config.target_namespace + ":" + mwjson.util.OswId(params.jsondata.uuid);
+			}
 		};
 		this.config = mwjson.util.mergeDeep(defaultConfig, config);
 		this.flags = {'change-after-load': false};
@@ -109,6 +114,7 @@ mwjson.editor = class {
 					this.jsoneditor.setValue(page.slots[this.config.target_slot] ? page.slots[this.config.target_slot] : {});
 				}
 			})
+			this.updateSubjectId();
 		});
 
 		// listen for changes
@@ -117,6 +123,8 @@ mwjson.editor = class {
 			console.log(this.jsoneditor.schema);
 			console.log(this.jsoneditor.getValue());
 			//console.log(this.jsoneditor.editors);
+
+			this.updateSubjectId();
 
 			var labeled_inputs = [];
 			var label_requests = [];
@@ -140,6 +148,10 @@ mwjson.editor = class {
 					var watched_values = subeditor.watched_values;
 					this.formatDynamicTemplate(jseditor_editor, watched_values);
 				}
+				// add globals (does not work here since watched_values is evaluated before)
+				/*if (subeditor.watched_values) {
+					subeditor.watched_values["_current_subject_"] = this.config.target;
+				}*/
 
 				//collect autocomplete field values to fetch labels
 				if (subeditor.format === 'autocomplete') {// && this.flags["change-after-load"]) {
@@ -462,6 +474,14 @@ mwjson.editor = class {
 		});
 	}
 
+	updateSubjectId() {
+		var jsondata = this.jsoneditor.getValue();
+		var subject_id = this.config.getSubjectId({jsondata: jsondata, editor: this});
+		if (subject_id != this.config.target) console.log("Set subject id to ", subject_id);
+		this.config.target_namespace = subject_id.split(":")[0];
+		this.config.target = subject_id;
+	}
+
 	// adds suppport for backend supplied variables like {{_global_index_}}
 	async formatDynamicTemplate(jseditor_editor, watched_values) {
 		watched_values["_current_user_"] = jseditor_editor.jsoneditor.mwjson_editor.config.user_id;
@@ -491,6 +511,10 @@ mwjson.editor = class {
 		//let set = (this.config.data && this.config.data[jseditor_editor.key] && this.config.data[jseditor_editor.key] !== "")
 		console.log("Set ", jseditor_editor.key, " ", jseditor_editor.formname, " ", set);
 		let override = jseditor_editor.schema?.options?.dynamic_template?.override;
+		let override_empty = jseditor_editor.schema?.options?.dynamic_template?.override_empty || false;
+		// Todo: set override_empty true if not hidden and not read-only
+		if (override_empty) set = (jseditor_editor.value && jseditor_editor.value !== "")
+
 		if (!set || override === true) {
 			//retriev the existing property value with the highest value for the unique number
 			var context = {
