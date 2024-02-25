@@ -555,11 +555,13 @@ mwjson.editor = class {
 			context.value = Handlebars.compile(jseditor_editor.schema.dynamic_template)(watched_values);
 			//$(context.field).val(context.value);
 			console.log("Set value", context)
-			jseditor_editor.setValue(context.value)
+			set_value = context.value;
+			jseditor_editor.setValue(set_value)
 		}
 		else {
 			if (set_value && set_value !== "") jseditor_editor.setValue(set_value);
 		}
+		return set_value; // return the value for template: dynamic_template
 	}
 
 	createUI() {
@@ -972,8 +974,7 @@ mwjson.editor = class {
 			},
 			"template": {
 				"dynamic_template": (jseditor_editor, watched_values) => {
-					jseditor_editor.jsoneditor.mwjson_editor.formatDynamicTemplate(jseditor_editor, watched_values);
-					return "";
+					return jseditor_editor.jsoneditor.mwjson_editor.formatDynamicTemplate(jseditor_editor, watched_values);
 				},
 			},
 			"autocomplete": {
