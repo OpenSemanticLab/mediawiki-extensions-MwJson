@@ -1,7 +1,7 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.27.0",
+    "version":"0.28.0",
     "author":[
         "[https://github.com/simontaurus Simon Stier]"
     ],
@@ -86,6 +86,7 @@
             "remoteExtPath":"MwJson/modules/ext.MwJson.editor",
             "styles":[
                 "autocomplete.min.css",
+                "flatpickr.min.css",
                 "json-editor.css",
                 "jsoneditor.css"
             ],
@@ -94,6 +95,7 @@
                 "autocomplete.min.js",
                 "imask.min.js",
                 "signature_pad.umd.min.js",
+                "flatpickr.min.js",
                 "json-editor.min.js",
                 "jsoneditor.min.js",
                 "MwJson_editor.js",
