@@ -484,7 +484,18 @@ mwjson.editor = class {
 
 	// adds suppport for backend supplied variables like {{_global_index_}}
 	async formatDynamicTemplate(jseditor_editor, watched_values) {
-		watched_values["_current_user_"] = jseditor_editor.jsoneditor.mwjson_editor.config.user_id;
+		
+		if (jseditor_editor.schema.dynamic_template.includes("_current_user_")) {
+			let user_page_or_item = jseditor_editor.jsoneditor.mwjson_editor.config.user_id;
+			let query_url = mw.config.get("wgScriptPath") + `/api.php?action=ask&format=json&query=[[User:${user_page_or_item}]]`;
+			let result = await (await fetch(query_url)).json();
+			if (result?.query?.results) {
+				// the result page title respects redirects,
+				// e.g. Item:... is returned if User:... redirects to Item:...
+				for (let page_title in result.query.results) user_page_or_item = page_title;
+			}
+			watched_values["_current_user_"] = user_page_or_item;
+		}
 		watched_values["_current_subject_"] = jseditor_editor.jsoneditor.mwjson_editor.config.target;
 		var index = jseditor_editor.parent?.key;
 		watched_values["i1"] = index ? index * 1 + 1 : 0;
