@@ -932,11 +932,21 @@ mwjson.editor = class {
 		if (!('ready' in mwjson.editor) || !mwjson.editor.ready) {
 			//mw.loader.load('https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css', 'text/css');
 			//mw.loader.load('https://cdn.jsdelivr.net/npm/spectre.css@latest/dist/spectre-icons.min.css', 'text/css');
+			//mw.loader.load('https://cdn.jsdelivr.net/npm/select2@4.0.6-rc.1/dist/css/select2.min.css', 'text/css');
+			//mw.loader.load('https://cdn.jsdelivr.net/npm/choices.js@latest/public/assets/styles/choices.min.css', 'text/css');
+			//mw.loader.load('https://cdn.jsdelivr.net/npm/selectize@latest/dist/css/selectize.min.css', 'text/css'); //needed?
+			//mw.loader.load('https://cdn.jsdelivr.net/npm/selectize@latest/dist/css/selectize.default.min.css', 'text/css'); 
+			mw.loader.load(mw.config.get("wgScriptPath") + "/extensions/MwJson/modules/ext.MwJson.editor/selectize.default.min.css", 'text/css'); 
 			mwjson.parser.init();
 			$.when(
 				//$.getScript("https://cdn.jsdelivr.net/npm/@json-editor/json-editor@latest/dist/jsoneditor.js"),
 				//$.getScript("https://unpkg.com/imask"),
 				//$.getScript("https://cdn.jsdelivr.net/npm/ace-builds@latest/src-noconflict/ace.min.js"),
+				//$.getScript("https://cdn.jsdelivr.net/npm/select2@4.0.6-rc.1/dist/js/select2.min.js"), //styling issues
+				//$.getScript("https://cdn.jsdelivr.net/npm/choices.js@latest/public/assets/scripts/choices.min.js"), //styling issues
+				//$.getScript("https://cdn.jsdelivr.net/npm/selectize@latest/dist/js/standalone/selectize.min.js"),
+				// loading via resource loader throws error: "$.fn is undefined"
+				$.getScript(mw.config.get("wgScriptPath") + "/extensions/MwJson/modules/ext.MwJson.editor/selectize.min.js"),
 				mw.loader.using(mw_modules), 
 				//mw.loader.using('ext.wikiEditor'),
 				//$.getScript(mw.config.get("wgScriptPath") + "/extensions/MwJson/modules/ext.MwJson.editor/json-schema-ref-parser.js"),

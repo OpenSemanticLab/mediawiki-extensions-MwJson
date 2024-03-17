@@ -96,3 +96,11 @@ html[data-bs-theme="dark"] .jsoneditors {
 html[data-bs-theme="dark"] .signature {
     filter: invert(0.9);
 }
+
+/* dark mode for selectize.js */
+html[data-bs-theme="dark"] .selectize-control {
+    filter: invert(0.86);
+}
+html[data-bs-theme="dark"] .selectize-control .item {
+    filter: invert(1.0);
+}
