@@ -205,6 +205,11 @@ mwjson.schema = class {
             if (schema[attr+"*"]) {
                 if (schema[attr+"*"][this.config.lang]) schema[attr] = schema[attr+"*"][this.config.lang];
             }
+            if (schema.options) { //options
+                if (schema.options[attr+"*"])
+                    if (schema.options[attr+"*"][this.config.lang]) 
+                        schema.options[attr] = schema.options[attr+"*"][this.config.lang];
+            }
         }
 
         // translate attributes on property level ("title", "description", "enum_titles", "default", "inputAttributes")
