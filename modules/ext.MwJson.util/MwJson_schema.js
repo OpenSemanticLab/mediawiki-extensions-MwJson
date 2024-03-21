@@ -515,14 +515,14 @@ mwjson.schema = class {
         }
 
         // ToDo: move to jsoneditor options
-        const defaultFilter = "[[Display_title_of_normalized::like:*{{{_user_input_normalized}}}*]]";
+        const defaultFilter = "[[HasNormalizedLabel::like:*{{{_user_input_normalized_tokenized}}}*]]";
         const defaultProperties = {
-            "label": "Display_title_of",
+            "label": "HasLabel",
             "image": "HasImage",
             "description": "HasDescription"
         }
         const defaultOptions = {
-            "limit": "100"
+            "limit": "10"
         }
         var res = "";
         if (subschema.options?.autocomplete?.query_filter_property) {
@@ -560,7 +560,7 @@ mwjson.schema = class {
             if (!res.match(RegExp("\\|\\s*\\?\\s*\\S+\\s*=\\s*" + key))) res += "|?" + defaultProperties[key] + "=" + key; // add e. g. '|?Display_title_of=label' if not present
         }
         for (const key of Object.keys(defaultOptions)) {
-            if (!res.match(RegExp("\\|\\s*\\s*\\S+\\s*=\\s*" + key))) res += "|" + key + "=" + defaultOptions[key]; // add e. g. '|?Display_title_of=label' if not present
+            if (!res.match(RegExp("\\|\\s*\\s*\\S+\\s*=\\s*" + key))) res += "|" + key + "=" + defaultOptions[key]; // add e. g. '|?limit=10' if not present
         }
 
         if (res === "") res = defaultFilter;

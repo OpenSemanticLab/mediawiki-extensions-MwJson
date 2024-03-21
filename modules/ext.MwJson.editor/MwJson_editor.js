@@ -1061,9 +1061,22 @@ mwjson.editor = class {
 					jsondata['_user_input'] = input; 
 					jsondata['_user_input_lowercase'] = input.toLowerCase(); 
 					jsondata['_user_input_normalized'] = mwjson.util.normalizeString(input); 
+					jsondata['_user_input_normalized_tokenized'] = mwjson.util.normalizeAndTokenizeString(input); 
 					jsondata['_user_lang'] = jseditor_editor.jsoneditor.options.user_language; 
 					var template = Handlebars.compile(query);
 					query = template(jsondata);
+
+					// detect direct inserted UUID patterns
+					const uuid_regex = /([a-f0-9]{8})(_|-| |){1}([a-f0-9]{4})(_|-| |){1}([a-f0-9]{4})(_|-| |){1}([a-f0-9]{4})(_|-| |){1}([a-f0-9]{12})/gm;
+					const matches = input.match(uuid_regex);
+					if (matches && matches.length) {
+						let uuidQuery = ""
+						for (const match of matches) uuidQuery += "[[HasUuid::" + match.replace(uuid_regex, `$1-$3-$5-$7-$9`) + "]]OR";
+						uuidQuery = uuidQuery.replace(/OR+$/, ''); // trim last 'OR'
+						console.log("UUID query: ", uuidQuery, matches)
+						query = query.replace(query.split('|')[0], uuidQuery); // replace filter ([[...]]) before print statements (|?...)
+					}
+
 					var result_property = mwjson.schema.getAutocompleteResultProperty(jseditor_editor.schema);
 					console.log("Search with schema: " + query);
 					var url = mw.config.get("wgScriptPath") + `/api.php?action=ask&query=${query}`;
@@ -1091,10 +1104,12 @@ mwjson.editor = class {
 									resultList = [...new Set(resultList)]; //remove duplicates
 								}
 								//filter list
-								resultList = resultList.filter(result => {
+								/*resultList = resultList.filter(result => {
 									return mwjson.util.normalizeString(JSON.stringify(result)).includes(mwjson.util.normalizeString(input)); //slow but generic
-								});
-
+								});*/
+								//sort list
+								resultList.sort((a, b) => input.length/b.displaytitle.length - input.length/a.displaytitle.length)
+								
 								resolve(resultList);
 							});
 					});
