@@ -277,6 +277,10 @@ mwjson.schema = class {
                     //insert on buttom, rank higher levels after lower levels: default value is 1000, so we shift 2*1000 per level
                     schema.properties[property].propertyOrder = (1000*1000 + level*2000) + schema.properties[property].propertyOrder; 
                 
+                // handle select input elements
+                if (schema.properties[property].type === "array" && schema.properties[property].uniqueItems === true && schema.properties[property].items?.enum) {
+                    schema.properties[property].format = "selectize"; // auto-set currently supported select input lib
+                }
 
                 // filter properties according to mode, e. g. remove non-query properties in query mode
 				if (this.config.mode !== "default") {
