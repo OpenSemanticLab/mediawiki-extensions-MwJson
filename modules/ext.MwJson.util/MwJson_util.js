@@ -91,6 +91,11 @@ mwjson.util = class {
 		return value.toLowerCase().replace(/[^0-9a-z]/gi, '');
 	}
 
+	// replaces spaces with '*', makes all chars lowercase and removes non-alphanumeric except '*'
+	static normalizeAndTokenizeString(value) {
+		return value.toLowerCase().replaceAll(' ', '*').replace(/[^0-9a-z*]/gi, '');
+	}
+
 	static valueIfExists(value, default_value = "") {
 		if (value) return value;
 		else return default_value;
@@ -304,7 +309,8 @@ mwjson.util = class {
 				if (e.Text && e["Language code"]) {
 					is_multilang = true;
 					if (e["Language code"].item[0] == preferred_lang_code) selected_value = e.Text.item[0];
-					if (e["Language code"].item[0] == "en") default_value = e.Text.item[0];
+					if (default_value === "") default_value = e.Text.item[0]; //set the first result as default (any lang)
+					if (e["Language code"].item[0] == "en") default_value = e.Text.item[0]; //... but prefere 'en' if given
 
 				}
 			}
