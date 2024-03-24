@@ -557,10 +557,10 @@ mwjson.schema = class {
         res = res.replaceAll(/\]\s*OR\s*\[/g, "]"+defaultFilter + "OR["); // inject on every OR condition: [[A]]OR[[B]][[...like...]]=>[[A]][[...like...]]OR[[B]][[...like...]]
 
         for (const key of Object.keys(defaultProperties)) {
-            if (!res.match(RegExp("\\|\\s*\\?\\s*\\S+\\s*=\\s*" + key))) res += "|?" + defaultProperties[key] + "=" + key; // add e. g. '|?Display_title_of=label' if not present
+            if (!res.match(RegExp("\\|\\s*\\?\\s*[^=]+\\s*=\\s*" + key))) res += "|?" + defaultProperties[key] + "=" + key; // add e. g. '|?Display_title_of=label' if not present
         }
         for (const key of Object.keys(defaultOptions)) {
-            if (!res.match(RegExp("\\|\\s*\\s*\\S+\\s*=\\s*" + key))) res += "|" + key + "=" + defaultOptions[key]; // add e. g. '|?limit=10' if not present
+            if (!res.match(RegExp("\\|\\s*\\s*[^=]+\\s*=\\s*" + key))) res += "|" + key + "=" + defaultOptions[key]; // add e. g. '|?limit=10' if not present
         }
 
         if (res === "") res = defaultFilter;
