@@ -75,7 +75,16 @@
     background: red;
 }
 
-/*# sourceMappingURL=/sm/7ed16052267b375d16046c2eebf6c1e6b94b233b7a2399fefaab320523bb2b3d.map */
+
+/* FIXES */
+
+/* fix autocomplete result lists are not visible in table layouts */
+.je-ready .table-responsive {
+    overflow-x: unset;
+}
+
+
+/* DARKMODE */
 
 /* transfer bg-color from json-editor.min.js to this file */
 .je-modal {

@@ -163,7 +163,7 @@ mwjson.editor = class {
 						//reset the state if the input to empty
 						subeditor.is_dirty = false;
 						input.value = "";
-						subeditor.value = "";
+						subeditor.setValue("");
 						subeditor.onChange(true);
 					}
 					else if (subeditor.is_dirty && input.value === "" && subeditor.value === "") {
@@ -177,7 +177,7 @@ mwjson.editor = class {
 					}
 					else if (input.value_id && input.value_label) { //label already fetched 
 						input.value = input.value_label;
-						subeditor.value = input.value_id; //will be applied on the next .getValue() call
+						subeditor.setValue(input.value_id); //will be applied on the next .getValue() call
 						if (subeditor.is_dirty) {
 							//field was already filled yet.
 							//user has entered a new value in the field but did not select a result from the suggestion list
@@ -225,7 +225,7 @@ mwjson.editor = class {
 								//osl.ui.editData({source_page: subeditor.value, reload: false}).then((page) => {
 								this.config.onEditInline({page_title: subeditor.value}).then((page) => {
 									//console.log(page);
-									subeditor.value = page.title;
+									subeditor.setValue(page.title);
 									// force label refreshing
 									// we could also get the label from the returned page object
 									subeditor.input.value_label = null;
@@ -237,7 +237,7 @@ mwjson.editor = class {
 								//osl.ui.createOrQueryInstance(categories, "inline").then((page) => {
 								this.config.onCreateInline({categories: categories, super_categories: super_categories}).then((page) => {
 									//console.log(page);
-									subeditor.value = page.title;
+									subeditor.setValue(page.title);
 									// force label refreshing
 									// we could also get the label from the returned page object
 									subeditor.input.value_label = null;
@@ -269,7 +269,7 @@ mwjson.editor = class {
 								//osl.ui.editData({source_page: subeditor.value, reload: false}).then((page) => {
 								this.config.onEditInline({page_title: subeditor.value}).then((page) => {
 									//console.log(page);
-									subeditor.value = page.title;
+									subeditor.setValue(page.title);
 									// force label refreshing
 									// we could also get the label from the returned page object
 									subeditor.input.value_label = null;
@@ -280,7 +280,7 @@ mwjson.editor = class {
 								//osl.ui.createOrQueryInstance(categories, "inline").then((page) => {
 								this.config.onCreateInline({categories: categories}).then((page) => {
 									//console.log(page);
-									subeditor.value = page.title;
+									subeditor.setValue(page.title);
 									// force label refreshing
 									// we could also get the label from the returned page object
 									subeditor.input.value_label = null;
@@ -378,8 +378,7 @@ mwjson.editor = class {
 							mode: 'code',
 							modes: ['code', 'form', 'text', 'tree', 'view', 'preview'], // allowed modes
 							onChangeText: (function(jsonString){
-								//input.value = jsonString;
-								this.value = jsonString;
+								this.setValue(jsonString);
 								this.change();
 							}).bind(subeditor) //arrow function binding to loop var subeditor does not work 
 						}
@@ -484,7 +483,7 @@ mwjson.editor = class {
 
 	// adds suppport for backend supplied variables like {{_global_index_}}
 	async formatDynamicTemplate(jseditor_editor, watched_values) {
-		
+		if (!jseditor_editor.schema.dynamic_template) return;
 		if (jseditor_editor.schema.dynamic_template.includes("_current_user_")) {
 			let user_page_or_item = jseditor_editor.jsoneditor.mwjson_editor.config.user_id;
 			let query_url = mw.config.get("wgScriptPath") + `/api.php?action=ask&format=json&query=[[User:${user_page_or_item}]]`;
@@ -1045,7 +1044,7 @@ mwjson.editor = class {
 								//onChange is not called yet => explicite update autocomplete fields
 								if (subeditor.format === 'autocomplete' && subeditor.input.value_id && subeditor.input.value_label) {
 									subeditor.input.value = subeditor.input.value_label;
-									subeditor.value = subeditor.input.value_id; //will be applied on the next .getValue() call
+									subeditor.setValue(subeditor.input.value_id); //will be applied on the next .getValue() call
 									if (subeditor.is_dirty) subeditor.change(); //resets aborted user input
 									subeditor.is_dirty = false;
 								}
@@ -1172,7 +1171,7 @@ mwjson.editor = class {
 					if (storeTemplate && storeTemplate.type.shift() === 'handlebars') {
 						result_value = Handlebars.compile(storeTemplate.value)({ result: result });
 					}
-					jseditor_editor.value = result_value;
+					jseditor_editor.setValue(result_value);
 					jseditor_editor.input.value_id = result_value;
 					jseditor_editor.onChange(true);
 					if (jseditor_editor.schema.options.autocomplete.field_maps) {
