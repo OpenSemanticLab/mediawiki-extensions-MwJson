@@ -171,9 +171,12 @@ mwjson.Cache = class {
         const data = await response.json();
         //if (this.config.debug) console.log(data.query.pages)
         for (const page_key in data.query.pages) {
-
             let page = data.query.pages[page_key];
             let key = page.title;
+            if (page.missing) {
+                console.error("Referenced resource missing: " + page.title + ". Please check you system setup and installed packages.");
+                continue;
+            }
             const revision = page.revisions[0];
             let hash = revision.sha1;
             //this.setHash(key, hash);
