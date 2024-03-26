@@ -209,16 +209,22 @@ mwjson.editor = class {
 						var $form_group = $input.parent().parent();
 						var $form_group_label = $input.parent().parent().find("label");
 						var $container = $(`<div style="display: flex;"></div>`)
-						var $create_inline_button = $(`<div class="col-md-2"><button type="button" class="inline-edit-btn btn btn-secondary"></button></div>`);
+						var $create_inline_button = $(`<div class="col-md-4">
+							<button type="button" class="inline-clear-btn btn btn-secondary"></button>
+							<button type="button" class="inline-edit-btn btn btn-primary"></button>
+						</div>`);
 						if ($form_group_label.length) {
 							$container.insertAfter($form_group_label); // normal layout
-							$autocomplete_div.addClass("col-md-10");
+							$autocomplete_div.addClass("col-md-8");
 						}
 						else $form_group.append($container); // table layout
 						$container.append($autocomplete_div.detach());
 						$container.append($create_inline_button);
 
-						$create_inline_button.on("click", (function (subeditor, e) {
+						$create_inline_button.find(".inline-clear-btn").on("click", (function (subeditor, e) { 
+							mwjson.util.setJsonEditorAutocompleteField(subeditor, null, null); 
+						}).bind(this, subeditor));
+						$create_inline_button.find(".inline-edit-btn").on("click", (function (subeditor, e) {
 							//console.log("Click ", subeditor);
 							var categories = subeditor.schema?.range ? subeditor.schema?.range : subeditor.schema?.options?.autocomplete?.category;
 							if (categories && !Array.isArray(categories)) categories = [categories];
@@ -275,12 +281,22 @@ mwjson.editor = class {
 					(!(subeditor.schema?.options?.autocomplete?.create_inline === false) && (categories || super_categories) && this.config.onCreateInline && this.config.onEditInline)
 					|| (!(subeditor.schema?.options?.upload?.create_inline === false) && subeditor.schema?.format === 'url' && subeditor.schema?.options?.upload && this.config.onCreateInline && this.config.onEditInline)
 					){
-					var label = mw.message("mwjson-editor-create-inline-label").text() + " " + '<i class="icon icon-plus"></i>';
+					var label = mw.message("mwjson-editor-create-inline-label").text() + " " + `
+						<span class="fa-stack fa-1x" style="font-size: 0.8em; width: 1.5em;">
+						<i class="far fa-clone fa-stack-2x"></i>
+						<i class="far fa-plus fa-stack-1x" style="left: 0.45rem; bottom: 0.29rem;"></i>
+						</span>
+					`;
 					var tooltip = mw.message("mwjson-editor-create-inline-tooltip").text();
 					if (subeditor.value && !subeditor.unhandled_input) label = mw.message("mwjson-editor-edit-inline-label").text() + " " + '<i class="icon icon-edit"></i>';
 					if (subeditor.value && !subeditor.unhandled_input) tooltip = mw.message("mwjson-editor-edit-inline-tooltip").text();
 					$input.parent().parent().find(".inline-edit-btn").html(label);
 					$input.parent().parent().find(".inline-edit-btn").attr('title', tooltip);
+
+					var label = mw.message("mwjson-editor-clear-inline-label").text() + " " + '<i class="icon icon-cross"></i>';
+					var tooltip = mw.message("mwjson-editor-clear-inline-tooltip").text();
+					$input.parent().parent().find(".inline-clear-btn").html(label);
+					$input.parent().parent().find(".inline-clear-btn").attr('title', tooltip);
 				}
 
 				//BUG: Does not save value in original text field (only if source mode is toggled). See PageForms extension
