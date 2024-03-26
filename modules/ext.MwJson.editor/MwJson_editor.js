@@ -156,39 +156,82 @@ mwjson.editor = class {
 				//collect autocomplete field values to fetch labels
 				if (subeditor.format === 'autocomplete') {// && this.flags["change-after-load"]) {
 					//console.log("Autocomplete Editor:", subeditor);
-					//console.log("Dirty: ", subeditor.is_dirty, input.value, input.value_id, input.value_label, subeditor.value);
-					if (subeditor.is_dirty && subeditor.value && subeditor.value !== "" && !input.value_id) {
+					//console.log("Unhandled: ", subeditor.unhandled_input, input.value, input.value_id, input.value_label, subeditor.value);
+					//synchronize state
+					//if (!input.value_id) input.value_id = subeditor.value;
+					//if (!subeditor.value) subeditor.value = input.value_id;
+					//if (subeditor.input.value_label && subeditor.input.value_label !== "") subeditor.input.value = subeditor.input.value_label;
+					if (!subeditor.fbind) {
+						// override getter and setter to handle label different from value
+						subeditor.getValue = (function() {
+								//console.log("Editor-Get ", this.key, ": ", this.input.value_id ? this.input.value_id : this.value )
+								return this.input.value_id ? this.input.value_id : this.value 
+							}
+						).bind(subeditor);
+						subeditor.setValue = (function(value, initial, fromTemplate, label) {
+								//console.log("Editor-Set ", this.key, ": ", value )
+								this.value = value;
+								this.input.value = label;
+								this.input.value_id = value;
+								this.input.value_label = label;
+								this.onChange(true);
+							}
+						).bind(subeditor);
+						subeditor.fbind = true;
+					}
+					
+					/*if (input.value_id !== subeditor.value && subeditor.custom_dirty) {
+						//subeditor.value = input.value_id
+						mwjson.util.setJsonEditorAutocompleteField(subeditor, input.value_id, input.value_label);
+						subeditor.custom_dirty = false;
+					}*/
+
+					if (subeditor.unhandled_input && input.value && input.value !== "") { //&& !previous_input_id) {
 						//field was not filled yet.
 						//user has entered a value in the field but did not select a result from the suggestion list
 						//reset the state if the input to empty
-						subeditor.is_dirty = false;
-						input.value = "";
+						subeditor.unhandled_input = false;
+						/*input.value = "";
+						//subeditor.value = "";
 						subeditor.setValue("");
-						subeditor.onChange(true);
+						console.log("onChange 1");
+						subeditor.onChange(true);*/
+						mwjson.util.setJsonEditorAutocompleteField(subeditor, input.value_id, input.value_label);
 					}
-					else if (subeditor.is_dirty && input.value === "" && subeditor.value === "") {
+					else if (subeditor.unhandled_input && input.value === "") { //} && subeditor.value === "") {
 						//field was already filled yet.
 						//user has removed the value from field so it's now empty
 						//reset the state if the input to empty
-						subeditor.is_dirty = false;
+						subeditor.unhandled_input = false;
+						/*
 						input.value_id = null;
 						input.value_label = null;
-						subeditor.onChange(true);
+						console.log("onChange 2");
+						subeditor.onChange(true);*/
+						mwjson.util.setJsonEditorAutocompleteField(subeditor, null, null);
 					}
-					else if (input.value_id && input.value_label) { //label already fetched 
-						input.value = input.value_label;
-						subeditor.setValue(input.value_id); //will be applied on the next .getValue() call
-						if (subeditor.is_dirty) {
+					/*else if (input.value_id) { //label already fetched 
+						if (input.value_label) input.value = input.value_label;
+						//subeditor.value = input.value_id; //will be applied on the next .getValue() call
+						mwjson.util.setJsonEditorAutocompleteField(subeditor, input.value_id, input.value_label);
+						//if (subeditor.getValue() !== input.value_id) {
+						console.log("setValue 3");
+						//subeditor.setValue(input.value_id); //will be applied on the next .getValue() call
+						//}
+						if (subeditor.unhandled_input) {
 							//field was already filled yet.
 							//user has entered a new value in the field but did not select a result from the suggestion list
 							//reset the field to the previous value
+							console.log("onChange 3");
 							subeditor.onChange(true);
 						}
-						subeditor.is_dirty = false;
-					}
-					else if (subeditor.value !== ""){
-						labeled_inputs.push({input: input, value_id: subeditor.value});
-						label_requests.push(subeditor.value);
+						
+						subeditor.unhandled_input = false;
+					}*/
+					//console.log("Label", subeditor.value , subeditor.value, input.value_label)
+					if (subeditor.getValue() && subeditor.getValue() !== "" && !input.value_label){
+						labeled_inputs.push({editor: subeditor, input: input, value_id: input.value_id ? input.value_id : subeditor.value});
+						label_requests.push(input.value_id ? input.value_id : subeditor.value);
 					}
 
 					var categories = subeditor.schema?.range;
@@ -219,30 +262,36 @@ mwjson.editor = class {
 							if (categories && !Array.isArray(categories)) categories = [categories];
 							var super_categories = subeditor.schema?.subclassof_range;
 							if (super_categories && !Array.isArray(super_categories)) super_categories = [super_categories];
-							// note: is_dirty === true indicates there is some user input in the field but no element from the suggestion list was picked
+							// note: unhandled_input === true indicates there is some user input in the field but no element from the suggestion list was picked
 							// so subeditor.value would be the search string and no valid page name
-							if (subeditor.value && !subeditor.is_dirty) {
+							if (subeditor.input.value_id && !subeditor.unhandled_input) {
 								//osl.ui.editData({source_page: subeditor.value, reload: false}).then((page) => {
-								this.config.onEditInline({page_title: subeditor.value}).then((page) => {
-									//console.log(page);
+								this.config.onEditInline({page_title: subeditor.input.value_id}).then((page) => {
+									/*//console.log(page);
+									subeditor.input.value = page.title;
 									subeditor.setValue(page.title);
 									// force label refreshing
 									// we could also get the label from the returned page object
 									subeditor.input.value_label = null;
+									subeditor.input.value_id = page.title;
 									//subeditor.change();
-									subeditor.onChange(true)
+									//subeditor.onChange(true)*/
+									mwjson.util.setJsonEditorAutocompleteField(subeditor, page.title, null);
 								});
 							}
 							else {
 								//osl.ui.createOrQueryInstance(categories, "inline").then((page) => {
 								this.config.onCreateInline({categories: categories, super_categories: super_categories}).then((page) => {
-									//console.log(page);
+									/*//console.log(page);
+									subeditor.input.value = page.title;
 									subeditor.setValue(page.title);
 									// force label refreshing
 									// we could also get the label from the returned page object
 									subeditor.input.value_label = null;
+									subeditor.input.value_id = page.title;
 									//subeditor.change();
-									subeditor.onChange(true)
+									//subeditor.onChange(true)*/
+									mwjson.util.setJsonEditorAutocompleteField(subeditor, page.title, null);
 								});
 							}
 						}).bind(this, subeditor));
@@ -263,28 +312,32 @@ mwjson.editor = class {
 							//console.log("Click ", subeditor);
 							var categories = subeditor.schema?.range ? subeditor.schema?.range : "Category:OSW11a53cdfbdc24524bf8ac435cbf65d9d"; // WikiFile default
 							if (!Array.isArray(categories)) categories = [categories];
-							// note: is_dirty === true indicates there is some user input in the field but no element from the suggestion list was picked
+							// note: unhandled_input === true indicates there is some user input in the field but no element from the suggestion list was picked
 							// so subeditor.value would be the search string and no valid page name
-							if (subeditor.value && !subeditor.is_dirty) {
+							if (subeditor.input.value_id && !subeditor.unhandled_input) {
 								//osl.ui.editData({source_page: subeditor.value, reload: false}).then((page) => {
-								this.config.onEditInline({page_title: subeditor.value}).then((page) => {
-									//console.log(page);
+								this.config.onEditInline({page_title: subeditor.input.value_id}).then((page) => {
+									/*//console.log(page);
+									//subeditor.value = page.title;
 									subeditor.setValue(page.title);
 									// force label refreshing
 									// we could also get the label from the returned page object
 									subeditor.input.value_label = null;
-									subeditor.change();
+									subeditor.change();*/
+									mwjson.util.setJsonEditorAutocompleteField(subeditor, page.title, null);
 								});
 							}
 							else {
 								//osl.ui.createOrQueryInstance(categories, "inline").then((page) => {
 								this.config.onCreateInline({categories: categories}).then((page) => {
-									//console.log(page);
+									/*//console.log(page);
+									//subeditor.value = page.title;
 									subeditor.setValue(page.title);
 									// force label refreshing
 									// we could also get the label from the returned page object
 									subeditor.input.value_label = null;
-									subeditor.change();
+									subeditor.change();*/
+									mwjson.util.setJsonEditorAutocompleteField(subeditor, page.title, null);
 								});
 							}
 						}).bind(this, subeditor));
@@ -298,8 +351,8 @@ mwjson.editor = class {
 					){
 					var label = mw.message("mwjson-editor-create-inline-label").text() + " " + '<i class="icon icon-plus"></i>';
 					var tooltip = mw.message("mwjson-editor-create-inline-tooltip").text();
-					if (subeditor.value && !subeditor.is_dirty) label = mw.message("mwjson-editor-edit-inline-label").text() + " " + '<i class="icon icon-edit"></i>';
-					if (subeditor.value && !subeditor.is_dirty) tooltip = mw.message("mwjson-editor-edit-inline-tooltip").text();
+					if (subeditor.value && !subeditor.unhandled_input) label = mw.message("mwjson-editor-edit-inline-label").text() + " " + '<i class="icon icon-edit"></i>';
+					if (subeditor.value && !subeditor.unhandled_input) tooltip = mw.message("mwjson-editor-edit-inline-tooltip").text();
 					$input.parent().parent().find(".inline-edit-btn").html(label);
 					$input.parent().parent().find(".inline-edit-btn").attr('title', tooltip);
 				}
@@ -422,9 +475,10 @@ mwjson.editor = class {
 
 			for (var subeditor of all_editors) {
 				if (subeditor.format === 'autocomplete') {
-					subeditor.input.value_label = null;
-					subeditor.input.value_id = null;
+					//subeditor.input.value_label = null;
+					//subeditor.input.value_id = null;
 					//subeditor.change();
+					mwjson.util.setJsonEditorAutocompleteField(subeditor, subeditor.getValue(), null);
 				}
 			}
 		}
@@ -1033,22 +1087,24 @@ mwjson.editor = class {
 				// results. In this case we're using
 				// the SMW query API.
 				search_smw: (jseditor_editor, input) => {
+					jseditor_editor.unhandled_input = true; // mark started user input
 					if (jseditor_editor.watched_values) console.log("Watched: " + jseditor_editor.watched_values);
 					var query = mwjson.schema.getAutocompleteQuery(jseditor_editor.schema, input);
 					
 					for (const key in jseditor_editor.watched_values) {
 						if (jseditor_editor.watched[key]) {
-							var subeditor = jseditor_editor.jsoneditor.editors[jseditor_editor.watched[key]];
+							/*var subeditor = jseditor_editor.jsoneditor.editors[jseditor_editor.watched[key]];
 							if (subeditor) {
 								//jseditor_editor.jsoneditor.editors[jseditor_editor.watched[key]].change(); //force value update
 								//onChange is not called yet => explicite update autocomplete fields
 								if (subeditor.format === 'autocomplete' && subeditor.input.value_id && subeditor.input.value_label) {
 									subeditor.input.value = subeditor.input.value_label;
+									//subeditor.value = subeditor.input.value_id; //will be applied on the next .getValue() call
 									subeditor.setValue(subeditor.input.value_id); //will be applied on the next .getValue() call
-									if (subeditor.is_dirty) subeditor.change(); //resets aborted user input
-									subeditor.is_dirty = false;
+									if (subeditor.unhandled_input) subeditor.change(); //resets aborted user input
+									subeditor.unhandled_input = false;
 								}
-							}
+							}*/
 							query = query.replace('{{$(' + key + ')}}', '{{' + jseditor_editor.watched[key].replace("root.","") + '}}');
 						}
 						if (jseditor_editor.watched_values[key] === undefined) query = query.replace('$(' + key + ')', encodeURIComponent('+'));
@@ -1171,9 +1227,14 @@ mwjson.editor = class {
 					if (storeTemplate && storeTemplate.type.shift() === 'handlebars') {
 						result_value = Handlebars.compile(storeTemplate.value)({ result: result });
 					}
-					jseditor_editor.setValue(result_value);
+					//jseditor_editor.value = result_value;
+					/*jseditor_editor.setValue(result_value);
 					jseditor_editor.input.value_id = result_value;
-					jseditor_editor.onChange(true);
+					jseditor_editor.onChange(true);*/
+					jseditor_editor.unhandled_input = false; // mark finalized user input
+					mwjson.util.setJsonEditorAutocompleteField(jseditor_editor, result_value, result.printouts.label[0]);
+					//jseditor_editor.input.value_label = result.printouts.label[0];
+					
 					if (jseditor_editor.schema.options.autocomplete.field_maps) {
 						for (const map of jseditor_editor.schema.options.autocomplete.field_maps) {
 							var value = mwjson.extData.getValue({result: result}, map.source_path, "jsonpath");

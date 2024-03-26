@@ -321,4 +321,22 @@ mwjson.util = class {
 		}
 		return result;
 	}
+
+	static setJsonEditorAutocompleteField(editor, value_id, value_label) {
+		console.log("Set value of ", editor.key,  " to value: ", value_id, " with label: ", value_label)
+		editor.setValue(value_id, false, false, value_label);
+		/*// current_value = editor.input.value;
+		editor.input.value = value_id;
+		editor.setValue(value_id);
+		editor.value = value_id
+		editor.onChange(true);
+		editor.value = value_id
+		//if (value_label) editor.input.value = value_label;
+		//else editor.input.value = current_value;
+		editor.input.value = value_label;
+		editor.input.value_id = value_id;
+		editor.input.value_label = value_label;
+		//editor.getValue()
+		//console.log("Value of ", editor.key,  ": ", editor.getValue())*/
+	}
 }
