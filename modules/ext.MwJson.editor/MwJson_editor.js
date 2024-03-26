@@ -121,7 +121,7 @@ mwjson.editor = class {
 		this.jsoneditor.on('change', () => {
 			console.log("Editor changed");
 			console.log(this.jsoneditor.schema);
-			console.log(this.jsoneditor.getValue());
+			//console.log(this.jsoneditor.getValue());
 			//console.log(this.jsoneditor.editors);
 
 			this.updateSubjectId();
@@ -278,7 +278,7 @@ mwjson.editor = class {
 
 				// change label of inline create btn depending on the fields state
 				if (
-					(!(subeditor.schema?.options?.autocomplete?.create_inline === false) && (categories || super_categories) && this.config.onCreateInline && this.config.onEditInline)
+					(subeditor.schema?.format === "autocomplete" && !(subeditor.schema?.options?.autocomplete?.create_inline === false) && (categories || super_categories) && this.config.onCreateInline && this.config.onEditInline)
 					|| (!(subeditor.schema?.options?.upload?.create_inline === false) && subeditor.schema?.format === 'url' && subeditor.schema?.options?.upload && this.config.onCreateInline && this.config.onEditInline)
 					){
 					var label = mw.message("mwjson-editor-create-inline-label").text() + " " + `
@@ -288,8 +288,8 @@ mwjson.editor = class {
 						</span>
 					`;
 					var tooltip = mw.message("mwjson-editor-create-inline-tooltip").text();
-					if (subeditor.value && !subeditor.unhandled_input) label = mw.message("mwjson-editor-edit-inline-label").text() + " " + '<i class="icon icon-edit"></i>';
-					if (subeditor.value && !subeditor.unhandled_input) tooltip = mw.message("mwjson-editor-edit-inline-tooltip").text();
+					if (subeditor.getValue() && !subeditor.unhandled_input) label = mw.message("mwjson-editor-edit-inline-label").text() + " " + '<i class="icon icon-edit"></i>';
+					if (subeditor.getValue() && !subeditor.unhandled_input) tooltip = mw.message("mwjson-editor-edit-inline-tooltip").text();
 					$input.parent().parent().find(".inline-edit-btn").html(label);
 					$input.parent().parent().find(".inline-edit-btn").attr('title', tooltip);
 
