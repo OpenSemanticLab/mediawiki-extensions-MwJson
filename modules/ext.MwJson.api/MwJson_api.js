@@ -511,7 +511,7 @@ mwjson.api = class {
 		return deferred.promise();
 	}
 
-	static getLabels(titles) {
+	static getLabels(titles, lang="en") {
 		const deferred = $.Deferred();
 
 		var titles = [...new Set(titles)]; //filter duplicates
@@ -519,6 +519,7 @@ mwjson.api = class {
 		var query = mw.config.get("wgScriptPath") + "/api.php?action=ask&query=";
 		var first = true;
 		for (const title of titles) {
+			if (!title) continue;
 			if (!first) query += "OR";
 			query += "[[";
 			if (title.startsWith("http://") || title.startsWith("https://")) {
@@ -532,7 +533,7 @@ mwjson.api = class {
 			query += "]]";
 			first = false;
 		}
-		query += "|?Display_title_of=label|?HasUuid=uuid&format=json"
+		query += "|?HasLabel=label|?HasUuid=uuid&format=json"
 
 		fetch(query)
 			.then(response => response.json())
@@ -543,6 +544,7 @@ mwjson.api = class {
 
 				for (const result_key of Object.keys(data.query.results)) {
 					let result = data.query.results[result_key];
+					result = mwjson.util.normalizeSmwMultilangResult(result, lang);
 					var label = "";
 					if (result)
 						if (result.printouts.label)

@@ -368,7 +368,7 @@ mwjson.editor = class {
 			}
 
 			//fetch labels
-			if (label_requests.length) mwjson.api.getLabels(label_requests).then((label_dict) => {
+			if (label_requests.length) mwjson.api.getLabels(label_requests, this.jsoneditor.options.user_language).then((label_dict) => {
 				for (const labeled_input of labeled_inputs) {
 					console.log("Set label " + label_dict[labeled_input.value_id] + " for " + labeled_input.input.value);
 					labeled_input.input.value_id = labeled_input.value_id;
