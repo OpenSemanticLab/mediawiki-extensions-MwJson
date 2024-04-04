@@ -56,7 +56,7 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
     ];
     if (editor.config.mode !== 'query') {
         Dialog.static.actions.push({
-            flags: 'primary',
+            flags: [ 'primary', 'progressive' ],
             label: _config.msg['continue'],
             action: 'create',
             disabled: _config.edit_comment_required
