@@ -1357,7 +1357,9 @@ mwjson.editor = class {
 		})
 
 		// register math callback
-		// {{calc (calc 1 '+' 1) '*' 10}} => 20
+		// {{calc <operand1> <operator> <operand2>}}
+		// {{#calc <operand1> <operator>}}<operand2>{{/calc}}
+		// e.g. {{calc (calc 1 '+' 1) '*' 10}} => 20
 		// {{#calc 3 '*'}}2{{/calc}} => 6
 		Handlebars.registerHelper("calc", function (lvalue, operator, rvalue, options) {
 			if (!options) {
