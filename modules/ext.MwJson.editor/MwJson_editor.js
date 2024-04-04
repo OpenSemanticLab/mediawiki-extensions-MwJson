@@ -1007,10 +1007,10 @@ mwjson.editor = class {
 					
 					for (const key in jseditor_editor.watched_values) {
 						if (jseditor_editor.watched[key]) {
-							query = query.replace('{{$(' + key + ')}}', '{{' + jseditor_editor.watched[key].replace("root.","") + '}}');
+							query = query.replaceAll('{{$(' + key + ')}}', '{{' + jseditor_editor.watched[key].replace("root.","") + '}}');
 						}
 						if (jseditor_editor.watched_values[key] === undefined) query = query.replace('$(' + key + ')', encodeURIComponent('+'));
-						query = query.replace('$(' + key + ')', jseditor_editor.watched_values[key]);
+						query = query.replaceAll('$(' + key + ')', jseditor_editor.watched_values[key]);
 					}
 
 					//create a copy here since we add addition properties
