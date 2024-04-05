@@ -591,7 +591,8 @@ mwjson.editor = class {
 			jseditor_editor.setValue(set_value)
 		}
 		else {
-			if (set_value && set_value !== "") jseditor_editor.setValue(set_value);
+			//do not re-set the previous value here to enable user changes
+			//if (set_value && set_value !== "") jseditor_editor.setValue(set_value);
 		}
 		return set_value; // return the value for template: dynamic_template
 	}
