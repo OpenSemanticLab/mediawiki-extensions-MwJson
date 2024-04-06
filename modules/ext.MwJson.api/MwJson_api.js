@@ -540,7 +540,7 @@ mwjson.api = class {
 			.then(data => {
 				var label_dict = {};
 
-				for (const title of titles) label_dict[title] = title; //set default
+				for (const title of titles) label_dict[title] = ""; //set default
 
 				for (const result_key of Object.keys(data.query.results)) {
 					let result = data.query.results[result_key];

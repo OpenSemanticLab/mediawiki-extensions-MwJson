@@ -246,11 +246,11 @@ mwjson.editor = class {
 					}
 				}
 
-				//collect autocomplete field values to fetch labels
+				// create button to create an instance of a WikiFile inline of not explicite disabled
 				if (subeditor.schema?.format === 'url' && subeditor.schema?.options?.upload) {
 					if (!(subeditor.schema?.options?.upload?.create_inline === false) && !subeditor.inline_create_build && this.config.onCreateInline && this.config.onEditInline) {
 						subeditor.inline_create_build = true;
-						// in order to add a button beside the autocomplete input field we have to rearrange the elements
+						// in order to add a button beside the upload input field we have to rearrange the elements
 						var $container = $input.parent().find(".input-group");
 						$input.parent().find(".json-editor-btn-upload").removeClass('json-editor-btn-upload');
 
@@ -260,19 +260,25 @@ mwjson.editor = class {
 							//console.log("Click ", subeditor);
 							var categories = subeditor.schema?.range ? subeditor.schema?.range : "Category:OSW11a53cdfbdc24524bf8ac435cbf65d9d"; // WikiFile default
 							if (!Array.isArray(categories)) categories = [categories];
-							// note: unhandled_input === true indicates there is some user input in the field but no element from the suggestion list was picked
-							// so subeditor.value would be the search string and no valid page name
-							if (subeditor.input.value_id && !subeditor.unhandled_input) {
-								this.config.onEditInline({page_title: subeditor.input.value_id}).then((page) => {
-									mwjson.util.setJsonEditorAutocompleteField(subeditor, page.title, null);
+							if (subeditor.getValue() && subeditor.getValue() !== "") {
+								this.config.onEditInline({page_title: subeditor.getValue()}).then((page) => {
+									subeditor.setValue(page.title);
 								});
 							}
 							else {
 								this.config.onCreateInline({categories: categories}).then((page) => {
-									mwjson.util.setJsonEditorAutocompleteField(subeditor, page.title, null);
+									subeditor.setValue(page.title);
 								});
 							}
 						}).bind(this, subeditor));
+					}
+					let input = subeditor.fileDisplay; //input element that displays the file name
+					// (!input.value || input.value === "No file selected.") would be another option,
+					// but 'No file selected.' currently hardcoded and may change in the future
+					// see: https://github.com/json-editor/json-editor/blob/2c119b1422637af90f30fc51fb5c5e5496eedaac/src/editors/upload.js#L65
+					if (subeditor.getValue() && subeditor.getValue() !== "" && !input.value_label){
+						labeled_inputs.push({editor: subeditor, input: input, value_id: subeditor.getValue()});
+						label_requests.push(subeditor.getValue());
 					}
 				}
 
@@ -386,10 +392,13 @@ mwjson.editor = class {
 			//fetch labels
 			if (label_requests.length) mwjson.api.getLabels(label_requests, this.jsoneditor.options.user_language).then((label_dict) => {
 				for (const labeled_input of labeled_inputs) {
-					console.log("Set label " + label_dict[labeled_input.value_id] + " for " + labeled_input.input.value);
-					labeled_input.input.value_id = labeled_input.value_id;
-					labeled_input.input.value_label = label_dict[labeled_input.value_id];
-					labeled_input.input.value = labeled_input.input.value_label;
+					if (label_dict[labeled_input.value_id] && label_dict[labeled_input.value_id] !== "") {
+						// only set label if display title was found
+						//console.log("Set label " + label_dict[labeled_input.value_id] + " for " + labeled_input.input.value);
+						labeled_input.input.value_id = labeled_input.value_id;
+						labeled_input.input.value_label = label_dict[labeled_input.value_id];
+						labeled_input.input.value = labeled_input.input.value_label;
+					}
 				}
 			});
 
