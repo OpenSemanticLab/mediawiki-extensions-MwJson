@@ -5,6 +5,7 @@ mwjson.editor = class {
 		var defaultConfig = {
 			target_slot: 'main',
 			target_namespace: 'Item',
+			target_exists: false,
 			mode: "default", // options: default, query
 			submit_enabled: true, //if true, add save button
 			allow_submit_with_errors: true,
@@ -1163,12 +1164,26 @@ mwjson.editor = class {
 				fileUpload: (jseditor, type, file, cbs) => {
 					var mwjson_editor = jseditor.jsoneditor.mwjson_editor; //get the owning mwjson editor class instance
 					const label = file.name;
-					var target = mwjson.util.OswId() + "." + file.name.split('.').pop();
-					if (jseditor.value && jseditor.value !== "") target = jseditor.value; // reupload
+					const upload_file_extension = file.name.split('.').pop().toLowerCase();
+					var target = mwjson.util.OswId() + "." + upload_file_extension; //use the final file extension, e.g. 'png' in 'my.something.png'
+					if (jseditor.value && jseditor.value !== "") target = jseditor.value.replace("File:", ""); // reupload
 					if (jseditor.key === "file" && mwjson_editor.jsonschema.subschemas_uuids.includes("11a53cdf-bdc2-4524-bf8a-c435cbf65d9d")) { //uuid of Category:WikiFile
 						mwjson_editor.config.target_namespace = "File";
 						if (mwjson_editor.config.target && mwjson_editor.config.target !== "") {
-							// the file page already exists
+							let file_extension = mwjson_editor.config.target.includes('.') ? mwjson_editor.config.target.split('.').pop().toLowerCase() : "";
+							if (file_extension == "") {
+								// target was already set by getSubjectId(), but file extension is missing
+								file_extension = upload_file_extension;
+								mwjson_editor.config.target = mwjson_editor.config.target + "." + file_extension;
+							}
+							else {
+								//the file page already exists
+								if (file_extension !== upload_file_extension) {
+									let error = "File extension of uploaded file '" + upload_file_extension + "' does not match existing '" + file_extension + "'";
+									cbs.failure('Upload failed:' + error);
+									return;
+								}
+							}
 							target = mwjson_editor.config.target.replace(mwjson_editor.config.target_namespace + ":", "");
 							//console.log("set target to config.target: ", target);
 						}
