@@ -7,6 +7,7 @@ mwjson.editor = class {
 			target_namespace: 'Item',
 			target_exists: false,
 			mode: "default", // options: default, query
+			copy: false, // editor is used to create a copy of an exiting entry => copy_ignore schema option is applied
 			submit_enabled: true, //if true, add save button
 			allow_submit_with_errors: true,
 			lang: mw.config.get('wgUserLanguage'),
@@ -23,7 +24,10 @@ mwjson.editor = class {
 			}
 		};
 		this.config = mwjson.util.mergeDeep(defaultConfig, config);
-		this.flags = {'change-after-load': false};
+		this.flags = {
+			'initial-data-load': false, // true while initial applying config.data => Used for copy-feature
+			'change-after-load': false, // true after editor (and data) loaded until first on-change handler has run => Unused
+		};
 		this.addCss();
 		if (this.config.container) {
 			this.container = this.config.container;
@@ -96,7 +100,15 @@ mwjson.editor = class {
 			console.log("Editor loaded");
 			this.flags["change-after-load"] = true;
 			console.log(this.jsoneditor);
-			if (this.config.data) this.jsoneditor.setValue(this.config.data);
+			if (this.config.data) {
+				this.flags["initial-data-load"] = true;
+				this.jsoneditor.setValue(this.config.data);
+				if (this.config.copy) {
+					this.applyCopyIgnoreOption(this.jsoneditor.root);
+					this.config.data = this.jsoneditor.getValue();
+				}
+				this.flags["initial-data-load"] = false;
+			}
 			if (this.config.target) mwjson.api.getPage(this.config.target).then((page) => {
 				//return;
 				if (page.content_model[this.config.target_slot] === 'wikitext') {
@@ -453,32 +465,41 @@ mwjson.editor = class {
 		// removing ignored properties conflicts with defaultProperties
 		this.jsoneditor.on('addRow', editor => {
 			//console.log('addRow', editor);
-			let ignored_properties = [];
-			if (editor.schema?.options?.copy_ignore) ignored_properties = ignored_properties.concat(editor.schema?.options?.copy_ignore);
-			if (editor.parent?.schema?.options?.array_copy_ignore) ignored_properties = ignored_properties.concat(editor.parent?.schema?.options?.array_copy_ignore);
-			let value = mwjson.util.deepCopy(editor.getValue());
-			let changed = false;
-			for (let p of ignored_properties) {
-				let keep = (editor.schema?.required?.includes(p) || editor.schema?.defaultProperties?.includes(p))
-				let default_value = null
-				if (Object.hasOwn(value, p)) {
-					if (value[p] && typeof value[p] === 'string') default_value = "";
-					//if (value[p]) keep ? value[p] = default_value : delete value[p];
-					if (value[p] && keep) { console.log("default", default_value); value[p] = default_value; }
-					if (value[p] && !keep) { console.log("delete"); delete value[p]; }
-					console.log("Remove", p, keep, "=>", value);
-					changed = true
-				}
-				//value[p] = default_value
-			}
-			console.log(JSON.stringify(value));
-			if (changed) editor.setValue(value);
+			if (!this.flags["initial-data-load"]) this.applyCopyIgnoreOption(editor);
 		});
 
 		this.jsoneditor.on('copyRow', value => {
 			// not implemented (yet) by json-editor
 			//console.log('copyRow', value);
 		});
+	}
+
+	// remove properties named in options.copy_ignore but keep empty values for required and defaultProperties
+	applyCopyIgnoreOption(editor) {
+		let ignored_properties = [];
+		if (editor.schema?.options?.copy_ignore) ignored_properties = ignored_properties.concat(editor.schema?.options?.copy_ignore);
+		if (editor.parent?.schema?.options?.array_copy_ignore) ignored_properties = ignored_properties.concat(editor.parent?.schema?.options?.array_copy_ignore);
+		let value = mwjson.util.deepCopy(editor.getValue());
+		let changed = false;
+		for (let p of ignored_properties) {
+			let keep = (editor.schema?.required?.includes(p) || editor.schema?.defaultProperties?.includes(p))
+			let default_value = null
+			if (Object.hasOwn(value, p)) {
+				if (value[p] && typeof value[p] === 'string') default_value = "";
+				//if (value[p]) keep ? value[p] = default_value : delete value[p];
+				if (value[p] && keep) { 
+					//console.log("default", default_value); 
+					value[p] = default_value; }
+				if (value[p] && !keep) { 
+					//console.log("delete"); 
+					delete value[p]; }
+				//console.log("Remove", p, keep, "=>", value);
+				changed = true
+			}
+			//value[p] = default_value
+		}
+		//console.log(JSON.stringify(value));
+		if (changed) editor.setValue(value);
 	}
 
 	updateSubjectId() {
