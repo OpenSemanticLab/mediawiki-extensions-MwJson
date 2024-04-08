@@ -508,11 +508,12 @@ mwjson.editor = class {
 		watched_values["i1"] = index ? index * 1 + 1 : 0;
 		watched_values["_array_index_"] = index ? index * 1 + 1 : 0;
 		watched_values["i01"] = index ? index * 1 + 1 : 0;
-		//var postqueries = [];
+
 		//todo: use jseditor_editor.formname // root[<key>]
 		let set_value = this.config.data;
 		let set = true;
 		if (this.config.data) {
+			// set-state based on the loaded value of the editor
 			let path = jseditor_editor.path.split('.'); // e.g. "root.samples.1.id"
 			path.shift(); //remove first element ('root')
 			for (let e of path) {
@@ -526,22 +527,29 @@ mwjson.editor = class {
 			}
 		}
 		else set = false;
-		//let set = (this.config.data && this.config.data[jseditor_editor.key] && this.config.data[jseditor_editor.key] !== "")
-		console.log("Set ", jseditor_editor.key, " ", jseditor_editor.formname, " ", set);
+		//console.log("Set ", jseditor_editor.key, " ", jseditor_editor.formname, " ", set);
+		// dynamic_template.override config:
+		// 'always': update the value on every change
+		// 'empty': update the only when unset or empty => default for user editable fields
+		// 'unsafed': update until the value was stored in the backend => default for hidden and readonly fields
 		let override = jseditor_editor.schema?.options?.dynamic_template?.override;
-		let override_empty = jseditor_editor.schema?.options?.dynamic_template?.override_empty || false;
-		// Todo: set override_empty true if not hidden and not read-only
-		if (override_empty) set = (jseditor_editor.value && jseditor_editor.value !== "")
-
-		if (!set || override === true) {
-			//retriev the existing property value with the highest value for the unique number
+		if (!override) {
+			if (jseditor_editor.schema.dynamic_template.includes("{{_global_index_}}")) override = 'unsafed';
+			else if (jseditor_editor.schema?.options?.hidden || jseditor_editor.schema?.readonly) override = 'always';
+			else override = 'empty'; // set override_empty true if not hidden and not read-only
+		}
+		// set-state based on the current value of the editor
+		if (override === 'empty') set = (jseditor_editor.getValue() && jseditor_editor.getValue() !== "")
+		if (!set || override === 'always') {
+			//retrieve the existing property value with the highest value for the unique number
 			var context = {
 				property: "HasId",
 				number_pattern: "0000",
 				increment: 1,
-				debug: true,
+				debug: false,
 
 			};
+			context = mwjson.util.mergeDeep(context, jseditor_editor.schema?.options?.global_index);
 			if (!jseditor_editor.schema?.dynamic_template) return;
 			if (jseditor_editor.schema?.options?.data_maps) {
 				for (const map of jseditor_editor.schema.options.data_maps) {
@@ -572,11 +580,6 @@ mwjson.editor = class {
 			}
 			if (fetch_global_index) {
 				var query = mw.config.get("wgScriptPath") + `/api.php?action=ask&query=[[${context.property}::~${context.value.replace("%_global_index_%", "*")}]]|?${context.property}|sort=${context.property}|order=desc|limit=1&format=json`;
-				//var receiveHighestExistingValuesQuery = $.ajax({url : query, dataType: "json", cache: false,
-				//	success : (data) => {
-				//let query1 = mw.config.get("wgScriptPath") + `/api.php?action=ask&query=[[User:${watched_values["_current_user_"]}]]|?HasAbbreviation=abbreviation&format=json`;
-				//let data1 = await (await fetch(query1)).json()
-				//console.log(data1);
 				let data = await (await fetch(query)).json();
 				var number_start = context.increment;
 				context.unique_number_string = "" + number_start;
@@ -592,10 +595,8 @@ mwjson.editor = class {
 				}
 				context.unique_number_string = (context.number_pattern + context.unique_number_string).substr(-context.number_pattern.length);
 				watched_values["_global_index_"] = context.unique_number_string
-				//context.value = context.value.replace("*", context.unique_number_string);
 			}
 			context.value = Handlebars.compile(jseditor_editor.schema.dynamic_template)(watched_values);
-			//$(context.field).val(context.value);
 			//console.log("Set value", context)
 			set_value = context.value;
 			jseditor_editor.setValue(set_value)
