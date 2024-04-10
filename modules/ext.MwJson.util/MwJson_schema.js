@@ -5,6 +5,12 @@ mwjson.schema = class {
         var defaultConfig = {
 			mode: "default", // options: default, query
 			lang: "en",
+            // see https://flatpickr.js.org/formatting/#time-formatting-tokens
+            format: {
+                "date": "Y-m-d",
+                "time": "H:i",
+                "datetime-local": "Y-m-d H:i",
+            },
             use_cache: true, // use local store schema cache
 		};
 		this.config = mwjson.util.mergeDeep(defaultConfig, args.config);
@@ -209,6 +215,24 @@ mwjson.schema = class {
                 if (schema.options[attr+"*"])
                     if (schema.options[attr+"*"][this.config.lang]) 
                         schema.options[attr] = schema.options[attr+"*"][this.config.lang];
+            }
+        }
+
+        // handle data and datetime-local format
+        let format = schema.format;
+        // https://json-schema.org/understanding-json-schema/reference/string#dates-and-times
+        if (format === "date" || format === "time" || format === "datetime-local") {
+            //set default values, see: https://github.com/flatpickr/flatpickr/issues/279
+            let storeFormats = {"date": "Y-m-d", "time": "H:i", "datetime-local": "Z"};
+            let displayFormats = this.config.format;
+            schema.options = schema.options || {};
+            schema.options.flatpickr = schema.options.flatpickr || {};
+            schema.options.flatpickr.dateFormat = schema.options.flatpickr.dateFormat || storeFormats[format];
+
+            //set altInput option if not explicite disabled
+            if (!(schema.options.flatpickr.altInput === false)) {
+                schema.options.flatpickr.altInput = true;
+                schema.options.flatpickr.altFormat = schema.options.flatpickr.altFormat || displayFormats[format];
             }
         }
 

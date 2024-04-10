@@ -11,6 +11,7 @@ mwjson.editor = class {
 			submit_enabled: true, //if true, add save button
 			allow_submit_with_errors: true,
 			lang: mw.config.get('wgUserLanguage'),
+			format: {}, // e.g. datetime format
 			user_id: mw.config.get('wgUserName'),
 			id: 'json-editor-' + mwjson.util.getShortUid(),
 			onsubmit: (json) => this.onsubmit(json),
@@ -23,6 +24,21 @@ mwjson.editor = class {
 				return params.editor.config.target_namespace + ":" + mwjson.util.OswId(params.jsondata.uuid);
 			}
 		};
+		// https://json-schema.org/understanding-json-schema/reference/string#dates-and-times
+		// https://flatpickr.js.org/formatting/
+		// https://www.mediawiki.org/wiki/Manual:$wgDefaultUserOptions
+		let langDatetimeFormats = {
+			"en": {"date": "F d, Y", "time": "G:i K", "datetime-local": "F d, Y G:i K"},
+			"de": {"date": "d.m.Y", "time": "H:i", "datetime-local": "d.m.Y H:i"},
+		}
+		let datetimeFormats = {
+			"default": langDatetimeFormats[config.lang ? config.lang : defaultConfig.lang],//No preference
+			"mdy": {"date": "F d, Y", "time": "G:i K", "datetime-local": "F d, Y G:i K"}, //16:12, January 15, 2011
+			"dmy": {"date": "d.m.Y", "time": "H:i", "datetime-local": "d.m.Y H:i"}, //16:12, 15 January 2011
+			"ymd": {"date": "Y/m/d", "time": "H:i", "datetime-local": "Y/m/d H:i"}, //16:12, 2011 January 15
+			"ISO 8601": {"date": "Y-m-d", "time": "H:i", "datetime-local": "Z"}, //2011-01-15T16:12:34
+		}
+		defaultConfig.format = datetimeFormats[mw.user.options.get("date")];
 		this.config = mwjson.util.mergeDeep(defaultConfig, config);
 		this.flags = {
 			'initial-data-load': false, // true while initial applying config.data => Used for copy-feature
@@ -39,7 +55,7 @@ mwjson.editor = class {
 			this.config.popup = true;
 		}
 
-		this.jsonschema = new mwjson.schema({jsonschema: this.config.schema, config: {mode: this.config.mode, lang: this.config.lang}, debug: true});
+		this.jsonschema = new mwjson.schema({jsonschema: this.config.schema, config: {mode: this.config.mode, lang: this.config.lang, format: this.config.format}, debug: true});
 		this.jsonschema.bundle()
 			.then(() => this.jsonschema.preprocess())
 			.then(() => {
@@ -550,9 +566,9 @@ mwjson.editor = class {
 		else set = false;
 		//console.log("Set ", jseditor_editor.key, " ", jseditor_editor.formname, " ", set);
 		// dynamic_template.override config:
-		// 'always': update the value on every change
-		// 'empty': update the only when unset or empty => default for user editable fields
-		// 'unsafed': update until the value was stored in the backend => default for hidden and readonly fields
+		// 'always': update the field on every change => default for hidden and readonly fields
+		// 'empty': update the field only when unset or empty => default for user editable fields
+		// 'unsafed': update until the value was stored in the backend => default for templates with _global_index_
 		let override = jseditor_editor.schema?.options?.dynamic_template?.override;
 		if (!override) {
 			if (jseditor_editor.schema.dynamic_template.includes("{{_global_index_}}")) override = 'unsafed';
