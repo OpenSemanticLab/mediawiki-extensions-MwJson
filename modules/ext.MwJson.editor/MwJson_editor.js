@@ -1167,7 +1167,7 @@ mwjson.editor = class {
 					mwjson.util.setJsonEditorAutocompleteField(jseditor_editor, result_value, result.printouts.label[0]);
 					//jseditor_editor.input.value_label = result.printouts.label[0];
 					
-					if (jseditor_editor.schema.options.autocomplete.field_maps) {
+					if (jseditor_editor.schema?.options?.autocomplete?.field_maps) {
 						for (const map of jseditor_editor.schema.options.autocomplete.field_maps) {
 							var value = mwjson.extData.getValue({result: result}, map.source_path, "jsonpath");
 							if (map.template) value = Handlebars.compile(map.template)(value);
