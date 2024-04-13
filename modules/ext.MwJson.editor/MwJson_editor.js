@@ -9,7 +9,7 @@ mwjson.editor = class {
 			mode: "default", // options: default, query
 			copy: false, // editor is used to create a copy of an exiting entry => copy_ignore schema option is applied
 			submit_enabled: true, //if true, add save button
-			allow_submit_with_errors: true,
+			allow_submit_with_errors: undefined, //allow submitting forms even if schema validation fails (see option wgMwJsonAllowSubmitInvalide)
 			lang: mw.config.get('wgUserLanguage'),
 			format: {}, // e.g. datetime format
 			user_id: mw.config.get('wgUserName'),
@@ -70,9 +70,12 @@ mwjson.editor = class {
 	}
 
 	createEditor() {
-		//return function(err, config) {
-
-		//console.log(this);
+		// set allow_submit_with_errors if still undefined
+		if (this.config.allow_submit_with_errors !== true && this.config.allow_submit_with_errors != false) {
+			if (mw.config.get('wgMwJsonAllowSubmitInvalide') === "always") this.config.allow_submit_with_errors = true;
+			if (mw.config.get('wgMwJsonAllowSubmitInvalide') === "option") this.config.allow_submit_with_errors = this.schema?.options?.allow_submit_with_errors || false;
+			if (mw.config.get('wgMwJsonAllowSubmitInvalide') === "never") this.config.allow_submit_with_errors = false;
+		}
 
 		//JSONEditor.defaults.language = "de";
 		this.config.JSONEditorConfig = this.config.JSONEditorConfig || {};

@@ -1,7 +1,7 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.36.0",
+    "version":"0.37.0",
     "author":[
         "[https://github.com/simontaurus Simon Stier]"
     ],
@@ -228,9 +228,16 @@
 		"SpecialSlotResolver": "special/SlotResolver.php"
     },
     "Hooks":{
-        "BeforePageDisplay":"MwJson::onBeforePageDisplay"
+        "BeforePageDisplay":"MwJson::onBeforePageDisplay",
+        "ResourceLoaderGetConfigVars": "MwJson::onResourceLoaderGetConfigVars"
     },
     "SpecialPages": {
 		"SlotResolver": "SpecialSlotResolver"
+    },
+    "config": {
+        "MwJsonAllowSubmitInvalide": {
+			"value": "always",
+			"description": "Forbid ('never'), conditional if set in schema option ('option') or always ('always') allow the user to save data failing schema validation."
+		}
     }
 }
