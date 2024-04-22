@@ -545,7 +545,7 @@ mwjson.api = class {
 				for (const result_key of Object.keys(data.query.results)) {
 					let result = data.query.results[result_key];
 					result = mwjson.util.normalizeSmwMultilangResult(result, lang);
-					var label = "";
+					var label = result.displaytitle ? result.displaytitle : "";
 					if (result)
 						if (result.printouts.label)
 							if (result.printouts.label[0])
