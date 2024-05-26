@@ -1101,21 +1101,27 @@ mwjson.editor = class {
 							.then(response => response.json())
 							.then(data => {
 								//convert result dict to list/array
-								var resultList = Object.values(data.query.results); //use subjects as results
-								if (result_property) { //use objects as results
-									resultList = [];
-									Object.values(data.query.results).forEach(result => {
-										resultList = resultList.concat(result.printouts[result_property])
-									});
-									resultList = [...new Set(resultList)]; //remove duplicates
+								var resultList = []
+								if (data.error) {
+									jseditor_editor.unhandled_input = false;
+									console.warn("Error while fetching autocomplete data: ", data.error)
 								}
-								//filter list
-								/*resultList = resultList.filter(result => {
-									return mwjson.util.normalizeString(JSON.stringify(result)).includes(mwjson.util.normalizeString(input)); //slow but generic
-								});*/
-								//sort list
-								resultList.sort((a, b) => input.length/b.displaytitle.length - input.length/a.displaytitle.length)
-								
+								else {
+									resultList = Object.values(data.query.results); //use subjects as results
+									if (result_property) { //use objects as results
+										resultList = [];
+										Object.values(data.query.results).forEach(result => {
+											resultList = resultList.concat(result.printouts[result_property])
+										});
+										resultList = [...new Set(resultList)]; //remove duplicates
+									}
+									//filter list
+									/*resultList = resultList.filter(result => {
+										return mwjson.util.normalizeString(JSON.stringify(result)).includes(mwjson.util.normalizeString(input)); //slow but generic
+									});*/
+									//sort list
+									resultList.sort((a, b) => input.length/b.displaytitle.length - input.length/a.displaytitle.length)
+								}
 								resolve(resultList);
 							});
 					});
