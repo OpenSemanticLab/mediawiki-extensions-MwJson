@@ -182,6 +182,8 @@ mwjson.util = class {
 
 	//from https://stackoverflow.com/questions/27936772/how-to-deep-merge-instead-of-shallow-merge
 	static mergeDeep(target, source) {
+		if (!target) return source;
+		if (!source) return target;
 		let output = Object.assign({}, target);
 		if (mwjson.util.isObject(target) && mwjson.util.isObject(source)) {
 			Object.keys(source).forEach(key => {
