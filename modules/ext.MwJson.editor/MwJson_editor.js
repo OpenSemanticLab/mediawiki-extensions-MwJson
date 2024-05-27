@@ -258,6 +258,7 @@ mwjson.editor = class {
 						}).bind(this, subeditor));
 						$create_inline_button.find(".inline-edit-btn").on("click", (function (subeditor, e) {
 							//console.log("Click ", subeditor);
+							subeditor.unhandled_input = false;
 							var categories = subeditor.schema?.range ? subeditor.schema?.range : subeditor.schema?.options?.autocomplete?.category;
 							if (categories && !Array.isArray(categories)) categories = [categories];
 							var super_categories = subeditor.schema?.subclassof_range;
@@ -1106,6 +1107,10 @@ mwjson.editor = class {
 									jseditor_editor.unhandled_input = false;
 									console.warn("Error while fetching autocomplete data: ", data.error)
 								}
+								else if (jseditor_editor.unhandled_input === false) {
+									//aborted in the meantime
+									//console.log("Autocomplete request aborted in the meantime")
+								}
 								else {
 									resultList = Object.values(data.query.results); //use subjects as results
 									if (result_property) { //use objects as results
@@ -1173,7 +1178,6 @@ mwjson.editor = class {
 					if (labelTemplate.type.shift() === 'handlebars') {
 						label = Handlebars.compile(labelTemplate.value)({ result: result });
 					}
-					jseditor_editor.input.value_label = label;
 					return label;
 				},
 				//... but store the fulltext / id
