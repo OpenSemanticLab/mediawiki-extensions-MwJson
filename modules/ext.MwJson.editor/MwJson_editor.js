@@ -211,14 +211,15 @@ mwjson.editor = class {
 					if (subeditor.unhandled_input && input.value && input.value !== "") {
 						//field was not filled yet.
 						//user has entered a value in the field but did not select a result from the suggestion list
-						//reset the state if the input to empty
+						//reset the state of the input to empty
 						subeditor.unhandled_input = false;
-						mwjson.util.setJsonEditorAutocompleteField(subeditor, input.value_id, input.value_label);
+						mwjson.util.setJsonEditorAutocompleteField(subeditor, null, null); // clear the field
+						//mwjson.util.setJsonEditorAutocompleteField(subeditor, input.value_id ? input.value_id : null, input.value_label ? input.value_label : null); // restore previous value
 					}
 					else if (subeditor.unhandled_input && input.value === "") {
 						//field was already filled yet.
 						//user has removed the value from field so it's now empty
-						//reset the state if the input to empty
+						//reset the state of the input to empty
 						subeditor.unhandled_input = false;
 						mwjson.util.setJsonEditorAutocompleteField(subeditor, null, null);
 					}
