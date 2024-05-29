@@ -245,6 +245,7 @@ mwjson.editor = class {
 						var $create_inline_button = $(`<div class="col-md-4">
 							<button type="button" class="inline-clear-btn btn btn-secondary"></button>
 							<button type="button" class="inline-edit-btn btn btn-primary"></button>
+							<button type="button" class="inline-clone-btn btn btn-primary"></button>
 						</div>`);
 						if ($form_group_label.length) {
 							$container.insertAfter($form_group_label); // normal layout
@@ -273,6 +274,14 @@ mwjson.editor = class {
 							}
 							else {
 								this.config.onCreateInline({categories: categories, super_categories: super_categories}).then((page) => {
+									mwjson.util.setJsonEditorAutocompleteField(subeditor, page.title, null);
+								});
+							}
+						}).bind(this, subeditor));
+						$create_inline_button.find(".inline-clone-btn").on("click", (function (subeditor, e) {
+							subeditor.unhandled_input = false;
+							if (subeditor.input.value_id && !subeditor.unhandled_input) {
+								this.config.onEditInline({page_title: subeditor.input.value_id, mode: 'copy'}).then((page) => {
 									mwjson.util.setJsonEditorAutocompleteField(subeditor, page.title, null);
 								});
 							}
@@ -328,15 +337,26 @@ mwjson.editor = class {
 						</span>
 					`;
 					var tooltip = mw.message("mwjson-editor-create-inline-tooltip").text();
-					if (subeditor.getValue() && !subeditor.unhandled_input) label = mw.message("mwjson-editor-edit-inline-label").text() + " " + '<i class="icon icon-edit"></i>';
-					if (subeditor.getValue() && !subeditor.unhandled_input) tooltip = mw.message("mwjson-editor-edit-inline-tooltip").text();
+					if (subeditor.getValue() && !subeditor.unhandled_input) {
+						label = mw.message("mwjson-editor-edit-inline-label").text() + " " + '<i class="icon icon-edit"></i>';
+						tooltip = mw.message("mwjson-editor-edit-inline-tooltip").text();
+						$input.parent().parent().find(".inline-clone-btn").show();
+					}
+					else {
+						$input.parent().parent().find(".inline-clone-btn").hide();
+					}
 					$input.parent().parent().find(".inline-edit-btn").html(label);
 					$input.parent().parent().find(".inline-edit-btn").attr('title', tooltip);
 
-					var label = mw.message("mwjson-editor-clear-inline-label").text() + " " + '<i class="icon icon-cross"></i>';
-					var tooltip = mw.message("mwjson-editor-clear-inline-tooltip").text();
-					$input.parent().parent().find(".inline-clear-btn").html(label);
-					$input.parent().parent().find(".inline-clear-btn").attr('title', tooltip);
+					var clear_label = mw.message("mwjson-editor-clear-inline-label").text() + " " + '<i class="icon icon-cross"></i>';
+					var clear_tooltip = mw.message("mwjson-editor-clear-inline-tooltip").text();
+					$input.parent().parent().find(".inline-clear-btn").html(clear_label);
+					$input.parent().parent().find(".inline-clear-btn").attr('title', clear_tooltip);
+
+					var clone_label = mw.message("mwjson-editor-clone-inline-label").text() + " " + '<i class="far fa-solid fa-clone"></i>';
+					var clone_tooltip = mw.message("mwjson-editor-clone-inline-tooltip").text();
+					$input.parent().parent().find(".inline-clone-btn").html(clone_label);
+					$input.parent().parent().find(".inline-clone-btn").attr('title', clone_tooltip);
 				}
 
 				//BUG: Does not save value in original text field (only if source mode is toggled). See PageForms extension

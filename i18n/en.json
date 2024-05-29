@@ -27,6 +27,8 @@
 	"mwjson-editor-edit-comment-input-tooltip" : "Add a comment to your edit for documentation",
 	"mwjson-editor-edit-inline-label": "",
 	"mwjson-editor-edit-inline-tooltip": "Edit selected element in separate dialog",
+	"mwjson-editor-clone-inline-label": "",
+	"mwjson-editor-clone-inline-tooltip": "Clone the current element and edit the clone in a separate dialog",
 	"mwjson-editor-create-inline-label": "",
 	"mwjson-editor-create-inline-tooltip": "Create new element in separate dialog",
 	"mwjson-editor-clear-inline-label": "",

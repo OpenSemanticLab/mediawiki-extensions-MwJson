@@ -1,7 +1,7 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.37.5",
+    "version":"0.38.0",
     "author":[
         "[https://github.com/simontaurus Simon Stier]"
     ],
@@ -128,6 +128,8 @@
                 "mwjson-editor-edit-comment-input-tooltip",
                 "mwjson-editor-edit-inline-label",
                 "mwjson-editor-edit-inline-tooltip",
+                "mwjson-editor-clone-inline-label",
+                "mwjson-editor-clone-inline-tooltip",
                 "mwjson-editor-create-inline-label",
                 "mwjson-editor-create-inline-tooltip",
                 "mwjson-editor-clear-inline-label",
