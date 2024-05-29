@@ -106,5 +106,7 @@
 	"json-editor-flatpickr_clear_button": "Löschen",
 	"json-editor-choices_placeholder_text": "Tippen Sie, um einen Wert hinzuzufügen",
 	"json-editor-default_array_item_title": "item",
-	"json-editor-button_delete_node_warning": "Sind Sie sicher, dass Sie diesen Knoten entfernen möchten?"
+	"json-editor-button_delete_node_warning": "Sind Sie sicher, dass Sie diesen Knoten entfernen möchten?",
+	"json-editor-table_controls": "Steuerelemente",
+	"json-editor-paste_max_length_reached": "Der eingefügte Text hat die maximale Länge von ((0)) überschritten und wird abgeschnitten."
 }

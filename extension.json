@@ -1,7 +1,7 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.37.4",
+    "version":"0.37.5",
     "author":[
         "[https://github.com/simontaurus Simon Stier]"
     ],
@@ -207,7 +207,9 @@
                 "json-editor-flatpickr_clear_button",
                 "json-editor-choices_placeholder_text",
                 "json-editor-default_array_item_title",
-                "json-editor-button_delete_node_warning"
+                "json-editor-button_delete_node_warning",
+                "json-editor-table_controls",
+                "json-editor-paste_max_length_reached"
             ]
         },
         "ext.mwjson.editor.ace":{

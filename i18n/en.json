@@ -106,5 +106,7 @@
 	"json-editor-flatpickr_clear_button": "Clear",
 	"json-editor-choices_placeholder_text": "Start typing to add value",
 	"json-editor-default_array_item_title": "item",
-	"json-editor-button_delete_node_warning": "Are you sure you want to remove this node?"
+	"json-editor-button_delete_node_warning": "Are you sure you want to remove this node?",
+	"json-editor-table_controls": "Controls",
+	"json-editor-paste_max_length_reached": "Pasted text exceeded maximum length of ((0)) and will be clipped."
 }
