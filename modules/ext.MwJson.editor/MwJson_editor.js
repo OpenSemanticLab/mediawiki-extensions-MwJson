@@ -1225,7 +1225,7 @@ mwjson.editor = class {
 							for (const key in jseditor_editor.watched_values) target_editor = target_editor.replace('$(' + key + ')', jseditor_editor.watched[key]);
 							if (jseditor_editor.jsoneditor.editors[target_editor]) {
 								let editor_type = jseditor_editor.jsoneditor.editors[target_editor].schema?.type;
-								if (editor_type === "array" || editor_type === "object") value = JSON.parse(value);
+								if (editor_type === "array" || editor_type === "object") value = JSON.parse(value.replaceAll(/\n/g,'\\n'));
 								jseditor_editor.jsoneditor.editors[target_editor].setValue(value);
 							}
 						}
