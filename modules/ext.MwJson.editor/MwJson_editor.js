@@ -554,7 +554,10 @@ mwjson.editor = class {
 	// adds suppport for backend supplied variables like {{_global_index_}}
 	async formatDynamicTemplate(jseditor_editor, watched_values) {
 		if (!jseditor_editor.schema.dynamic_template) return;
-		if (jseditor_editor.schema.dynamic_template.includes("_current_user_")) {
+		let fetch_user = false;
+		if (jseditor_editor.schema.dynamic_template.includes("_current_user_")) fetch_user = true;
+		if (jseditor_editor.schema?.options?.data_maps && JSON.stringify(jseditor_editor.schema?.options?.data_maps).includes("_current_user_")) fetch_user = true;
+		if (fetch_user) {
 			let user_page_or_item = jseditor_editor.jsoneditor.mwjson_editor.config.user_id;
 			let query_url = mw.config.get("wgScriptPath") + `/api.php?action=ask&format=json&query=[[User:${user_page_or_item}]]`;
 			let result = await (await fetch(query_url)).json();
@@ -678,7 +681,7 @@ mwjson.editor = class {
 			$(this.container).append($("<button type='Button' class='btn btn-primary btn-block' id='" + btn_id + "'>" + btn_label + "</button>"));
 			$("#" + btn_id).click(() => {
 				console.log("Query");
-				this._onsubmit(this.jsoneditor.getValue());
+				this._onsubmit();
 			});
 		}
 
@@ -834,6 +837,7 @@ mwjson.editor = class {
 		document.activeElement.blur(); //ensure input is defocused to update final jsondata
 		const promise = new Promise((resolve, reject) => {
 			this.getSyntaxErrors().then((errors) => {
+				if (!json) json = this.jsoneditor.getValue();
 				const validation_errors = this.jsoneditor.validate();
 				if(errors.length || validation_errors.length) {
 					let msg = mw.message("mwjson-editor-fields-contain-error").text();
