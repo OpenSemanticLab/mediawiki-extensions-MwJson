@@ -1480,5 +1480,32 @@ mwjson.editor = class {
 				"%": lvalue % rvalue
 			}[operator];
 		});
+
+		// register join function
+		// remove all empty interation results and delimits them with the given separator (default: ", ")
+		// {{#join literal_array }}{{.}}{{/join}}
+		// {{#join object_array ", " "[" "]"}}{{#if print}}{{value}}{{/if}}{{/join}}
+		Handlebars.registerHelper("join", function (context, separator, intro, outro, options) {
+			if (!options) {
+				options = outro; // shift arguments
+				outro = "";
+			}
+			if (!options) {
+				options = intro; // shift arguments
+				intro = "";
+			}
+			if (!options) {
+				options = separator; // shift arguments
+				separator = ", "
+			}
+			let items = [];
+			for (var i = 0, j = context.length; i < j; i++) {
+				items.push(options.fn(context[i]));
+			}
+			items = items.filter(item => item.trim() !== '') // Remove empty or whitespace-only elements
+			if (!items.length) intro = outro = "";
+
+			return intro + items.join(separator) + outro; // Join with separator, wrap with intro + outro
+		});
 	};
 }
