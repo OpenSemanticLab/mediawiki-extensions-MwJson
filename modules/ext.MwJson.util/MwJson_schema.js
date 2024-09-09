@@ -198,6 +198,21 @@ mwjson.schema = class {
 			}
 		}
 
+        if (schema.definitions) {
+            // follow partial schemas in #/definitions
+			for (const property of Object.keys(schema.definitions)) {
+				this._preprocess({schema: schema.definitions[property], level: level + 1, visited_properties: visited_properties});
+			}
+		}
+        if (schema.$defs) {
+            // follow partial schemas in #/$defs
+			for (const property of Object.keys(schema.$defs)) {
+				this._preprocess({schema: schema.$defs[property], level: level + 1, visited_properties: visited_properties});
+			}
+		}
+        // fix https://github.com/APIDevTools/json-schema-ref-parser/issues/356
+        if (schema['$ref'] && mwjson.util.isString(schema['$ref'])) schema['$ref'] = schema['$ref'].replaceAll("%24defs", "$defs")
+
         //include all required properties within defaultProperties. see https://github.com/json-editor/json-editor/issues/1275
         if (schema.required) {
             if (!schema.defaultProperties) schema.defaultProperties = [];
