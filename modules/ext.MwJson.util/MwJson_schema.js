@@ -218,6 +218,17 @@ mwjson.schema = class {
             }
         }
 
+        // handle string literal arrays
+        if (schema.type === "array" && schema.format === "table" && schema.items?.type === "string") {
+            //schema.options = mwjson.util.mergeDeep(schema.options, {"compact": true, "array_controls_top": false}); // display only item title
+            schema.items.title = schema.items.title ? schema.items.title : schema.title; // use parent title if not set 
+        }
+
+        // handle select input elements
+        if (schema.type === "array" && schema.uniqueItems === true && schema.items?.enum) {
+            schema.format = "selectize"; // auto-set currently supported select input lib
+        }
+
         // handle data and datetime-local format
         let format = schema.format;
         // https://json-schema.org/understanding-json-schema/reference/string#dates-and-times
