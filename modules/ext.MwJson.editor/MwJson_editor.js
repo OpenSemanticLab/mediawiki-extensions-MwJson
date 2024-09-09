@@ -839,32 +839,31 @@ mwjson.editor = class {
 			this.getSyntaxErrors().then((errors) => {
 				if (!json) json = this.jsoneditor.getValue();
 				const validation_errors = this.jsoneditor.validate();
-				if(errors.length || validation_errors.length) {
-					let msg = mw.message("mwjson-editor-fields-contain-error").text();
+				if (errors.length || validation_errors.length) {
+					let msg = mw.message("mwjson-editor-fields-contain-error").text() + ":";
+					for (const err of validation_errors) msg += " " + err.message + " (@ " + err.path + ");";
 					if (this.config.allow_submit_with_errors) {
-						msg += ". " + mw.message("mwjson-editor-save-anyway").text();
-						OO.ui.confirm( msg ).done( ( confirmed ) => {
-							if ( confirmed ) {
-								if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-do-not-close-window").text(), { title: mw.message("mwjson-editor-saving").text() + "...", type: 'warn'});
-								const submit_promise = this.config.onsubmit(json, meta);
+						msg += " " + mw.message("mwjson-editor-save-anyway").text();
+						OO.ui.confirm(msg).done((confirmed) => {
+							if (confirmed) {
 									if (submit_promise) submit_promise.then(() => {
 										resolve();
-								if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success'});
+										if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success' });
 									}).catch();
 									else {
 										resolve();
-										if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success'});
+										if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success' });
 									}
 							} else {
 								reject();
 							}
-						} );
+						});
 					}
 					else {
 						msg += ". " + mw.message("mwjson-editor-fix-all-errors").text();
-						OO.ui.alert( msg ).done( () => {
+						OO.ui.alert(msg).done(() => {
 							reject();
-						} );
+						});
 					}
 			}
 			else {
