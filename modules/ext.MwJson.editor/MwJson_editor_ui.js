@@ -48,6 +48,7 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
     Dialog.static.name = 'CreatePageDialog';
     // Specify the static configurations: title and action set
     Dialog.static.title = _config.msg["dialog-title"];
+    Dialog.static.escapable = false; // pressing ESC does not close the dialog 
     Dialog.static.actions = [
         {
             flags: 'safe',
