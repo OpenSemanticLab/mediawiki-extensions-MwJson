@@ -75,7 +75,7 @@ mwjson.schema = class {
                 }
                 if (this.config.use_cache && title) {
                     //console.log("Fetch from cache: ", match.groups.title);
-                    this.cache.get(title).then((item) => callback(null, item.value));
+                    this.cache.get(title).then((item) => callback(null, item.value ? item.value : "{}"));
                 }
                 else fetch(url)
                     .then(response => {
@@ -87,6 +87,7 @@ mwjson.schema = class {
                         }
                     })
                     .then(text => {
+                        if (!text || text === "") text = "{}"; // fallback to empty schema
                         callback(null, text);
                     })
             }

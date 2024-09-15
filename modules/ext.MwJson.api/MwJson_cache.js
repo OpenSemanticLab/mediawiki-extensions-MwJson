@@ -180,8 +180,9 @@ mwjson.Cache = class {
             const revision = page.revisions[0];
             let hash = revision.sha1;
             //this.setHash(key, hash);
-            let content = revision.slots.main["*"];
-            if (revision.slots.jsonschema) { content = revision.slots.jsonschema["*"]; }
+            let content = null;
+            if (page.title.startsWith("JsonSchema:")) content = revision.slots.main["*"];
+            else if (revision.slots.jsonschema) { content = revision.slots.jsonschema["*"]; }
             items[key] = {
                 meta: { hash: hash },
                 value: content
