@@ -692,7 +692,8 @@ mwjson.editor = class {
 				var btn_label = mw.message("mwjson-editor-fetch-external-data", data_source_map.label).text();
 				if (data_source_map.required) {
 					var required_prop_names = "";
-					for (const required_prop of data_source_map.required) required_prop_names += this.jsonschema.getPropertyDefinition(required_prop).title + ", ";
+					for (const required_prop of data_source_map.required)
+						required_prop_names += (this.jsonschema.getPropertyDefinition(required_prop).title ? this.jsonschema.getPropertyDefinition(required_prop).title : required_prop) +  ", ";
 					required_prop_names = required_prop_names.slice(0,-2);
 					btn_label += " (" + mw.message("mwjson-editor-fetch-external-data-requires", required_prop_names).text() + ")";
 				}
