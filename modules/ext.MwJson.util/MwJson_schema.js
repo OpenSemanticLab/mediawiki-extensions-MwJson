@@ -245,10 +245,12 @@ mwjson.schema = class {
             schema.format = "selectize"; // auto-set currently supported select input lib
         }
 
-        // handle data and datetime-local format
+        // handle time, date and datetime-local format
         let format = schema.format;
         // https://json-schema.org/understanding-json-schema/reference/string#dates-and-times
-        if (format === "date" || format === "time" || format === "datetime-local") {
+        if (format === "date" || format === "time" || format === "datetime" || format === "datetime-local") {
+            // note: json-schema specifies datetime, json-editor uses datetime-local
+            if (format === "datetime") format = schema.format = "datetime-local";
             //set default values, see: https://github.com/flatpickr/flatpickr/issues/279
             let storeFormats = {"date": "Y-m-d", "time": "H:i", "datetime-local": "Z"};
             let displayFormats = this.config.format;
@@ -384,11 +386,10 @@ mwjson.schema = class {
 	}
 
     preprocess() {
-        this.log("proprocess start");
+        this.log("preprocess start");
         const promise = new Promise((resolve, reject) => {
             this.setSchema(this._preprocess({schema: this.getSchema()}));
-            this.log("proprocess finish");
-            resolve();
+            this.log("preprocess finish");
         });
         return promise;
     }
