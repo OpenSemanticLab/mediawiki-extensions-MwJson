@@ -11,7 +11,205 @@ mwjson.editor.prototype.addCss = function () {
     document.head.appendChild(styleSheet);
 }
 
+mwjson.editor.createModal = function (config) {
+    config = config || {}
+    var defaultConfig = {
+        "size": "lg",
+        "backdrop": "static",
+        "body": "",
+        "footer": "",
+        "cancelCallback": null
+    }
+    config = mwjson.util.mergeDeep(defaultConfig, config);
+
+    if (document.getElementById(config.id)) {
+        //bootstrap.Modal.getOrCreateInstance(document.getElementById(config.id)).remove();
+        document.getElementById(config.id).remove();
+    }
+    if (!document.getElementById(config.id)) {
+        var html = `
+        <div class="modal" id="${config.id}" data-bs-backdrop="${config.backdrop}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-${config.size}">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">${config.title}</h5>
+                    </div>
+                    <div class="modal-body">
+                        ${config.body}
+                    </div>
+                    <div class="modal-footer">
+                        ${config.footer}
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+
+        var elem = document.createElement('div');
+        elem.innerHTML = html;
+        document.querySelector('body').appendChild(elem);
+
+
+        for (btn of config.buttons) {
+            const button = document.createElement('button');
+            button.textContent = btn.label;
+            if (btn.tooltip) button.title = btn.tooltip;
+            button.type = 'button';
+            button.className = btn.class ? btn.class : 'btn btn-primary';
+            if (btn.closing) button.setAttribute('data-bs-dismiss', 'modal');
+            if (btn.id) button.setAttribute('id', btn.id);
+            let location = btn.location ? btn.location : 'footer';
+            const parentNode = document.querySelector("#" + config.id + " ." + (btn.section ? btn.section : "modal-" + location));
+            parentNode.appendChild(button);
+
+            // Register an event handler for on_click
+            button.addEventListener('click', btn.onclick);
+        }
+    }
+
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById(config.id), {
+        backdrop: 'static', // Includes a modal-backdrop element. Alternatively, specify static for a backdrop which doesn’t close the modal when clicked.
+        focus: true, // Puts the focus on the modal when initialized.
+        keyboard: false, //	Closes the modal when escape key is pressed.
+    })
+
+    //modal.show()
+    return modal;
+}
+
+// drop-in replacement for OO.ui.alert
+mwjson.editor.prototype.alert = function (msg) {
+    let msg_confirm = "OK";
+    const promise = new Promise((resolve, reject) => {
+        const confirmClose_modal = mwjson.editor.createModal({
+            id: "confirm", title: msg, description: "", body: "",
+            size: "md",
+            buttons: [
+                {label: msg_confirm, class: "btn btn-secondary", closing: true, onclick: () => {resolve();}}
+            ]
+        });
+        confirmClose_modal.show(); 
+    })  
+    return promise;
+}
+
+// drop-in replacement for OO.ui.confirm
+mwjson.editor.prototype.confirm = function (msg) {
+    let msg_confirm = mw.message("mwjson-editor-close-anyway").text();
+    let msg_reject = mw.message("mwjson-editor-return-to-editor").text();
+    const promise = new Promise((resolve, reject) => {
+        const confirmClose_modal = mwjson.editor.createModal({
+            id: "confirm", title: msg, description: "", body: "",
+            size: "md",
+            buttons: [
+                {label: msg_confirm, class: "btn btn-secondary", closing: true, onclick: () => {resolve(true);}},
+                {label: msg_reject, closing: true, onclick: () => {resolve(false);}}
+            ]
+        });
+        confirmClose_modal.show(); 
+    })
+       
+    return promise;
+}
+
 mwjson.editor.prototype.createPopupDialog = function (_config) {
+    _config = _config || {}
+    var editor = this;
+    var defaultConfig = {
+        size: "medium", //small, medium, large, larger or full,
+        toggle_fullscreen: false, //enable toggle fullscreen button
+        msg: {
+            "dialog-title": "JSONEditor",
+            "continue": "Continue",
+            "cancel": "Cancel",
+            "toggle-fullscreen": "Leave / enter fullscreen",
+            "edit-comment": mw.message("mwjson-editor-edit-comment-input-label").text(),
+            "edit-comment-placeholder": mw.message("mwjson-editor-edit-comment-input-placeholder").text(),
+            "edit-comment-tooltip": mw.message("mwjson-editor-edit-comment-input-tooltip").text()
+        },
+        redirect: (page) => {
+            var params = { "veaction": "edit" };
+            if (!page.exists) params["redlink"] = 1;
+            return new mw.Title(page.title).getUrl(params);
+        },
+        new_window: false,
+        edit_comment: true,
+        edit_comment_required: false
+    };
+
+    _config = mwjson.util.mergeDeep(defaultConfig, _config);
+    let commentFieldLabelDetails = _config.edit_comment_required ?
+        mw.message('mwjson-editor-required').text() : mw.message('mwjson-editor-optional').text();
+    let commentFieldLabel = _config.msg['edit-comment'] + ' (' + commentFieldLabelDetails + ')';
+    let footer = "";
+    if (editor.config.mode !== "query") {
+        footer += `
+        <div class="input-group mb-3">
+            <span class="input-group-text" id="${editor.config.id}_edit-comment-label">${commentFieldLabel}</span>
+            <input id="${editor.config.id}_edit-comment-input" type="text" class="form-control" placeholder="${_config.msg['edit-comment-placeholder']}" title="${_config.msg['edit-comment-tooltip']}" aria-label="edit-comment" aria-describedby="edit-comment-label">
+        </div>
+        `;
+    }
+
+    let dataEditor_modal = null;
+    let query_body = "";
+    if (editor.config.mode === 'query') {
+        editor.config.result_container_id = editor.config.id + '_query';
+        query_body = '<div id="' + editor.config.result_container_id + '" style="height:300px;overflow:auto"></div>';
+    }
+
+    const confirmClose = () => {
+        let msg = mw.message("mwjson-editor-cancel-unsafed-changes").text();
+        let msg_confirm = mw.message("mwjson-editor-close-anyway").text();
+        let msg_reject = mw.message("mwjson-editor-return-to-editor").text();
+        const confirmClose_modal = mwjson.editor.createModal({
+            id: "confirmClose", title: msg, description: "", body: "",
+            size: "md",
+            buttons: [
+                {label: msg_confirm, class: "btn btn-secondary", closing: true, onclick: () => {dataEditor_modal.hide();}},
+                {label: msg_reject, closing: true}
+            ]
+
+        });
+        confirmClose_modal.show();
+    }
+
+    dataEditor_modal = mwjson.editor.createModal({
+        id: "dataEditorModel_" + editor.config.id, title: _config.msg["dialog-title"], description: "",
+        size: "fullscreen",
+        body: query_body + `
+        <div id="${editor.config.id}" style="min-height:1000px;"></div>
+        `,
+        footer: footer,
+        buttons: [
+            {class: "btn-close", closing: false, onclick: confirmClose, location: "header"},
+            {label: _config.msg["cancel"], class: "btn btn-secondary", closing: false, onclick: confirmClose},
+            {label: _config.msg["continue"], id: `${editor.config.id}_btn-submit`, closing: false, onclick: () => {
+                let meta = {};
+                if (editor.config.mode !== "query" && _config.edit_comment) 
+                    meta.comment = document.getElementById(`${editor.config.id}_edit-comment-input`).value;
+                editor._onsubmit({meta:meta})
+                    .then(() => dataEditor_modal.hide())
+                    .catch();
+            }}
+        ]
+
+    });
+    if (editor.config.mode !== "query" && _config.edit_comment_required) {
+        let btn = document.getElementById(`${editor.config.id}_btn-submit`);
+        btn.disabled = true;
+        document.getElementById(`${editor.config.id}_edit-comment-input`).addEventListener('input', (e) => {
+            let text = e.target.value;
+            if (text && text !== "") btn.disabled = false;
+            else btn.disabled = true;
+        });
+    }
+
+    dataEditor_modal.show();
+    
+}
+
+mwjson.editor.prototype.createPopupDialog_old = function (_config) {
     _config = _config || {}
     var editor = this;
     var defaultConfig = {
@@ -52,7 +250,8 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
     Dialog.static.actions = [
         {
             flags: 'safe',
-            label: _config.msg['cancel']
+            label: _config.msg['cancel'],
+            action: 'cancel'
         }
     ];
     if (editor.config.mode !== 'query') {
@@ -135,6 +334,30 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
     // Specify processes to handle the actions.
     Dialog.prototype.getActionProcess = function (action) {
         var dialog = this;
+        console.log(action);
+        if (action === 'cancel') { // "Cancel or ESC pressed"
+            return new OO.ui.Process(function () {
+                let msg = mw.message("mwjson-editor-cancel-unsafed-changes").text();
+                let msg_confirm = mw.message("mwjson-editor-close-anyway").text();
+                let msg_reject = mw.message("mwjson-editor-return-to-editor").text();
+                // does block UI when reopen the editor after first closing
+                //OO.ui.confirm(msg).done((confirmed) => {
+                //    if (confirmed) dialog.close({ action: action });
+                //});
+                // same
+                dialog.close({ action: action });
+                return;
+                const modal = mwjson.editor.createModal({
+                    id: "confirmClose", title: msg, description: "",
+                    buttons: [
+                        {label: msg_confirm, class: "btn btn-secondary", closing: true, onclick: () => {dialog.close({ action: action });}},
+                        {label: msg_reject, closing: true}
+                    ]
+
+                });
+                modal.show();
+            }, this);
+        }
         if (action === 'create') {
             // Create a new process to handle the action
             return new OO.ui.Process(function () {
@@ -176,10 +399,15 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
 
     // Create and append a window manager.
     var windowManager = new OO.ui.WindowManager();
+    //windowManager.escapable = false; // pressing ESC does not close the dialog 
     $(document.body).append(windowManager.$element);
 
     // Create a new process dialog window.
-    var dialog = new Dialog({ size: _config.size });
+    var dialog = new Dialog({ 
+        size: _config.size,
+        //escapable: false, // pressing ESC does not close the dialog 
+    });
+    //dialog.escapable = false; // pressing ESC does not close the dialog 
 
     // Add the window to window manager using the addWindows() method.
     windowManager.addWindows([dialog]);

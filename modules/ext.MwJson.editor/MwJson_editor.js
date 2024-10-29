@@ -847,7 +847,7 @@ mwjson.editor = class {
 					for (const err of validation_errors) msg += " " + err.message + " (@ " + err.path + ");";
 					if (this.config.allow_submit_with_errors) {
 						msg += " " + mw.message("mwjson-editor-save-anyway").text();
-						OO.ui.confirm(msg).done((confirmed) => {
+						mwjson.editor.prototype.confirm(msg).then((confirmed) => {
 							if (confirmed) {
 									if (submit_promise) submit_promise.then(() => {
 										resolve();
@@ -864,7 +864,7 @@ mwjson.editor = class {
 					}
 					else {
 						msg += ". " + mw.message("mwjson-editor-fix-all-errors").text();
-						OO.ui.alert(msg).done(() => {
+						mwjson.editor.prototype.alert(msg).then(() => {
 							reject();
 						});
 					}

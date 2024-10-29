@@ -1,7 +1,7 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.40.2",
+    "version":"0.41.0",
     "author":[
         "[https://github.com/simontaurus Simon Stier]"
     ],
@@ -114,6 +114,9 @@
                 "mwjson-editor-fields-contain-error",
                 "mwjson-editor-fix-all-errors",
                 "mwjson-editor-save-anyway",
+                "mwjson-editor-cancel-unsafed-changes",
+                "mwjson-editor-close-anyway",
+                "mwjson-editor-return-to-editor",
                 "mwjson-editor-do-not-close-window",
                 "mwjson-editor-saved",
                 "mwjson-editor-error",
