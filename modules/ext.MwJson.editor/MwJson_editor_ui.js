@@ -142,7 +142,7 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
                 if (_config.edit_comment) 
                     meta.comment = this.commentInput.getValue();
                 editor._onsubmit(
-                    editor.jsoneditor.getValue(), meta
+                    {meta:meta}
                 )
                     .then(() => dialog.close({ action: action }))
                     .catch();

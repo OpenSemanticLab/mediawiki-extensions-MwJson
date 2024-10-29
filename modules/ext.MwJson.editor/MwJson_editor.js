@@ -834,7 +834,9 @@ mwjson.editor = class {
 			});
 	}
 
-	_onsubmit(json, meta) {
+	_onsubmit(params = {}) {
+		let meta = params.meta;
+		let json = params.json || this.jsoneditor.getValue()
 		document.activeElement.blur(); //ensure input is defocused to update final jsondata
 		const promise = new Promise((resolve, reject) => {
 			this.getSyntaxErrors().then((errors) => {
