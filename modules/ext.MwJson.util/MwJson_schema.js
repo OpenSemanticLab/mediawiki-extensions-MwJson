@@ -277,30 +277,6 @@ mwjson.schema = class {
                     this._preprocess({schema: schema.properties[property].items});
                 }
 
-                // use text values in user language if provided
-				for (const attr of translateables) {
-					if (schema.properties[property][attr+"*"]) { //objects
-						if (schema.properties[property][attr+"*"][this.config.lang]) schema.properties[property][attr] = schema.properties[property][attr+"*"][this.config.lang];
-					}
-                    if (schema.properties[property].options) { //options
-                        if (schema.properties[property].options[attr+"*"])
-						    if (schema.properties[property].options[attr+"*"][this.config.lang]) 
-                                schema.properties[property].options[attr] = schema.properties[property].options[attr+"*"][this.config.lang];
-					}
-                    if (schema.properties[property].properties) {  //subobject
-                        this._preprocess({schema: schema.properties[property]});
-                    }
-                    if (schema.properties[property].items) { //} && schema.properties[property].items.properties) { //array items
-                        this._preprocess({schema: schema.properties[property].items});
-                        /*if (schema.properties[property].items.properties[attr+"*"]) { 
-						    if (schema.properties[property].items.properties[attr+"*"][this.config.lang]) schema.properties[property].items.properties[attr] = schema.properties[property].items.properties[attr+"*"][this.config.lang];
-                        }
-                        if (schema.properties[property].items.options && schema.properties[property].items.options[attr+"*"]) { //options
-                            if (schema.properties[property].items.options[attr+"*"][this.config.lang]) schema.properties[property].items.options[attr] = schema.properties[property].items.options[attr+"*"][this.config.lang];
-                        }*/
-					}
-
-				}
 
                 /* order properties aligned to allOf nesting level
                 level  | schema   | propertyOrder   | adapted propertyOrder
@@ -328,12 +304,7 @@ mwjson.schema = class {
                     schema.properties[property].propertyOrder = (1000*1000 - level*2000) + schema.properties[property].propertyOrder;
                 else if (schema.properties[property].propertyOrder > 1000) 
                     //insert on buttom, rank higher levels after lower levels: default value is 1000, so we shift 2*1000 per level
-                    schema.properties[property].propertyOrder = (1000*1000 + level*2000) + schema.properties[property].propertyOrder; 
-                
-                // handle select input elements
-                if (schema.properties[property].type === "array" && schema.properties[property].uniqueItems === true && schema.properties[property].items?.enum) {
-                    schema.properties[property].format = "selectize"; // auto-set currently supported select input lib
-                }
+                    schema.properties[property].propertyOrder = (1000*1000 + level*2000) + schema.properties[property].propertyOrder;
 
                 // filter properties according to mode, e. g. remove non-query properties in query mode
 				if (this.config.mode !== "default") {
