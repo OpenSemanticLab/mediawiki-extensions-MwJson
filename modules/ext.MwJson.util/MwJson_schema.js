@@ -361,6 +361,7 @@ mwjson.schema = class {
         const promise = new Promise((resolve, reject) => {
             this.setSchema(this._preprocess({schema: this.getSchema()}));
             this.log("preprocess finish");
+            resolve();
         });
         return promise;
     }
