@@ -15,12 +15,19 @@ mwjson.editor.createModal = function (config) {
     config = config || {}
     var defaultConfig = {
         "size": "lg",
+        "class": "",
         "backdrop": "static",
         "body": "",
         "footer": "",
         "cancelCallback": null
     }
     config = mwjson.util.mergeDeep(defaultConfig, config);
+    if (config.body && config.body !== "")
+        config.body = `
+        	        <div class="modal-body">
+                        ${config.body}
+                    </div>`
+    else config.body = "";
 
     if (document.getElementById(config.id)) {
         //bootstrap.Modal.getOrCreateInstance(document.getElementById(config.id)).remove();
@@ -29,14 +36,12 @@ mwjson.editor.createModal = function (config) {
     if (!document.getElementById(config.id)) {
         var html = `
         <div class="modal" id="${config.id}" data-bs-backdrop="${config.backdrop}" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-${config.size}">
+            <div class="modal-dialog modal-dialog-centered modal-${config.size} ${config.class}">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">${config.title}</h5>
                     </div>
-                    <div class="modal-body">
-                        ${config.body}
-                    </div>
+                    ${config.body}
                     <div class="modal-footer">
                         ${config.footer}
                     </div>
@@ -83,7 +88,7 @@ mwjson.editor.prototype.alert = function (msg) {
     const promise = new Promise((resolve, reject) => {
         const confirmClose_modal = mwjson.editor.createModal({
             id: "confirm", title: msg, description: "", body: "",
-            size: "md",
+            size: "md", class: "modal-danger",
             buttons: [
                 {label: msg_confirm, class: "btn btn-secondary", closing: true, onclick: () => {resolve();}}
             ]
@@ -100,7 +105,7 @@ mwjson.editor.prototype.confirm = function (msg) {
     const promise = new Promise((resolve, reject) => {
         const confirmClose_modal = mwjson.editor.createModal({
             id: "confirm", title: msg, description: "", body: "",
-            size: "md",
+            size: "md", class: "modal-warning",
             buttons: [
                 {label: msg_confirm, class: "btn btn-secondary", closing: true, onclick: () => {resolve(true);}},
                 {label: msg_reject, closing: true, onclick: () => {resolve(false);}}
@@ -164,7 +169,7 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
         let msg_reject = mw.message("mwjson-editor-return-to-editor").text();
         const confirmClose_modal = mwjson.editor.createModal({
             id: "confirmClose", title: msg, description: "", body: "",
-            size: "md",
+            size: "md", class: "modal-warning",
             buttons: [
                 {label: msg_confirm, class: "btn btn-secondary", closing: true, onclick: () => {dataEditor_modal.hide();}},
                 {label: msg_reject, closing: true}
@@ -176,7 +181,7 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
 
     dataEditor_modal = mwjson.editor.createModal({
         id: "dataEditorModel_" + editor.config.id, title: _config.msg["dialog-title"], description: "",
-        size: "fullscreen",
+        size: "xxl",
         body: query_body + `
         <div id="${editor.config.id}" style="min-height:1000px;"></div>
         `,

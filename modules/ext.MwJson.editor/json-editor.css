@@ -190,6 +190,31 @@ button.json-editor-btn-edit_properties::after {
     overflow-x: unset;
 }
 
+/* Extensions */
+
+/* xxl modal - leave a 5% border (!=fullsreen) to inducate it's still a popup */
+.modal-xxl {
+    min-width: 95%;
+    height: 95%;
+}
+.modal-xxl .modal-content {
+    height: 95%;
+}
+.modal-xxl .modal-body {
+    overflow-y: auto;
+}
+
+.modal-warning .modal-content {
+    --bs-border-opacity: 1;
+    border-color: rgba(var(--bs-warning-rgb),var(--bs-border-opacity)) !important;
+    border-width: 0.1rem;
+}
+
+.modal-danger .modal-content {
+    --bs-border-opacity: 1;
+    border-color: rgba(var(--bs-danger-rgb),var(--bs-border-opacity)) !important;
+    border-width: 0.1rem;
+}
 
 /* DARKMODE */
 
