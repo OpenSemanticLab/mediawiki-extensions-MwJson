@@ -153,8 +153,14 @@ mwjson.Cache = class {
                 for (const page_key in data.query.pages) {
                     let page = data.query.pages[page_key];
                     let key = page.title;
-                    let hash = page.revisions[0].sha1;
-                    this.setHash(key, hash);
+                    if (page.revisions) {
+                        let hash = page.revisions[0].sha1;
+                        this.setHash(key, hash);
+                    }
+                    else {
+                        delete this.data.value[key];
+                        if (this.config.debug) console.log("Delete ", key, " from store because it does no longer exist on the server");
+                    }
                 }
             }
             );
