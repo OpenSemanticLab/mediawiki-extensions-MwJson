@@ -1,7 +1,7 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.41.2",
+    "version":"0.42.0",
     "author":[
         "[https://github.com/simontaurus Simon Stier]"
     ],
@@ -137,6 +137,13 @@
                 "mwjson-editor-create-inline-tooltip",
                 "mwjson-editor-clear-inline-label",
                 "mwjson-editor-clear-inline-tooltip",
+                "mwjson-editor-ai-completion-label",
+                "mwjson-editor-ai-completion-tooltip",
+                "mwjson-editor-api-call-done",
+                "mwjson-editor-api-call-running",
+                "mwjson-editor-api-call-failed",
+                "mwjson-editor-api-call-rerun",
+                "mwjson-editor-no-result",
                 "@section_json-editor",
                 "json-editor-error_notset",
                 "json-editor-error_notempty",
@@ -245,6 +252,10 @@
         "MwJsonAllowSubmitInvalide": {
 			"value": "always",
 			"description": "Forbid ('never'), conditional if set in schema option ('option') or always ('always') allow the user to save data failing schema validation."
+		},
+        "MwJsonAiCompletionApiUrl": {
+			"value": null,
+			"description": "REST-API endpoint acception {\"promt\": \"...\", \"jsonschema\": \"\"} and returning a valide schema instance."
 		}
     }
 }

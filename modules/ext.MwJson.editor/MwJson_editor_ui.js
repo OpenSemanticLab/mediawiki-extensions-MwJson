@@ -179,6 +179,15 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
         confirmClose_modal.show();
     }
 
+    const aiBtnLabel = mw.message("mwjson-editor-ai-completion-label").text(),
+      aiBtnTooltip = mw.message("mwjson-editor-ai-completion-tooltip").text(),
+      aiBtnDoneLabel = mw.message("mwjson-editor-api-call-done").text(),
+      aiBtnRunningLabel = mw.message("mwjson-editor-api-call-running").text(),
+      aiBtnFailedLabel = mw.message("mwjson-editor-api-call-failed").text(),
+      aiBtnRerunLabel = mw.message("mwjson-editor-api-call-rerun").text();
+    let aiBtnClassList = "btn btn-info";
+    const aiCompletionApiUrl = mw.config.get('wgMwJsonAiCompletionApiUrl');
+    if (!aiCompletionApiUrl || aiCompletionApiUrl == "") aiBtnClassList += " invisible";
     dataEditor_modal = mwjson.editor.createModal({
         id: "dataEditorModel_" + editor.config.id, title: _config.msg["dialog-title"], description: "",
         size: "xxl",
@@ -188,6 +197,30 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
         footer: footer,
         buttons: [
             {class: "btn-close", closing: false, onclick: confirmClose, location: "header"},
+            {label: aiBtnLabel, tooltip: aiBtnTooltip, id:`${editor.config.id}_btn-ai-complete`, class: aiBtnClassList, location: "footer", closing: false, onclick: async () => {
+                const button = document.getElementById(`${editor.config.id}_btn-ai-complete`);
+                button.classList.remove('btn-info');
+                button.classList.remove('btn-success');
+                button.classList.remove('btn-danger');
+                button.classList.remove('btn-warning');
+                button.classList.add('btn-warning');
+                button.textContent = aiBtnLabel + ": " + aiBtnRunningLabel;
+                try {
+                    result = await mwjson.extData.getAiCompletion({editor: editor, aiCompletionApiUrl: aiCompletionApiUrl});
+                    button.classList.remove('btn-warning');
+                    button.classList.remove('btn-danger');
+                    button.classList.add('btn-success');
+                    button.textContent = aiBtnLabel + ": " + aiBtnDoneLabel + " " + aiBtnRerunLabel;
+                    //editor.jsoneditor.change();
+                }
+                catch (error) {
+                    console.log(error);
+                    button.classList.remove('btn-warning');
+                    button.classList.add('btn-danger');
+                    button.textContent = aiBtnLabel + ": " + aiBtnFailedLabel + " " + aiBtnRerunLabel;
+                }
+
+            }},
             {label: _config.msg["cancel"], class: "btn btn-secondary", closing: false, onclick: confirmClose},
             {label: _config.msg["continue"], id: `${editor.config.id}_btn-submit`, closing: false, onclick: () => {
                 let meta = {};

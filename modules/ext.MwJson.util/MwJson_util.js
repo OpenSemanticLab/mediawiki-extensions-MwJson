@@ -205,6 +205,93 @@ mwjson.util = class {
 		return output;
 	}
 
+	// creates a flat dict from a nested object
+	// notation: dot => store.book[0].title
+	// notation: bracket => ['store']['book'][0]['title']
+	// array_index_notation: [0] => store.book[0].title
+	// array_index_notation: .[0] => store.book.[0].title
+	// array_index_notation: .0 => store.book.0.title
+	static flatten(jsonObj, parentPath="", options = {array_index_notation: "[0]", notation: "dot" }, result = {}) {
+		if (typeof jsonObj !== 'object' || jsonObj === null) {
+			result[parentPath] = jsonObj;
+			return result;
+		}
+	
+		for (let key in jsonObj) {
+			if (jsonObj.hasOwnProperty(key)) {
+				let newKey;
+				if (options.notation === "dot") newKey = parentPath ? `${parentPath}.${key}` : key;
+				if (options.notation === "bracket") newKey = parentPath ? `${parentPath}[${key}]` : key;
+				if (Array.isArray(jsonObj[key])) {
+					jsonObj[key].forEach((item, index) => {
+						mwjson.util.flatten(item, newKey + options.array_index_notation.replace("0", index), options, result);
+					});
+				} else if (typeof jsonObj[key] === 'object' && jsonObj[key] !== null) {
+					mwjson.util.flatten(jsonObj[key], newKey, options, result);
+				} else {
+					result[newKey] = jsonObj[key];
+				}
+			}
+		}
+	
+		return result;
+	}
+
+	// creates a nested object from a flat dict 
+	// notation: dot => store.book[0].title
+	// notation: bracket => ['store']['book'][0]['title']
+	// array_index_notation: [0] => store.book[0].title
+	// array_index_notation: .[0] => store.book.[0].title
+	// array_index_notation: .0 => store.book.0.title
+	static unflatten(flatObj, options = { array_index_notation: "[0]", notation: "dot" }) {
+		const result = {};
+
+		for (let flatKey in flatObj) {
+			if (flatObj.hasOwnProperty(flatKey)) {
+				const value = flatObj[flatKey];
+				let keys;
+
+				if (options.notation === "dot") {
+					keys = flatKey.split('.');
+				} else if (options.notation === "bracket") {
+					keys = flatKey.match(/[^.[\]]+/g);
+				}
+
+				//console.log(keys);
+
+				let current = result;
+
+				for (let i = 0; i < keys.length; i++) {
+					let key = keys[i];
+
+					// Handle array index notation
+					if (!isNaN(key.replace(/\.?\[(\d+)\]/, '$1'))) {
+						key = parseInt(key.replace(/\.?\[(\d+)\]/, '$1'), 10);
+					}
+					keys[i] = key;
+				}
+				for (let i = 0; i < keys.length; i++) {
+					let key = keys[i];
+					if (i === keys.length - 1) {
+						current[key] = value;
+					} else {
+						if (!current[key]) {
+							// Determine if the next key is an array index
+							if (!isNaN(keys[i + 1])) {
+								current[key] = [];
+							} else {
+								current[key] = {};
+							}
+						}
+						current = current[key];
+					}
+				}
+			}
+		}
+
+		return result;
+	}
+
 	static isUndefined(arg) {
 		return (arg === undefined || arg === null);
 	}

@@ -119,4 +119,109 @@ mwjson.extData = class {
         return promise;
     }
 
+    static async getAiCompletion(params) {
+        let editor = params.editor;
+        let jsondata = editor.jsoneditor.getValue();
+        // ToDo: inline files as base64 strings
+        let jsonschema = editor.jsonschema.getSchema();
+        let promt = "Complete the following data while keeping existing values:\n";
+        promt += JSON.stringify(jsondata, null, 2)
+        //console.log(jsondata, jsonschema);
+
+        let res = await fetch(params.aiCompletionApiUrl, {
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            method: "POST",
+            body: JSON.stringify({ promt: promt, jsonschema: jsonschema })
+        })
+        let data = await res.json()
+
+        // this will create subeditors for all suppied data
+        editor.jsoneditor.setValue(data.result);
+
+        let data_flatten = mwjson.util.flatten(data.result, "root", { notation: "dot", array_index_notation: ".0" });
+        //console.log(data_flatten)
+
+        let autocompleteQueryPromises = {};
+        let hiddenFields = []; //hidden or invalid
+        for (const [key, value] of Object.entries(data_flatten)) {
+            let subeditor = editor.jsoneditor.editors[key];
+            if (!subeditor) {
+                // editor not visible
+                hiddenFields.push(key);
+                //console.log("Not found", key, " in ", editor.jsoneditor.editors);
+                continue;
+            }
+            if (subeditor.schema?.format === 'url' && subeditor.schema?.options?.upload) {
+                if (!value.startsWith("File:")) hiddenFields.push(key); //probably an url => remove
+            }
+            if (subeditor.format === 'autocomplete') {
+                //query ids for labels put into autocomplete editors
+                let query = mwjson.schema.getAutocompleteQuery(subeditor.schema);
+                let input = value
+                jsondata = mwjson.util.deepCopy(data.result);
+
+                ///// From MwJson_editor
+
+                //create a copy here since we add addition properties
+
+                jsondata['_user_input'] = input; 
+                jsondata['_user_input_lowercase'] = input.toLowerCase(); 
+                jsondata['_user_input_normalized'] = mwjson.util.normalizeString(input); 
+                jsondata['_user_input_normalized_tokenized'] = mwjson.util.normalizeAndTokenizeString(input); 
+                //jsondata['_user_lang'] = jseditor_editor.jsoneditor.options.user_language; 
+                var template = Handlebars.compile(query);
+                query = template(jsondata);
+
+                // detect direct inserted UUID patterns
+                const uuid_regex = /([a-f0-9]{8})(_|-| |){1}([a-f0-9]{4})(_|-| |){1}([a-f0-9]{4})(_|-| |){1}([a-f0-9]{4})(_|-| |){1}([a-f0-9]{12})/gm;
+                const matches = input.match(uuid_regex);
+                if (matches && matches.length) {
+                    let uuidQuery = ""
+                    for (const match of matches) uuidQuery += "[[HasUuid::" + match.replace(uuid_regex, `$1-$3-$5-$7-$9`) + "]]OR";
+                    uuidQuery = uuidQuery.replace(/OR+$/, ''); // trim last 'OR'
+                    query = query.replace(query.split('|')[0].split(';')[0], uuidQuery); // replace filter ([[...]]) before print statements (|?...)
+                }
+
+                
+                var url = mw.config.get("wgScriptPath") + `/api.php?action=ask&query=${query}`;
+                //if (!url.includes("|limit=")) url += "|limit=100";
+                url += "&format=json";
+
+                /////////
+                autocompleteQueryPromises[key] = fetch(url);
+
+
+            }
+        }
+        if (Object.values(autocompleteQueryPromises).length) {
+            const autocompleteResults = await Promise.all(Object.values(autocompleteQueryPromises));
+            let jsonPromises = []
+            for (const resultValue of autocompleteResults) {
+                jsonPromises.push(resultValue.json());
+            }
+            const jsonResults = await Promise.all(jsonPromises);
+            let index = 0;
+            for (const resultValue of jsonResults) {
+                //console.log(resultValue);
+                const matches = Object.values(resultValue.query.results);
+                const key = Object.keys(autocompleteQueryPromises)[index];
+                if (matches.length) {
+                    //console.log("Update ", ":",  data_flatten[key],  " => ", matches[0].fulltext);
+                    data_flatten[key] = matches[0].fulltext;
+                }
+                else delete data_flatten[key]; //no result => remove 
+                // ToDo: Autocreate entity with range schema
+                index += 1;
+            }
+        }
+        for (const hiddenField of hiddenFields) delete data_flatten[hiddenField];
+        //console.log(data_flatten);
+        jsondata = mwjson.util.unflatten(data_flatten, { notation: "dot", array_index_notation: ".0" })["root"];
+        //console.log(jsondata);
+        editor.jsoneditor.setValue(jsondata);
+    }
+
 }
