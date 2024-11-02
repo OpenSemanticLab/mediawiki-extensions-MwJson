@@ -128,13 +128,54 @@ mwjson.extData = class {
         promt += JSON.stringify(jsondata, null, 2)
         //console.log(jsondata, jsonschema);
 
+        let org_data_flatten = mwjson.util.flatten(jsondata, "root", { notation: "dot", array_index_notation: ".0" });
+        let fileFetchPromises = {};
+        let fileDataUrls = [];
+        for (const [key, value] of Object.entries(org_data_flatten)) {
+            let subeditor = editor.jsoneditor.editors[key];
+            if (!subeditor) {
+                continue;
+            }
+            if (subeditor.schema?.format === 'url' && subeditor.schema?.options?.upload) {
+                if (value.startsWith("File:")) {
+                    fileFetchPromises[value] = fetch(mw.util.getUrl("Special:Redirect/file/" + value));
+
+                }
+            }
+        }
+        if (Object.values(fileFetchPromises).length) {
+            const fileResults = await Promise.all(Object.values(fileFetchPromises));
+            let readPromises = [];
+            function readToDataUrl(response) {
+                return new Promise(async function(resolve, reject) {
+                    const blob = await response.blob();
+                    const reader = new FileReader();
+                    reader.onloadend = function() { resolve(reader.result); };
+                    // TODO: hook up reject to reader.onerror somehow and try it
+                    reader.readAsDataURL(blob);
+                });
+            }
+            for (const resultValue of fileResults) {
+                readPromises.push(readToDataUrl(resultValue));
+            }
+            const readResults = await Promise.all(readPromises);
+            let index = 0;
+            for (const resultValue of readResults) {
+                
+                const key = Object.keys(fileFetchPromises)[index];
+                fileDataUrls.push({"name": key, "data_url": resultValue});
+                index += 1;
+            }
+            //console.log(fileDataUrls);
+        }
+
         let res = await fetch(params.aiCompletionApiUrl, {
             headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
             },
             method: "POST",
-            body: JSON.stringify({ promt: promt, jsonschema: jsonschema })
+            body: JSON.stringify({ promt: promt, jsonschema: jsonschema, files: fileDataUrls })
         })
         let data = await res.json()
 
