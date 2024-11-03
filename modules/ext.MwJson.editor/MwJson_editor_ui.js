@@ -189,7 +189,7 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
     const aiCompletionApiUrl = mw.config.get('wgMwJsonAiCompletionApiUrl');
     if (!aiCompletionApiUrl || aiCompletionApiUrl == "") aiBtnClassList += " invisible";
     dataEditor_modal = mwjson.editor.createModal({
-        id: "dataEditorModel_" + editor.config.id, title: _config.msg["dialog-title"], description: "",
+        id: "dataEditorModal_" + editor.config.id, title: _config.msg["dialog-title"], description: "",
         size: "xxl",
         body: query_body + `
         <div id="${editor.config.id}" style="min-height:1000px;"></div>
