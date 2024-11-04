@@ -244,6 +244,10 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
     }
 
     dataEditor_modal.show();
+    document.getElementById("dataEditorModal_" + editor.config.id).addEventListener('hidden.bs.modal', () => {
+        dataEditor_modal.dispose(); // does not remove DOM
+        document.getElementById("dataEditorModal_" + editor.config.id).remove();
+    })
     
 }
 
