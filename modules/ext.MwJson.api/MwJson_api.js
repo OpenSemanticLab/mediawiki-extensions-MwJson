@@ -285,16 +285,19 @@ mwjson.api = class {
 		return deferred.promise();
 	}
 
-	static purgePage(title) {
+	static purgePage(title, options) {
+		options = options || {};
+		var defaultOptions = {
+			"forcelinkupdate": true,
+			"forcerecursivelinkupdate": true
+		};
+		var config = mwjson.util.mergeDeep(defaultOptions, options);
+
+		if (!title) title = mw.config.get("wgPageName");
+		config["titles"] = title;
+		config["action"] = "purge";
 		var api = new mw.Api();
-		return api.post(
-			{
-				titles: title,
-				action: 'purge',
-				forcelinkupdate: true,
-				forcerecursivelinkupdate: true
-			}
-		);
+		return api.post(config);
 	}
 
 	static uploadFile(blob, name, summary = "") {
