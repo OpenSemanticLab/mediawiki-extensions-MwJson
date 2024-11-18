@@ -14,7 +14,11 @@
         "MediaWiki":">= 1.35",
         "extensions": {
             "WSSlots": "*",
-			"CodeEditor": "*"
+            "SemanticMediaWiki": "*",
+            "SemanticCompoundQueries": "*",
+            "CodeEditor": "*",
+            "CodeMirror": "*",
+            "VEForAll": "*"
 		}
     },
     "MessagesDirs":{
