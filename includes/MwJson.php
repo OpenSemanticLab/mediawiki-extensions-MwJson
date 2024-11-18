@@ -26,8 +26,8 @@ class MwJson {
 	{
 		//return;
 		$config = MediaWikiServices::getInstance()->getMainConfig();
-		if ( !( $config->get( 'MwJsonOrderSlotRenderResults' ) ) 
-			&& !( $config->get( 'MwJsonWrapSlotRenderResults' ) ) ) return;
+		$settings = $config->get( 'MwJsonSlotRenderResultTransformation' );
+		if (!$settings["enabled"]) return;
 
 		// Skip e.g. pages in NS Special
 		if ( !$out->getTitle()->isContentPage() ) return; 
@@ -46,7 +46,7 @@ class MwJson {
 		// Note: this manipulation interactes with Skin:Citizen if wgCitizenEnableCollapsibleSections is true
 		// The behavior of those section is correct but the elements are located in the wrong wrapper
 		// which is not a major as long as those wrappers are not visible
-		$wrap = $config->get( 'MwJsonWrapSlotRenderResults' );
+		$wrap = $settings["wrap"];
 
 		// Use DOMDocument to parse the HTML
 		$dom = new DOMDocument('1.0', 'UTF-8');
@@ -55,6 +55,14 @@ class MwJson {
 		// Use XPath to find the target div
 		$xpath = new DOMXPath($dom);
 		$parserOutputDivs = $xpath->query('//div[contains(@class, "mw-parser-output")]');
+
+		$appendElement = function ($parent, $child) use (&$settings) {
+			// skip table of contents which usually is handled separately by skins
+			if ($settings["skip_toc"] && $child->hasAttributes() && $child->getAttribute('id') === 'toc') {
+					return;
+			}
+			$parent->appendChild($child);
+		};
 
 		foreach ($parserOutputDivs as $div) {
 			$slotHeaders = $xpath->query('.//*[contains(@class, "mw-slot-header")]', $div);
@@ -94,13 +102,13 @@ class MwJson {
 							//$wrapperDiv->appendChild($dom->createElement('p', '>' . htmlspecialchars($slotName)));
 
 							foreach ($slots[$slotName] as $element) {
-								$wrapperDiv->appendChild($element);
+								$appendElement($wrapperDiv, $element);
 							}
 
 							$newFragment->appendChild($wrapperDiv);
 						} else {
 							foreach ($slots[$slotName] as $element) {
-								$newFragment->appendChild($element);
+								$appendElement($newFragment, $element);
 							}
 						}
 					}
@@ -125,14 +133,14 @@ class MwJson {
 							//$wrapperDiv->appendChild($dom->createElement('p', '>' . htmlspecialchars($slotName)));
 
 							foreach ($elements as $element) {
-								$details->appendChild($element);
+								$appendElement($details, $element);
 							}
 
 							$wrapperDiv->appendChild($details);
 							$newFragment->appendChild($wrapperDiv);
 						} else {
 							foreach ($elements as $element) {
-								$details->appendChild($element);
+								$appendElement($details, $element);
 							}
 							$newFragment->appendChild($details);
 						}

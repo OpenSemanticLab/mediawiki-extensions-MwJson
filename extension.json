@@ -1,7 +1,7 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.44.0",
+    "version":"0.44.1",
     "author":[
         "[https://github.com/simontaurus Simon Stier]"
     ],
@@ -260,15 +260,15 @@
 		},
         "MwJsonAiCompletionApiUrl": {
 			"value": null,
-			"description": "REST-API endpoint acception {\"promt\": \"...\", \"jsonschema\": \"\"} and returning a valide schema instance."
+			"description": "REST-API endpoint accepting {\"promt\": \"...\", \"jsonschema\": \"\"} and returning a valide schema instance."
 		},
-        "MwJsonOrderSlotRenderResults": {
-			"value": false,
-			"description": "Brings the render results of the slots into order 'header', 'main', 'footer', <additional slots>."
-		},
-        "MwJsonWrapSlotRenderResults": {
-			"value": false,
-			"description": "Wraps the render results of the slots in a div element"
+        "MwJsonSlotRenderResultTransformation": {
+			"value": {
+                "enabled": false,
+                "wrap": true,
+                "skip_toc": true
+            },
+			"description": "Brings the render results of slots into order 'header', 'main', 'footer', <additional slots>. if enabled. Optionally wraps slot content in a div (default: true). Optionally skips table of contents which usually is handled separately by skins (default: true)."
 		}
     }
 }
