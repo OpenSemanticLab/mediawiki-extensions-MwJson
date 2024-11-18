@@ -17,6 +17,14 @@ See also [T324933](https://phabricator.wikimedia.org/T324933)
     "wgMwJsonAiCompletionApiUrl": {
         "value": null,
         "description": "REST-API endpoint acception {\"promt\": \"...\", \"jsonschema\": \"\"} and returning a valide schema instance."
+    },
+    "wgMwJsonOrderSlotRenderResults": {
+        "value": false,
+        "description": "Brings the render results of the slots into order 'header', 'main', 'footer', <additional slots>."
+    },
+    "wgMwJsonWrapSlotRenderResults": {
+        "value": false,
+        "description": "Wraps the render results of the slots in a div element"
     }
 }
 ```

@@ -1,7 +1,7 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.43.0",
+    "version":"0.44.0",
     "author":[
         "[https://github.com/simontaurus Simon Stier]"
     ],
@@ -247,6 +247,7 @@
     },
     "Hooks":{
         "BeforePageDisplay":"MwJson::onBeforePageDisplay",
+        "OutputPageParserOutput": "MwJson::onOutputPageParserOutput",
         "ResourceLoaderGetConfigVars": "MwJson::onResourceLoaderGetConfigVars"
     },
     "SpecialPages": {
@@ -260,6 +261,14 @@
         "MwJsonAiCompletionApiUrl": {
 			"value": null,
 			"description": "REST-API endpoint acception {\"promt\": \"...\", \"jsonschema\": \"\"} and returning a valide schema instance."
+		},
+        "MwJsonOrderSlotRenderResults": {
+			"value": false,
+			"description": "Brings the render results of the slots into order 'header', 'main', 'footer', <additional slots>."
+		},
+        "MwJsonWrapSlotRenderResults": {
+			"value": false,
+			"description": "Wraps the render results of the slots in a div element"
 		}
     }
 }
