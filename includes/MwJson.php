@@ -88,7 +88,7 @@ class MwJson {
 
 				// Define the order of slots
 				$orderedSlots = [];
-				if ($config->get( 'MwJsonOrderSlotRenderResults')) $orderedSlots = ['header', 'main', 'footer'];
+				if ($settings["order"]) $orderedSlots = ['header', 'main', 'footer'];
 
 				// Append slots in the defined order
 				foreach ($orderedSlots as $slotName) {
@@ -160,6 +160,11 @@ class MwJson {
 		// when using BeforePageDisplay
 		//$out->clearHtml();
 		//$out->addHtml( $dom->saveHTML() );
+
+		// e.g. Skin:Citizen does wrap the toc => hide it in the main content section
+		// custom toc is still displayed in the right sidebar
+		if ($settings["hide_toc"]) $out->addInlineStyle( ".mw-slot-wrapper #toc { display: none; }" );
+
 		return true;
 	}
 }

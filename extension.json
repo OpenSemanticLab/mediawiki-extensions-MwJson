@@ -1,7 +1,7 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.44.1",
+    "version":"0.44.2",
     "author":[
         "[https://github.com/simontaurus Simon Stier]"
     ],
@@ -266,9 +266,11 @@
 			"value": {
                 "enabled": false,
                 "wrap": true,
-                "skip_toc": true
+                "order": true,
+                "skip_toc": false,
+                "hide_toc": true
             },
-			"description": "Brings the render results of slots into order 'header', 'main', 'footer', <additional slots>. if enabled. Optionally wraps slot content in a div (default: true). Optionally skips table of contents which usually is handled separately by skins (default: true)."
+			"description": "Brings the render results of slots into order 'header', 'main', 'footer', <additional slots>. if enabled. Optionally wraps slot content in a div (default: true). Optionally skips (default: false) or hides (default: true) the table of contents which usually is handled separately by skins."
 		}
     }
 }
