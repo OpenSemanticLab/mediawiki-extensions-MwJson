@@ -849,6 +849,8 @@ mwjson.editor = class {
 						msg += " " + mw.message("mwjson-editor-save-anyway").text();
 						mwjson.editor.prototype.confirm(msg).then((confirmed) => {
 							if (confirmed) {
+									if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-do-not-close-window").text(), { title: mw.message("mwjson-editor-saving").text() + "...", type: 'warn' });
+									const submit_promise = this.config.onsubmit(json, meta);
 									if (submit_promise) submit_promise.then(() => {
 										resolve();
 										if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success' });
