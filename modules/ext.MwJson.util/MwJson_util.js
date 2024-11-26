@@ -292,6 +292,28 @@ mwjson.util = class {
 		return result;
 	}
 
+	// replace " in string values with \" for processing with handlebars json templates
+	static escapeDoubleQuotes(obj) {
+		if (typeof obj === 'string') {
+			// Escape double quotes in string
+			return obj.replace(/"/g, '\\"');
+		} else if (Array.isArray(obj)) {
+			// Iterate over array elements
+			return obj.map(mwjson.util.escapeDoubleQuotes);
+		} else if (typeof obj === 'object' && obj !== null) {
+			// Iterate over object properties
+			const escapedObj = {};
+			for (const key in obj) {
+				if (obj.hasOwnProperty(key)) {
+					escapedObj[key] = mwjson.util.escapeDoubleQuotes(obj[key]);
+				}
+			}
+			return escapedObj;
+		}
+		// Return the value as is for non-string, non-object types
+		return obj;
+	}
+
 	static isUndefined(arg) {
 		return (arg === undefined || arg === null);
 	}
