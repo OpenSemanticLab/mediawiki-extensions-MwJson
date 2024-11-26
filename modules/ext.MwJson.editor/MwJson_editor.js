@@ -843,10 +843,34 @@ mwjson.editor = class {
 				if (!json) json = this.jsoneditor.getValue();
 				const validation_errors = this.jsoneditor.validate();
 				if (errors.length || validation_errors.length) {
-					let msg = mw.message("mwjson-editor-fields-contain-error").text() + ":";
-					for (const err of validation_errors) msg += " " + err.message + " (@ " + err.path + ");";
+					let msg = mw.message("mwjson-editor-fields-contain-error").text() + ":<br><ul>";
+					for (const err of validation_errors) {
+						var error_path = err.path;
+						try {
+							const keys = err.path.split('.'); // root
+							var path = keys.shift();
+							var labelPath = "";
+							for (const key of keys) {
+								path += "." + key;
+								if (labelPath !== "") labelPath += " > ";
+								var pathElement = key;
+								const e = this.jsoneditor.editors[path];
+								const i = Number.parseInt(key)
+								if (!Number.isNaN(i)) pathElement = "Element " + (i+1).toString();
+								else if (e && e.schema && e.schema.title) {
+									pathElement = e.schema.title
+								}
+								labelPath += pathElement;
+							}
+							error_path = labelPath;
+						} catch (error) {
+							console.error("Error while generating label path: ", error);
+						}
+						msg += "<li>" + error_path + ": " + err.message + "</li>";
+					}
+					msg += "</ul>";
 					if (this.config.allow_submit_with_errors) {
-						msg += " " + mw.message("mwjson-editor-save-anyway").text();
+						msg += "<br>" + mw.message("mwjson-editor-save-anyway").text();
 						mwjson.editor.prototype.confirm(msg).then((confirmed) => {
 							if (confirmed) {
 									if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-do-not-close-window").text(), { title: mw.message("mwjson-editor-saving").text() + "...", type: 'warn' });
@@ -865,7 +889,7 @@ mwjson.editor = class {
 						});
 					}
 					else {
-						msg += ". " + mw.message("mwjson-editor-fix-all-errors").text();
+						msg += "<br><br>" + mw.message("mwjson-editor-fix-all-errors").text();
 						mwjson.editor.prototype.alert(msg).then(() => {
 							reject();
 						});
