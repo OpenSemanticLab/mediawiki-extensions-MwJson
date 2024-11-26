@@ -1503,6 +1503,7 @@ mwjson.editor = class {
 				options = separator; // shift arguments
 				separator = ", "
 			}
+			if (!context) context = [];
 			let items = [];
 			for (var i = 0, j = context.length; i < j; i++) {
 				items.push(options.fn(context[i]));
