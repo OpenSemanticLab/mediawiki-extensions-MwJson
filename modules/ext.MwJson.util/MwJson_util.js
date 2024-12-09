@@ -314,6 +314,38 @@ mwjson.util = class {
 		return obj;
 	}
 
+	static mergeJsonLdContextObjectList(context) {
+		/*e.g. to cleanup a generated json-ld context (mixed list of strings and dictionaries)
+		["/some/remove/context", {"a": "ex:a"}, {"a": "ex:a", "b": "ex:b"}]
+		=> ["/some/remove/context", {"a": "ex:a", "b": "ex:b"}]
+		*/
+		
+		/* interate over all elements
+		if element is a string, add it to the result list
+		if element is a dictionary, merge it with the last dictionary in the
+		result list */
+		
+		//if not a list, return immediately
+		if (!mwjson.util.isArray(context)) return context;
+		
+		var result = [];
+		var last = null;
+		for (let e of context) {
+			if (mwjson.util.isObject(e)) {
+				if (!last) last = e;
+				else last = mwjson.util.mergeDeep(last, e);
+			} else {
+				if (last) {
+					result.push(last);
+					last = null;
+				}
+				result.push(e)
+			}
+		}
+		if (last) result.push(last);
+		return result
+	}
+
 	static isUndefined(arg) {
 		return (arg === undefined || arg === null);
 	}
