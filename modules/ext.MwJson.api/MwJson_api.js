@@ -444,37 +444,51 @@ mwjson.api = class {
 
 					var page_properties = [];
 					var $html = $(data.query);
-					$html.find("div.smwb-propvalue").each(function () {
-						var $prop = $(this).find("div.smwb-prophead a");
-						//var propName = $prop.text();
-						//var propName = $prop.attr('title').replace("Property:", "");
-						var propName = "";
-						if ($prop.attr('title') === "Special:Categories") propName += "Category";
-						else if ($prop.attr('title') === "Special:ListRedirects") return;
-						else if ($prop.attr('href')) propName += $prop.attr('href').split("Property:")[1].split("&")[0];
-						else return; //empty property
-						page_properties.push(propName);
-						//console.log(propName);
-						$(this).find("div.smwb-propval span.smwb-value").each(function () {
-							var value = $(this).find("a").attr("title");
-							//console.log("-> " + value);
-						});
+					var property_container_selector = "div.smwb-propvalue";
+					var property_link_selector = "div.smwb-prophead a";
+					var property_value_selector = "div.smwb-propval span.smwb-value";
+					var inverse_property_container_selector = "div.smwb-ipropvalue";
+					var inverse_property_link_selector = "div.smwb-prophead a";
+					var inverse_property_value_selector = "div.smwb-propval span.smwb-ivalue";
+					if ($html.find(".smw-factbox-header").length) { // SMW >= 5.0.0
+						property_container_selector = '[data-mw-smw-factbox-direction="start"] .smw-factbox-property';
+						property_link_selector = ".smw-factbox-property-name a";
+						property_value_selector = ".smw-factbox-property-values";
+						inverse_property_container_selector = '[data-mw-smw-factbox-direction="end"] .smw-factbox-property';
+						inverse_property_link_selector = ".smw-factbox-property-name a";
+						inverse_property_value_selector = ".smw-factbox-property-values";
+					}
+					$html.find(property_container_selector).each(function () {
+							var $prop = $(this).find(property_link_selector);
+							//var propName = $prop.text();
+							//var propName = $prop.attr('title').replace("Property:", "");
+							var propName = "";
+							if ($prop.attr('title') === "Special:Categories") propName += "Category";
+							else if ($prop.attr('title') === "Special:ListRedirects") return;
+							else if ($prop.attr('href')) propName += $prop.attr('href').split("Property:")[1].split("&")[0];
+							else return; //empty property
+							page_properties.push(propName);
+							//console.log(propName);
+							$(this).find(property_value_selector).each(function () {
+									var value = $(this).find("a").attr("title");
+									//console.log("-> " + value);
+							});
 					})
-					$html.find("div.smwb-ipropvalue").each(function () {
-						var $prop = $(this).find("div.smwb-prophead a");
-						//var propName = $prop.text();
-						//var propName = $prop.attr('title').replace("Property:", "");
-						var propName = "-";
-						if ($prop.attr('title') === "Special:Categories") propName += "Category";
-						else if ($prop.attr('title') === "Special:ListRedirects") return;
-						else if ($prop.attr('href')) propName += $prop.attr('href').split("Property:")[1].split("&")[0];
-						else return; //empty property
-						page_properties.push(propName);
-						//console.log(propName);
-						$(this).find("div.smwb-propval span.smwb-ivalue").each(function () {
-							var value = $(this).find("a").attr("title");
-							//console.log("-> " + value);
-						});
+					$html.find(inverse_property_container_selector).each(function () {
+							var $prop = $(this).find(inverse_property_link_selector);
+							//var propName = $prop.text();
+							//var propName = $prop.attr('title').replace("Property:", "");
+							var propName = "-";
+							if ($prop.attr('title') === "Special:Categories") propName += "Category";
+							else if ($prop.attr('title') === "Special:ListRedirects") return;
+							else if ($prop.attr('href')) propName += $prop.attr('href').split("Property:")[1].split("&")[0];
+							else return; //empty property
+							page_properties.push(propName);
+							//console.log(propName);
+							$(this).find(inverse_property_value_selector).each(function () {
+									var value = $(this).find("a").attr("title");
+									//console.log("-> " + value);
+							});
 					})
 					deferred.resolve(page_properties);
 				},
