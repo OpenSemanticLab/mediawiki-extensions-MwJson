@@ -16521,10 +16521,10 @@ function remap (inventory) {
       // If the $ref points to itself, then sort it higher than other $refs that point to this $ref
       return a.circular ? -1 : +1;
     }
-    else if (a.extended !== b.extended) {
+    /*else if (a.extended !== b.extended) {
       // If the $ref extends the resolved value, then sort it lower than other $refs that don't extend the value
       return a.extended ? +1 : -1;
-    }
+    }*/
     else if (a.indirections !== b.indirections) {
       // Sort direct references higher than indirect references
       return a.indirections - b.indirections;
