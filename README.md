@@ -111,9 +111,18 @@ The extension is built with a modular architecture:
 
 2. **Installation**
    ```bash
-   git clone https://github.com/OpenSemanticLab/mediawiki-extensions-MwJson.git
-   cd mediawiki-extensions-MwJson
+   cd extensions
+   git clone https://github.com/OpenSemanticLab/mediawiki-extensions-MwJson.git MwJson
+   cd MwJson
    ```
+
+   In the `LocalSettings.php` file, add the config
+   ```
+   $wgMwJsonSlotRenderResultTransformation = [
+      "enabled" => true,
+   ];
+   ```
+   By enabling the MwJson option, this ensures slot render results are displayed correctly
 
 3. **Building**
    - Install dependencies
