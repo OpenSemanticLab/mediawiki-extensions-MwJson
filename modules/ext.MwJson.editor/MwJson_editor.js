@@ -1268,7 +1268,34 @@ mwjson.editor = class {
 				fileUpload: (jseditor, type, file, cbs) => {
 					var mwjson_editor = jseditor.jsoneditor.mwjson_editor; //get the owning mwjson editor class instance
 					const label = file.name;
-					const upload_file_extension = file.name.split('.').pop().toLowerCase();
+					const upload_file_extension = file.name.split('.').pop().toLowerCase();					
+					// Check if file type is allowed
+					const allowedMimeTypes = jseditor.schema?.options?.upload?.mime_type;
+					if (allowedMimeTypes) {
+						const fileType = file.type;
+						const allowedTypes = Array.isArray(allowedMimeTypes) ? allowedMimeTypes : [allowedMimeTypes];
+						if (!allowedTypes.includes(fileType)) {
+							const error = `Invalid file type: ${fileType}. Allowed types: ${allowedTypes.join(', ')}`;
+							mw.notify(error, {
+								title: 'Upload Error',
+								type: 'error'
+							});
+							cbs.failure(error);
+							return;
+						}
+					}
+					// Check file size if max_upload_size is set
+					const max_upload_size = jseditor.schema?.options?.upload?.max_upload_size;
+					if (max_upload_size && file.size > max_upload_size) {
+						const error = `File size (${file.size} bytes) exceeds maximum allowed size (${max_upload_size} bytes)`;
+						mw.notify(error, {
+							title: 'Upload Error',
+							type: 'error'
+						});
+						cbs.failure(error);
+						return;
+					}
+					
 					var target = mwjson.util.OswId() + "." + upload_file_extension; //use the final file extension, e.g. 'png' in 'my.something.png'
 					if (jseditor.value && jseditor.value !== "") target = jseditor.value.replace("File:", ""); // reupload
 					if (jseditor.key === "file" && mwjson_editor.jsonschema.subschemas_uuids.includes("11a53cdf-bdc2-4524-bf8a-c435cbf65d9d")) { //uuid of Category:WikiFile
