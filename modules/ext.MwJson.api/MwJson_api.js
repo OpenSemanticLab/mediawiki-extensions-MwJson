@@ -318,18 +318,43 @@ mwjson.api = class {
 		}).fail(function (retStatus, data) {
 			//since MW1.39 second param data contains the complete respose
 			//if (data === 'exists' || data === 'was-deleted' || data === 'duplicate' || data == 'duplicate-archive' || data === 'page-exists') { //only warning, upload was successful anyway
-			if (data.upload.result === "Success") {
-				mw.notify('Saved', {
+			if (data && data.upload && data.upload.result === "Success") {
+				mw.notify('File uploaded successfully', {
 					type: 'success'
 				});
 				deferred.resolve(data);
 			}
 			else {
-				mw.notify('An error occured while saving. \nPlease save your work on the local disk.', {
+				// Prepare error message based on the response
+				let errorMessage = "File upload failed. ";
+					
+				// Check for specific error conditions
+				if (data && data.upload && data.upload.warnings) {
+					if (data.upload.warnings.exists) {
+						errorMessage += "File already exists: " + data.upload.warnings.exists;
+					} else if (data.upload.warnings.duplicate) {
+						errorMessage += "Duplicate of: " + data.upload.warnings.duplicate.join(", ");
+					} else if (data.upload.warnings.duplicateversions) {
+						errorMessage += "Duplicate versions exist";
+					} else if (data.upload.warnings['exists-normalized']) {
+						errorMessage += "File exists with normalized name: " + data.upload.warnings['exists-normalized'];
+					} else if (data.upload.warnings.badfilename) {
+						errorMessage += "Bad filename: " + data.upload.warnings.badfilename;
+					} else {
+						errorMessage += "Unknown warning: " + JSON.stringify(data.upload.warnings);
+					}
+				} else if (data && data.error) {
+					errorMessage += data.error.info || "Unknown error";
+				} else if (retStatus) {
+					errorMessage += retStatus.statusText || retStatus;
+				} else {
+					errorMessage += "Unexpected response from server";
+				}
+				mw.notify(errorMessage + ". Please save your work locally.", {
 					title: 'Error',
 					type: 'error'
 				});
-				deferred.reject(data);
+				deferred.reject(new Error(errorMessage));
 			}
 		});
 		return deferred.promise();
