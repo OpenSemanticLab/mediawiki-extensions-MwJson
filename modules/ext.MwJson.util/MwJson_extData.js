@@ -70,6 +70,10 @@ mwjson.extData = class {
 
                 var headers = {};
                 if (contentType) headers['Content-Type'] = contentType;
+                // workaround to attach an access token to the request - not a permanent solution!
+                if (data_source.token) {
+                    headers['Authorization'] = data_source.token;
+                }
 
                 var options = {};
                 options.headers = headers;
