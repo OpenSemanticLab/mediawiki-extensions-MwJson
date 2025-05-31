@@ -55,7 +55,7 @@ mwjson.editor = class {
 			this.config.popup = true;
 		}
 
-		this.jsonschema = new mwjson.schema({jsonschema: this.config.schema, config: {mode: this.config.mode, lang: this.config.lang, format: this.config.format}, debug: true});
+		this.jsonschema = new mwjson.schema({jsonschema: this.config.schema, config: {mode: this.config.mode, lang: this.config.lang, format: this.config.format, target: this.config.target}, debug: true});
 		this.jsonschema.bundle()
 			.then(() => this.jsonschema.preprocess())
 			.then(() => {
@@ -120,6 +120,11 @@ mwjson.editor = class {
 			this.flags["change-after-load"] = true;
 			console.log(this.jsoneditor);
 			if (this.config.data) {
+				// inject reverse properties
+				for (const [key, value] of Object.entries(this.jsonschema.required_reverse_property_values ? this.jsonschema.required_reverse_property_values : {})) 
+					this.config.data[key] = value;
+				for (const [key, value] of Object.entries(this.jsonschema.default_reverse_property_values ? this.jsonschema.default_reverse_property_values : {})) 
+					this.config.data[key] = value;
 				this.flags["initial-data-load"] = true;
 				this.jsoneditor.setValue(this.config.data);
 				if (this.config.copy) {
@@ -143,7 +148,13 @@ mwjson.editor = class {
 				}
 				if (page.content_model[this.config.target_slot] === 'json') {
 					console.log(page.slots[this.config.target_slot]);
-					this.jsoneditor.setValue(page.slots[this.config.target_slot] ? page.slots[this.config.target_slot] : {});
+					let data = page.slots[this.config.target_slot] ? page.slots[this.config.target_slot] : {};
+					// inject reverse properties
+					for (const [key, value] of Object.entries(this.schema.required_reverse_property_values ? this.schema.required_reverse_property_values : {})) 
+						data[key] = value;
+					for (const [key, value] of Object.entries(this.schema.default_reverse_property_values ? this.schema.default_reverse_property_values : {})) 
+						data[key] = value;
+					this.jsoneditor.setValue(data);
 				}
 			})
 			this.updateSubjectId();
@@ -873,7 +884,9 @@ mwjson.editor = class {
 						msg += "<br>" + mw.message("mwjson-editor-save-anyway").text();
 						mwjson.editor.prototype.confirm(msg).then((confirmed) => {
 							if (confirmed) {
-									if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-do-not-close-window").text(), { title: mw.message("mwjson-editor-saving").text() + "...", type: 'warn' });
+								if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-do-not-close-window").text(), { title: mw.message("mwjson-editor-saving").text() + "...", type: 'warn' });
+								// strip reverse properties here
+								this.jsonschema.storeAndRemoveReverse(json).then((json) => {
 									const submit_promise = this.config.onsubmit(json, meta);
 									if (submit_promise) submit_promise.then(() => {
 										resolve();
@@ -883,6 +896,7 @@ mwjson.editor = class {
 										resolve();
 										if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success' });
 									}
+								});
 							} else {
 								reject();
 							}
@@ -894,21 +908,24 @@ mwjson.editor = class {
 							reject();
 						});
 					}
-			}
-			else {
-				if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-do-not-close-window").text(), { title: mw.message("mwjson-editor-saving").text() + "...", type: 'warn'});
-				const submit_promise = this.config.onsubmit(json, meta);
-					console.log(submit_promise);
-					if (submit_promise) submit_promise.then(() => {
-						resolve();
-						if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success'});
-					}).catch();
-					else {
-						resolve();
-				if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success'});
-			}
 				}
-		});
+				else {
+					if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-do-not-close-window").text(), { title: mw.message("mwjson-editor-saving").text() + "...", type: 'warn' });
+					// ToDo: strip reverse properties here
+					this.jsonschema.storeAndRemoveReverse(json).then((json) => {
+						const submit_promise = this.config.onsubmit(json, meta);
+						console.log(submit_promise);
+						if (submit_promise) submit_promise.then(() => {
+							resolve();
+							if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success' });
+						}).catch();
+						else {
+							resolve();
+							if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success' });
+						}
+					});
+				}
+			});
 		});
 		return promise;
 	}

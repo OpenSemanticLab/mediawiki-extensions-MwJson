@@ -12,6 +12,7 @@ mwjson.schema = class {
                 "datetime-local": "Y-m-d H:i",
             },
             use_cache: true, // use local store schema cache
+            target: null, // the target entity
 		};
 		this.config = mwjson.util.mergeDeep(defaultConfig, args.config);
         this.debug = mwjson.util.defaultArg(args.debug, false);
@@ -23,6 +24,8 @@ mwjson.schema = class {
         this._context = {};
         this.subschemas_uuids = [];
         this.data_source_maps = [];
+        this.required_reverse_property_values = {};
+        this.default_reverse_property_values = {};
 
         if (this.config.use_cache) {
             this.cache = new mwjson.Cache("schema", {debug: false});
@@ -265,6 +268,30 @@ mwjson.schema = class {
             }
         }
 
+        if (schema["x-oold-reverse-properties"]) {
+            for (const property of Object.keys(schema["x-oold-reverse-properties"])) {
+                var property_schema = schema["x-oold-reverse-properties"][property];
+                if (property_schema.type === "object" || property_schema.items?.type === "object") {
+                    console.error("x-oold-reverse-properties must not be of type object or array of objects")
+                    continue;
+                }
+                if (!schema.properties) schema.properties = {}
+                schema.properties["_x-oold-reverse_" + property] = property_schema
+            }
+        }
+        if (schema["x-oold-reverse-required"]) {
+            for (const property of schema["x-oold-required"]) {
+                if (!schema.required) schema.required = [];
+                schema.required.push("_x-oold-reverse_" + property);
+            }
+        }
+        if (schema["x-oold-reverse-defaultProperties"]) {
+            for (const property of schema["x-oold-reverse-defaultProperties"]) {
+                if (!schema.defaultProperties) schema.defaultProperties = [];
+                schema.defaultProperties.push("_x-oold-reverse_" + property);
+            }
+        }
+
         // translate attributes on property level ("title", "description", "enum_titles", "default", "inputAttributes")
 		if (schema.properties) {
 			for (const property of Object.keys(schema.properties)) {
@@ -350,7 +377,11 @@ mwjson.schema = class {
                 visited_properties.push(property);
 			}
 		}
-        if (schema['@context']) this._context = mwjson.util.mergeDeep(schema['@context'], this._context); // merge nested context over general context
+        if (schema['@context']) {
+            // merge nested context over general context
+            if (mwjson.util.isArray(schema['@context'])) for (const c of schema['@context']) if (!mwjson.util.isString(c)) this._context = mwjson.util.mergeDeep(this._context, c);
+            else if (!mwjson.util.isString(schema['@context'])) this._context = mwjson.util.mergeDeep(this._context, schema['@context']);
+        }
         if (schema.uuid) this.subschemas_uuids.push(schema.uuid);
         if (schema.data_source_maps) this.data_source_maps = this.data_source_maps.concat(schema.data_source_maps);
 		return schema;
@@ -361,7 +392,269 @@ mwjson.schema = class {
         const promise = new Promise((resolve, reject) => {
             this.setSchema(this._preprocess({schema: this.getSchema()}));
             this.log("preprocess finish");
-            resolve();
+            this.populateReverse().then(() => resolve());
+        });
+        return promise;
+    }
+
+    _interateSchema(params) {
+        var schema = params.schema;
+        var level = params.level ? params.level : 0;
+        //var schema_path = params.schema_path ? params.schema_path : "";
+        var data_path = params.data_path ? params.data_path : [];
+        var  visited_properties = params.visited_properties ? params.visited_properties : [];
+
+        if (schema.allOf) {
+            // apply allOf refs, while storing visited properties to detect overrides
+			for (const subschema of Array.isArray(schema.allOf) ? schema.allOf : [schema.allOf]) {
+				this._interateSchema({schema: subschema, level: level + 1, visited_properties: visited_properties, callback: params.callback});
+			}
+		}
+        if (schema.oneOf) {
+            // apply oneOf refs, while discarding visited properties since the actual applied schema is unknown
+			for (const subschema of Array.isArray(schema.oneOf) ? schema.oneOf : [schema.oneOf]) {
+				this._interateSchema({schema: subschema, level: level + 1, callback: params.callback}); 
+			}
+		}
+        if (schema.anyOf) {
+            // apply anyOf refs, while discarding visited properties since the actual applied schema is unknown
+			for (const subschema of Array.isArray(schema.anyOf) ? schema.anyOf : [schema.anyOf]) {
+				this._interateSchema({schema: subschema, level: level + 1, callback: params.callback});
+			}
+		}
+
+        // interate properties
+		if (schema.properties) {
+			for (const property of Object.keys(schema.properties)) {
+                var local_data_path = mwjson.util.deepCopy(data_path);
+                local_data_path.push(property);
+                // handle properties of type object and oneOf/anyOf on property level
+                this._interateSchema({schema: schema.properties[property], callback: params.callback, data_path: local_data_path});
+
+                // handle array items
+                if (schema.properties[property].items) { //} && schema.properties[property].items.properties) {
+                    var local_data_path_item = mwjson.util.deepCopy(local_data_path);
+                    local_data_path_item.push("*");
+                    this._interateSchema({schema: schema.properties[property].items, callback: params.callback, data_path: local_data_path_item});
+                }
+
+                if (params.callback?.onProperty) params.callback.onProperty({property_key: property, object_definition: schema, property_definition: schema.properties[property], data_path: local_data_path});
+                visited_properties.push(property);
+			}
+		}
+
+		return schema;
+	}
+
+    populateReverse() {
+        //this.log("populateReverse start");
+        const promise = new Promise((resolve, reject) => {
+            let schema = this.getSchema()
+            let context = this._context;
+            let fetch_promises = []
+            this._interateSchema({schema: schema, callback: {
+                onProperty: (params) => {
+                    //console.log(params);
+                    //let pc = context?.[params.property_key];
+                    //if (pc["@reverse"]) {
+                    //}
+                    if (this.config.target && params.property_key.startsWith("_x-oold-reverse_") && context) {
+                        let org_key = params.property_key.replace("_x-oold-reverse_", "");
+                        for (const ck of Object.keys(context)) {
+                            if (ck.replaceAll("*", "") === org_key && context[ck]["@reverse"]?.startsWith("Property:")) {
+                                const reverse_lookup_property = context[ck]["@reverse"];
+                                let query = mw.config.get("wgScriptPath") + "/api.php?action=ask&format=json&query=";
+                                query += "[[" + reverse_lookup_property.replace("Property:", "") + "::" + this.config.target + "]]";
+                                let fetch_promise = new Promise((resolve, reject) => {
+                                    fetch(query)
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data?.query?.results) {
+                                            for (const result_key of Object.keys(data.query.results)) {
+                                                let result = data.query.results[result_key];
+                                                if (params.property_definition.type === "string") {
+                                                    if (!params.property_definition.default) params.property_definition.default = result.fulltext;
+                                                    else {
+                                                        console.warn("Reverse property '" + params.property_key + "' already has a default value but more incomming relations were found.");
+                                                        break;
+                                                    }
+                                                }
+                                                else if (params.property_definition.type === "array" && params.property_definition.items?.type === "string") {
+                                                    if (!params.property_definition.default) params.property_definition.default = [];
+                                                    params.property_definition.default.push(result.fulltext);
+                                                }
+                                                else {
+                                                    console.warn("Invalid type for reverse property '" + params.property_key + "'");
+                                                    break;
+                                                }
+                                                //let reverse_default = params.object_definition["x-oold-reverse-defaultProperties"] || [];
+                                                if ((params.object_definition["x-oold-reverse-required"] || []).includes(org_key))
+                                                    this.required_reverse_property_values[params.property_key] = params.property_definition.default;
+                                                if ((params.object_definition["x-oold-reverse-defaultProperties"] || []).includes(org_key))
+                                                    this.default_reverse_property_values[params.property_key] = params.property_definition.default;
+                                                //this.log("populateReverse add" + result.displaytitle);
+                                            }
+                                            //if (params.property_definition.default?.length && )
+                                        }
+                                        resolve();
+                                    })
+                                });
+                                fetch_promises.push(fetch_promise)
+                            }
+                        }
+                        //params.property_definition["XXTest"] = "test";
+                        //if (!params.property_definition.default) params.property_definition.default = [];
+                        //params.property_definition.default.push("Item:OSW364f8de07a054fe682f60fa1939e16b9")
+                    }
+                }
+            }})
+
+            Promise.allSettled(fetch_promises).then(() => {
+                this.log("populateReverse finish");
+                resolve();
+            });
+        });
+        return promise;
+    }
+
+    storeAndRemoveReverse(jsondata) {
+        //this.log("storeAndRemoveReverse start");
+        const promise = new Promise((resolve, reject) => {
+            let schema = this.getSchema()
+            let context = this._context;
+            let fetch_promises = []
+            this._interateSchema({schema: schema, callback: {
+                onProperty: (params) => {
+                    if (this.config.target && params.property_key.startsWith("_x-oold-reverse_") && context) {
+                        let org_key = params.property_key.replace("_x-oold-reverse_", "");
+                        for (const ck of Object.keys(context)) {
+                            if (ck.replaceAll("*", "") === org_key && context[ck]["@reverse"]?.startsWith("Property:")) {
+                                const reverse_lookup_property = context[ck]["@reverse"];
+                                const old_values = params.property_definition.default ? params.property_definition.default : [];
+                                const new_values = jsondata[params.property_key] ? jsondata[params.property_key] : [];
+                                let added = [];
+                                let removed = [];
+                                for (const v of [...old_values, ...new_values]) {
+                                    if (!old_values.includes(v)) added.push(v)
+                                    if (!new_values.includes(v)) removed.push(v)
+                                }
+                                const changed = [...added, ...removed];
+                                if (changed.length) {
+                                    this.log("Added ", added, " Removed: ", removed);
+                                    let fetch_promise = new Promise((resolve, reject) => {
+                                        //we cannot use range here, since it may point to a oneOf pattern
+                                        //const schema_title = params.property_definition.items ? params.property_definition.items.range : params.property_definition.range;
+                                        //instead we fetch the actual applied schema per entity
+                                        let schema_cache = {};
+                                        let page_schemas = {};
+                                        mwjson.api.getPages(changed).then((pages) => {
+                                            let edit_promises = [];
+                                            let schema_promises = [];
+                                            for (let page of pages) {
+                                                let page_jsondata = page.slots["jsondata"];
+                                                if (mwjson.util.isString(page_jsondata)) page_jsondata = JSON.parse(page_jsondata);
+
+                                                if (!page_jsondata["type"]) {
+                                                    console.warn("No type specified - cannot auto-edit entity");
+                                                    continue;
+                                                }
+                                                let jsonschema = {allOf: []};
+                                                if (mwjson.util.isString(page_jsondata["type"])) page_jsondata["type"] = [page_jsondata["type"]];
+                                                for (const title of page_jsondata["type"]) {
+                                                    let schema_url = mwjson.util.getAbsolutePageUrl("Special:SlotResolver", true) + "/" + title.replace(":", "/");
+                                                    schema_url += title.startsWith("JsonSchema:") ? ".slot_main.json" : ".slot_jsonschema.json";
+                                                    jsonschema.allOf.push({"$ref": schema_url});
+                                                }
+                                                const schema_hash = JSON.stringify(jsonschema);
+                                                let schema_promise = new Promise((resolve, reject) => {
+                                                    new Promise((resolve, reject) => {
+                                                        if (schema_cache[schema_hash]) {
+                                                            console.log("Schema cache match");
+                                                            resolve(schema_cache[schema_hash]);
+                                                        }
+                                                        else {
+                                                            let schema = new mwjson.schema({jsonschema: jsonschema})
+                                                            schema.bundle()
+                                                            .then(() => schema.preprocess())
+                                                            .then(() => { schema_cache[schema_hash] = schema; resolve(schema_cache[schema_hash]); })
+                                                            .catch((err) => { console.error(err); reject(err); });
+                                                        }
+                                                    }).then((schema) => {
+                                                        page_schemas[page.title] = schema;
+                                                        resolve();
+                                                    });
+                                                });
+                                                schema_promises.push(schema_promise);
+                                            }
+                                            Promise.allSettled(schema_promises).then(() => {
+                                                for (let page of pages) {
+                                                    //const target_key = "organization";
+                                                    let page_jsondata = page.slots["jsondata"];
+                                                    if (mwjson.util.isString(page_jsondata)) page_jsondata = JSON.parse(page_jsondata);
+
+                                                    const schema = page_schemas[page.title]
+                                                    if (!schema) {
+                                                        console.warn("No schema for page '" + page.title + "' found.");
+                                                        continue;
+                                                    }
+                                                    let target_key = null;
+                                                    //reverse_lookup_property
+                                                    for (const ck of Object.keys(schema._context)) {
+                                                        if (schema._context[ck] === reverse_lookup_property || schema._context[ck]["@id"] === reverse_lookup_property)
+                                                            target_key = ck.replaceAll("*", "");
+                                                    }
+                                                    if (!target_key) {
+                                                        console.warn("Target key from reverse lookup '" + reverse_lookup_property + "' not found.");
+                                                        continue;
+                                                    }
+                                                    let property_definition = null;
+                                                    schema._interateSchema({schema: schema.getSchema(), callback: {
+                                                        onProperty: (params) => {
+                                                            if (params.property_key === target_key) property_definition = params.property_definition;
+                                                        }
+                                                    }});
+                                                    if (!property_definition) {
+                                                        console.warn("Property definition of target key '" + target_key + "' not found.", schema);
+                                                        continue;
+                                                    }
+                                                    if (added.includes(page.title)) {
+                                                        let current_value = page_jsondata[target_key];
+                                                        if (property_definition["type"] == "string") current_value = this.config.target;
+                                                        if (property_definition["type"] == "array") current_value = [...current_value ? current_value : [], ...[this.config.target]];
+                                                        page_jsondata[target_key] = current_value;
+                                                    }
+                                                    if (removed.includes(page.title)) {
+                                                        let current_value = page_jsondata[target_key];
+                                                        if (current_value) {
+                                                            if (mwjson.util.isString(current_value)) delete page_jsondata[target_key];
+                                                            if (mwjson.util.isArray(current_value)) {
+                                                                current_value = current_value.filter(e => e !== this.config.target);
+                                                                page_jsondata[target_key] = current_value;
+                                                            }
+                                                        }
+                                                    }
+                                                    page.slots["jsondata"] = page_jsondata;
+                                                    edit_promises.push(mwjson.api.editSlots(page, "reverse edit"));
+                                                    
+                                                }
+                                                Promise.allSettled(edit_promises).then(() => resolve());
+                                            });
+                                        });
+                                    });
+                                    fetch_promises.push(fetch_promise);
+                                };
+                                // this.log("Delete key '" + params.property_key + "' from jsondata");
+                                if (jsondata[params.property_key]) delete jsondata[params.property_key];
+                            }
+                        }
+                    }
+                }
+            }})
+
+            Promise.allSettled(fetch_promises).then(() => {
+                // this.log("storeAndRemoveReverse finish");
+                resolve(jsondata);
+            });
         });
         return promise;
     }
