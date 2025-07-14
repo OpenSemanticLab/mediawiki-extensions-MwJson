@@ -669,6 +669,7 @@ mwjson.editor = class {
 						context.unique_number_string = "" + (parseInt(context.unique_number_string) + context.increment);
 					}
 				}
+				if (context.unique_number_string === "NaN") context.unique_number_string = "";
 				context.unique_number_string = (context.number_pattern + context.unique_number_string).substr(-context.number_pattern.length);
 				watched_values["_global_index_"] = context.unique_number_string
 			}
