@@ -292,6 +292,265 @@ mwjson.util = class {
 		return result;
 	}
 
+
+	// ------------
+
+	// Recursive function that flattens a JSON-SCHEMA:
+	// All properties of type object: properties are move to the root level creating a property path <parent_path><notation><property>, e.g. root.some_property. That means that the result schema does not contain any properties of type object
+	// All properties of type array:
+	//   if option array_length is undefined: keep arrays as they are - this is the only case where the result schema still contains a property of type array
+	//   if option array_length is a single number: create <parent_path><array_index_notation> up to array_length - 1, e.g. root.some_property[0].
+	//   if option array_length is a dict: create <parent_path><array_index_notation> up to the property path specific length, e.g. {root.some_property: 2, root.some_property[*].nested_array: 3, root.some_property[1].nested_array: 1} (note: notation follows param notation and array_index_notation and could make use of wildcards. Specific indices overwrite settings for wildcards
+	static escapeRegExp(string) {
+		return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	}
+	
+	static formatArrayIndex(index, arrayIndexNotation) {
+		return arrayIndexNotation.replace('0', index);
+	}
+	
+	static buildKey(parentPath, key, notation) {
+		if (notation === 'dot') {
+			return parentPath ? `${parentPath}.${key}` : key;
+		} else { // bracket notation
+			return parentPath ? `${parentPath}[${key}]` : key;
+		}
+	}
+	
+	static getArrayLengthForPath(path, arrayLengthConfig, arrayIndexNotation) {
+		if (arrayLengthConfig === undefined || typeof arrayLengthConfig === 'number') {
+			return arrayLengthConfig;
+		}
+		
+		if (arrayLengthConfig === 'auto') {
+			return undefined;
+		}
+	
+		if (typeof arrayLengthConfig === 'object') {
+			if (arrayLengthConfig.hasOwnProperty(path)) {
+				return arrayLengthConfig[path];
+			}
+			
+			const escaped = mwjson.util.escapeRegExp(arrayIndexNotation);
+			const indexRegex = new RegExp(escaped.replace('0', '\\d+'), 'g');
+			const wildcardNotation = arrayIndexNotation.replace('0', '*');
+			const patternPath = path.replace(indexRegex, wildcardNotation);
+			
+			if (arrayLengthConfig.hasOwnProperty(patternPath)) {
+				return arrayLengthConfig[patternPath];
+			}
+		}
+		
+		return undefined;
+	}
+	
+	static flattenSchema(schema, parentPath = '', options = {}, result = {}) {
+		const {
+			array_index_notation: arrayIndexNotation = '[0]',
+			notation = 'dot',
+			array_length: arrayLengthConfig
+		} = options;
+		
+		// Handle primitive types directly
+		if (schema.type !== 'object' && schema.type !== 'array') {
+			result[parentPath] = schema;
+			return result;
+		}
+		
+		// Process object properties
+		if (schema.type === 'object' && schema.properties) {
+			for (const [key, propSchema] of Object.entries(schema.properties)) {
+				const newPath = mwjson.util.buildKey(parentPath, key, notation);
+				
+				if (propSchema.type === 'object') {
+					mwjson.util.flattenSchema(propSchema, newPath, options, result);
+				} else if (propSchema.type === 'array') {
+					let arrayLength;
+					if (arrayLengthConfig === 'auto') {
+						arrayLength = propSchema.maxItems;
+					} else {
+						arrayLength = mwjson.util.getArrayLengthForPath(
+							newPath, 
+							arrayLengthConfig, 
+							arrayIndexNotation
+						);
+					}
+					
+					if (arrayLength === undefined) {
+						result[newPath] = {...propSchema};
+					} else {
+						const items = propSchema.items || { type: 'null' };
+						for (let i = 0; i < arrayLength; i++) {
+							const itemPath = newPath + mwjson.util.formatArrayIndex(i, arrayIndexNotation);
+							mwjson.util.flattenSchema(items, itemPath, options, result);
+						}
+					}
+				} else {
+					result[newPath] = propSchema;
+				}
+			}
+		} 
+		// Process arrays at root level
+		else if (schema.type === 'array') {
+			let arrayLength;
+			if (arrayLengthConfig === 'auto') {
+				arrayLength = schema.maxItems;
+			} else {
+				arrayLength = mwjson.util.getArrayLengthForPath(
+					parentPath, 
+					arrayLengthConfig, 
+					arrayIndexNotation
+				);
+			}
+			
+			if (arrayLength === undefined) {
+				result[parentPath] = schema;
+			} else {
+				const items = schema.items || { type: 'null' };
+				for (let i = 0; i < arrayLength; i++) {
+					const itemPath = parentPath + mwjson.util.formatArrayIndex(i, arrayIndexNotation);
+					mwjson.util.flattenSchema(items, itemPath, options, result);
+				}
+			}
+		}
+		
+		return result;
+	}
+	
+	static createFlattenedSchema(originalSchema, flatProperties, rootPath) {
+		// Create a new schema preserving all original properties except nested structures
+		const newSchema = { ...originalSchema };
+		
+		// Remove properties that will be flattened
+		delete newSchema.properties;
+		delete newSchema.items;
+		
+		// Add the flattened properties to the root level
+		newSchema.properties = flatProperties;
+		
+		// Always set type to object since we've flattened everything
+		newSchema.type = 'object';
+		
+		return newSchema;
+	}
+	// ------------------
+
+	// function that resolves all local $ref in a JSON-SCHEMA by
+	// - replace the $ref with a copy of the target value of that $ref by merging the target dict over the dict containing the $ref. Keys in the dict containing the $ref would override keys in the target dict
+	// - handle allOf by merging the value(s) of allOf with the dict containing the allOf. Keys in the dict containing the allOf would override keys in the allOf entry. If the allOf list contains multiple entries, the later one would override the earlier ones.
+	// - do it recursively, following nested properties as well as oneOf and anyOf
+	static resolveSchema(schema) {
+		const visitedRefs = new Set();
+		const rootSchema = schema;
+	
+		function resolvePointer(ref) {
+			if (ref === '#') return rootSchema;
+			if (!ref.startsWith('#/')) {
+				throw new Error(`Unsupported reference: ${ref}`);
+			}
+	
+			const path = ref.substring(2)
+				.replace(/~1/g, '/')
+				.replace(/~0/g, '~')
+				.split('/');
+			
+			let current = rootSchema;
+			for (const token of path) {
+				if (current === null || typeof current !== 'object') {
+					throw new Error(`Invalid reference token: ${token} in ${ref}`);
+				}
+				current = current[token];
+				if (current === undefined) {
+					throw new Error(`Reference not found: ${ref}`);
+				}
+			}
+			return current;
+		}
+	
+		function deepMerge(target, source) {
+			// Handle primitive types and arrays
+			if (source === null || typeof source !== 'object' || Array.isArray(source)) {
+				return source;
+			}
+			if (target === null || typeof target !== 'object' || Array.isArray(target)) {
+				return { ...source };
+			}
+			
+			// Recursively merge objects
+			const merged = { ...target };
+			for (const [key, value] of Object.entries(source)) {
+				if (key in target) {
+					merged[key] = deepMerge(target[key], value);
+				} else {
+					merged[key] = value;
+				}
+			}
+			return merged;
+		}
+	
+		function resolve(node) {
+			if (node === null || typeof node !== 'object') {
+				return node;
+			}
+	
+			if (Array.isArray(node)) {
+				return node.map(resolve);
+			}
+	
+			// Handle $ref first
+			if (node.$ref) {
+				const ref = node.$ref;
+				if (visitedRefs.has(ref)) {
+					return node; // Circular reference detected
+				}
+	
+				visitedRefs.add(ref);
+				try {
+					const refTarget = resolve(resolvePointer(ref));
+					const { $ref, ...rest } = node;
+					const merged = deepMerge(refTarget, rest);
+					return resolve(merged);
+				} finally {
+					visitedRefs.delete(ref);
+				}
+			}
+	
+			// Handle allOf
+			if (node.allOf) {
+				let base = {};
+				for (const item of node.allOf) {
+					const resolvedItem = resolve(item);
+					base = deepMerge(base, resolvedItem);
+				}
+				const { allOf, ...rest } = node;
+				const merged = deepMerge(base, rest);
+				return resolve(merged);
+			}
+	
+			// Process other keys recursively
+			const result = {};
+			for (const [key, value] of Object.entries(node)) {
+				if (key === 'properties' || key === 'patternProperties' || key === 'definitions') {
+					result[key] = {};
+					for (const [k, v] of Object.entries(value)) {
+						result[key][k] = resolve(v);
+					}
+				} else if (key === 'items' || key === 'additionalProperties' || key === 'not') {
+					result[key] = resolve(value);
+				} else if (key === 'oneOf' || key === 'anyOf') {
+					result[key] = value.map(resolve);
+				} else {
+					result[key] = value;
+				}
+			}
+			return result;
+		}
+	
+		return resolve(schema);
+	}
+
+	// ------------------
+
 	// replace " in string values with \" for processing with handlebars json templates
 	static escapeDoubleQuotes(obj) {
 		if (typeof obj === 'string') {
