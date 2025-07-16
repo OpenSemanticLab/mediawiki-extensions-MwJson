@@ -368,12 +368,20 @@ mwjson.api = class {
 		if (mwjson.util.isString(meta)) meta = {comment: meta}; //backwards compatibility
 		var summary = meta.comment;
 
+		if (page.changed) {
+			page.slots['main'] = page.content; //legacy support
+			page.slots_changed['main'] = true;
+			page.changed = false;
+		}
+
 		for (var slot_key of Object.keys(page.slots)) { if (page.slots_changed[slot_key]) slots_changed = true; }
-		if (!page.exists && page.title && (page.content || page.slots['main'])) {
-			mwjson.api.createPage(page.title, page.content, summary).then((data) => {
-				page.changed = false;
+
+		if (!page.exists && page.title && slots_changed) {
+			mwjson.api.createPage(page.title, page.slots['main'], summary).then((data) => {
 				page.exists = true;
+				page.slots_changed['main'] = false;
 				mwjson.api.editSlots(page, summary).then((data) => { //will only edit changed slots
+					
 					if (hasChangedFile) {
 						mwjson.api.uploadFile(page.file.contentBlob, page.file.name, summary).then((data) => {
 							page.file.changed = false;
@@ -391,14 +399,8 @@ mwjson.api = class {
 				deferred.reject(error);
 			});
 		}
-		else if (page.changed || slots_changed) {
-			if (page.changed) {
-				page.slots['main'] = page.content; //legacy support
-				page.slots_changed['main'] = true;
-				page.changed = false;
-			}
+		else if (slots_changed) {
 			mwjson.api.editSlots(page, summary).then((data) => {
-				page.changed = false;
 				page.exists = true;
 				if (hasChangedFile) {
 					mwjson.api.uploadFile(page.file.contentBlob, page.file.name, summary).then((data) => {
