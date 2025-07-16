@@ -3,7 +3,7 @@
 mwjson.editor = class {
 	constructor(config) {
 		var defaultConfig = {
-			target_slot: 'main',
+			target_slot: null, // handled by caller
 			target_namespace: 'Item',
 			target_exists: false,
 			mode: "default", // options: default, query
@@ -133,7 +133,8 @@ mwjson.editor = class {
 				}
 				this.flags["initial-data-load"] = false;
 			}
-			if (this.config.target) mwjson.api.getPage(this.config.target).then((page) => {
+			if (this.config.target && this.config.target_slot) mwjson.api.getPage(this.config.target).then((page) => {
+				console.log("MwJson_editor.js load page with target slot", this.config.target_slot, " and content models ", page.content_model);
 				//return;
 				if (page.content_model[this.config.target_slot] === 'wikitext') {
 					mwjson.parser.parsePage(page);
@@ -141,7 +142,7 @@ mwjson.editor = class {
 					//load data from page if exist
 					if (this.targetPage.content !== "") {
 						console.log("Load data:", this.targetPage.dict);
-						var schemaJson = mwjson.editor.mwjson.parser.wikiJson2SchemaJson(this.targetPage.dict);
+						var schemaJson = mwjson.parser.wikiJson2SchemaJson(this.targetPage.dict);
 						console.log(schemaJson);
 						this.jsoneditor.setValue(schemaJson);
 					}
@@ -150,10 +151,10 @@ mwjson.editor = class {
 					console.log(page.slots[this.config.target_slot]);
 					let data = page.slots[this.config.target_slot] ? page.slots[this.config.target_slot] : {};
 					// inject reverse properties
-					for (const [key, value] of Object.entries(this.schema.required_reverse_property_values ? this.schema.required_reverse_property_values : {})) 
-						data[key] = value;
-					for (const [key, value] of Object.entries(this.schema.default_reverse_property_values ? this.schema.default_reverse_property_values : {})) 
-						data[key] = value;
+					for (const [key, value] of Object.entries(this.jsonschema.required_reverse_property_values ? this.jsonschema.required_reverse_property_values : {})) 
+						this.config.data[key] = value;
+					for (const [key, value] of Object.entries(this.jsonschema.default_reverse_property_values ? this.jsonschema.default_reverse_property_values : {})) 
+						this.config.data[key] = value;
 					this.jsoneditor.setValue(data);
 				}
 			})
