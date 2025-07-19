@@ -429,6 +429,65 @@ mwjson.api = class {
 		return deferred.promise();
 	}
 
+	static deletePage(title, meta) {
+		meta = meta || {comment: ""};
+		const deferred = $.Deferred();
+		var api = new mw.Api();
+		api.postWithToken("csrf", {
+			action: 'delete',
+			title: title,
+			reason: meta.comment,
+			format: 'json'
+		}).done(function (data) {
+			if (data && data.delete && data.delete.result === "Success") {
+				// mw.notify('Page deleted successfully', {
+				// 	type: 'success'
+				// });
+				deferred.resolve(data);
+			}
+			else {
+				let errorMessage = "Page deletion failed. ";
+				if (data && data.error) {
+					errorMessage += data.error.info || "Unknown error";
+				} else {
+					errorMessage += "Unexpected response from server";
+				}
+				// mw.notify(errorMessage + ". Please save your work locally.", {
+				// 	title: 'Error',
+				// 	type: 'error'
+				// });
+				deferred.reject(new Error(errorMessage));
+			}
+		}).fail(function (data) {
+			// Prepare error message based on the response
+			let errorMessage = "Page deletion failed. ";
+			// Check for specific error conditions
+			if (data && data.error) {
+				if (data.error.code === "permissiondenied") {
+					errorMessage += "You do not have permission to delete this page.";
+				}
+				else if (data.error.code === "cantdelete") {
+					errorMessage += "This page cannot be deleted.";
+				}
+				else {
+					errorMessage += data.error.info || "Unknown error";
+				}
+			} else if (data && data.errorinfo) {
+				errorMessage += data.errorinfo || "Unknown error";
+			} else if (data && data.statusText) {
+				errorMessage += data.statusText || "Unknown error";
+			} else {
+				errorMessage += "Unexpected response from server";
+			}
+			// mw.notify(errorMessage + ". Please save your work locally.", {
+			// 	title: 'Error',
+			// 	type: 'error'
+			// });
+			deferred.reject(new Error(errorMessage));
+		});
+		return deferred.promise();
+	}
+
 	static getPagesFromAskQuery(query) {
 		const deferred = $.Deferred();
 		var api = new mw.Api();
