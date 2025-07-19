@@ -205,6 +205,60 @@ mwjson.util = class {
 		return output;
 	}
 
+
+	// detect edited, new and deleted entities
+	// if a uuid is present in both array_before and array_after, the page is edited
+	// if a uuid is present in array_after but not in array_before, the page is new
+	// if a uuid is present in array_before but not in array_after, the page is deleted
+	// returns an object with three arrays: added, changed, removed
+	static compareEntityArrays(array_before, array_after) {
+
+		var removed_entities = [];
+		var changed_entities = [];
+		var added_entities = [];
+		for (let index = 0; index < array_after.length; index++) {
+			var _jsondata = array_after[index];
+			if (_jsondata['uuid']) {
+				var found = false;
+				for (let j = 0; j < array_before.length; j++) {
+					if (_jsondata['uuid'] === array_before[j]['uuid']) {
+						// page exists, edit it
+						if (!mwjson.util.deepEqual(_jsondata, array_before[j]))
+							changed_entities.push(_jsondata);
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					// page is new
+					added_entities.push(_jsondata);
+				}
+			}
+		}
+		for (let j = 0; j < array_before.length; j++) {
+			var jsondata = array_before[j];
+			if (jsondata['uuid']) {
+				var found = false;
+				for (let index = 0; index < array_after.length; index++) {
+					if (jsondata['uuid'] === array_after[index]['uuid']) {
+						// page exists, edit it
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					// page is deleted
+					removed_entities.push(jsondata);
+				}
+			}
+		}
+		return {
+			"added": added_entities,
+			"changed": changed_entities,
+			"removed": removed_entities
+		}
+
+	}
 	// creates a flat dict from a nested object
 	// notation: dot => store.book[0].title
 	// notation: bracket => ['store']['book'][0]['title']
