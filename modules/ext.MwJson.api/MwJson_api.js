@@ -439,7 +439,7 @@ mwjson.api = class {
 			reason: meta.comment,
 			format: 'json'
 		}).done(function (data) {
-			if (data && data.delete && data.delete.result === "Success") {
+			if (data && data.delete) {
 				// mw.notify('Page deleted successfully', {
 				// 	type: 'success'
 				// });
