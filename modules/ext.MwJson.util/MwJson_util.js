@@ -349,6 +349,9 @@ mwjson.util = class {
 	// 	If an array property is required the flatted elements e.g. root.array_property.0, root.array_property.1 are only required up to minItems index
 	// 	Required properties of a required object property are also required in the flatted schema
 	// 	Required properties of a non-required object property are not required in the flatted schema
+	// handle "default" annoations on array and object properties
+	//	If an array property has a default array value, assign the default array elements to the item properties in the flatted schema. 
+	//	If an object propertiy has a default object value, assign the default object values to the corresponding properties in the flatted schema
 	static flattenSchema(
 		schema,
 		parentPath = '',
@@ -356,8 +359,9 @@ mwjson.util = class {
 		result = {},
 		requiredPaths = new Set(),
 		defaultPropertiesPaths = new Set(),
-		isParentRequired = false,
-		isParentInDefaultProps = false
+		isParentRequired = true,
+		isParentInDefaultProps = true,
+		root = true
 	) {
 		const {
 			array_index_notation: arrayIndexNotation = '[0]',
@@ -383,10 +387,20 @@ mwjson.util = class {
 
 		// Handle objects
 		if (schema.type === 'object' && schema.properties) {
+			// If this object as a whole has a default object, store it for distribution
+			const objectDefault = (schema.default && typeof schema.default === 'object')
+				? schema.default
+				: undefined;
+
 			for (const [key, propSchema] of Object.entries(schema.properties)) {
 				const propertyIsRequired = isParentRequired && ownRequired.includes(key);
 				const propertyIsInDefaultProps = isParentInDefaultProps && ownDefaultProps.includes(key);
 				const newPath = mwjson.util.buildKey(parentPath, key, notation);
+
+				// If parent has an object default, override/add the child's default
+				if (objectDefault && objectDefault.hasOwnProperty(key)) {
+					propSchema.default = objectDefault[key];
+				}
 
 				if (propSchema.type === 'object') {
 					mwjson.util.flattenSchema(
@@ -397,16 +411,10 @@ mwjson.util = class {
 						requiredPaths,
 						defaultPropertiesPaths,
 						propertyIsRequired,
-						propertyIsInDefaultProps
+						propertyIsInDefaultProps,
+						false
 					);
 				} else if (propSchema.type === 'array') {
-					// Mark the array itself if required
-					if (propertyIsRequired) {
-						requiredPaths.add(newPath);
-					}
-					if (propertyIsInDefaultProps) {
-						defaultPropertiesPaths.add(newPath);
-					}
 					let arrayLength;
 					if (arrayLengthConfig === 'auto') {
 						arrayLength = propSchema.maxItems;
@@ -417,6 +425,12 @@ mwjson.util = class {
 							arrayIndexNotation
 						);
 					}
+
+					// Distribute array default if present
+					const arrayDefault = (propSchema.default && Array.isArray(propSchema.default))
+						? propSchema.default
+						: undefined;
+
 					if (arrayLength === undefined) {
 						result[newPath] = { ...propSchema };
 					} else {
@@ -424,17 +438,28 @@ mwjson.util = class {
 						const minItems = propSchema.minItems || 0;
 						for (let i = 0; i < arrayLength; i++) {
 							const itemPath = newPath + mwjson.util.formatArrayIndex(i, arrayIndexNotation);
+
+							// Mark items up to minItems as required/defaultProperties
 							const itemIsRequired = propertyIsRequired && i < minItems;
 							const itemIsInDefaultProps = propertyIsInDefaultProps && i < minItems;
+
+							// If there's an array default, give the child item a default if available
+							let itemSchema = { ...items };
+							if (arrayDefault && arrayDefault[i] !== undefined) {
+								itemSchema.default = arrayDefault[i];
+							}
+
+							// Flatten the item
 							mwjson.util.flattenSchema(
-								items,
+								itemSchema,
 								itemPath,
 								options,
 								result,
 								requiredPaths,
 								defaultPropertiesPaths,
 								itemIsRequired,
-								itemIsInDefaultProps
+								itemIsInDefaultProps,
+								false
 							);
 						}
 					}
@@ -452,12 +477,6 @@ mwjson.util = class {
 		}
 		// Handle arrays at root level
 		else if (schema.type === 'array') {
-			if (isParentRequired) {
-				requiredPaths.add(parentPath);
-			}
-			if (isParentInDefaultProps) {
-				defaultPropertiesPaths.add(parentPath);
-			}
 			let arrayLength;
 			if (arrayLengthConfig === 'auto') {
 				arrayLength = schema.maxItems;
@@ -468,6 +487,12 @@ mwjson.util = class {
 					arrayIndexNotation
 				);
 			}
+
+			// Distribute array default if present
+			const arrayDefault = (schema.default && Array.isArray(schema.default))
+				? schema.default
+				: undefined;
+
 			if (arrayLength === undefined) {
 				result[parentPath] = schema;
 			} else {
@@ -477,43 +502,44 @@ mwjson.util = class {
 					const itemPath = parentPath + mwjson.util.formatArrayIndex(i, arrayIndexNotation);
 					const itemIsRequired = isParentRequired && i < minItems;
 					const itemIsInDefaultProps = isParentInDefaultProps && i < minItems;
+
+					// If there's an array default, give the child item a default if available
+					let itemSchema = { ...items };
+					if (arrayDefault && arrayDefault[i] !== undefined) {
+						itemSchema.default = arrayDefault[i];
+					}
+
 					mwjson.util.flattenSchema(
-						items,
+						itemSchema,
 						itemPath,
 						options,
 						result,
 						requiredPaths,
 						defaultPropertiesPaths,
 						itemIsRequired,
-						itemIsInDefaultProps
+						itemIsInDefaultProps,
+						false
 					);
 				}
 			}
 		}
 
-		return result;
+		if (root) {
+			// If this is the root call, create the final schema
+			const newSchema = { ...schema };
+			delete newSchema.properties;
+			delete newSchema.items;
+	
+			newSchema.type = 'object';
+			newSchema.properties = result;
+			newSchema.required = Array.from(requiredPaths);
+			newSchema.defaultProperties = Array.from(defaultPropertiesPaths);
+	
+			return newSchema;
+		}
+		else return result;
 	}
 
-	static createFlattenedSchema(
-		originalSchema,
-		flatProperties,
-		rootPath,
-		requiredPaths,
-		defaultPropertiesPaths
-	) {
-		const newSchema = { ...originalSchema };
-		delete newSchema.properties;
-		delete newSchema.items;
-
-		newSchema.type = 'object';
-		newSchema.properties = flatProperties;
-
-		// Convert the collected Sets to arrays
-		newSchema.required = Array.from(requiredPaths);
-		newSchema.defaultProperties = Array.from(defaultPropertiesPaths);
-
-		return newSchema;
-	}
 	// ------------------
 
 	// function that resolves all local $ref in a JSON-SCHEMA by
