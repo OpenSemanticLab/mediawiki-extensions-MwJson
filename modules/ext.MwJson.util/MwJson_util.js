@@ -295,12 +295,6 @@ mwjson.util = class {
 
 	// ------------
 
-	// Recursive function that flattens a JSON-SCHEMA:
-	// All properties of type object: properties are move to the root level creating a property path <parent_path><notation><property>, e.g. root.some_property. That means that the result schema does not contain any properties of type object
-	// All properties of type array:
-	//   if option array_length is undefined: keep arrays as they are - this is the only case where the result schema still contains a property of type array
-	//   if option array_length is a single number: create <parent_path><array_index_notation> up to array_length - 1, e.g. root.some_property[0].
-	//   if option array_length is a dict: create <parent_path><array_index_notation> up to the property path specific length, e.g. {root.some_property: 2, root.some_property[*].nested_array: 3, root.some_property[1].nested_array: 1} (note: notation follows param notation and array_index_notation and could make use of wildcards. Specific indices overwrite settings for wildcards
 	static escapeRegExp(string) {
 		return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	}
@@ -343,94 +337,181 @@ mwjson.util = class {
 		
 		return undefined;
 	}
-	
-	static flattenSchema(schema, parentPath = '', options = {}, result = {}) {
+
+	// 	A recursive function that flattens a JSON-SCHEMA:
+	// All properties of type object: properties are move to the root level creating a property path <parent_path><notation><property>, e.g. root.some_property. That means that the result schema does not contain any properties of type object
+	// All properties of type array:
+	//   if option array_length is undefined: keep arrays as they are - this is the only case where the result schema still contains a property of type array
+	//   if option array_length is a single number: create <parent_path><array_index_notation> up to array_length - 1, e.g. root.some_property[0].
+	//   if option array_length is a dict: create <parent_path><array_index_notation> up to the property path specific length, e.g. {root.some_property: 2, root.some_property[*].nested_array: 3, root.some_property[1].nested_array: 1} (note: notation follows param notation and array_index_notation and could make use of wildcards. Specific indices overwrite settings for wildcards
+	// handle "required" (and "defaultProperties" equivalent): 
+	// 	A primitive property on the root level is also required in the flatted schema
+	// 	If an array property is required the flatted elements e.g. root.array_property.0, root.array_property.1 are only required up to minItems index
+	// 	Required properties of a required object property are also required in the flatted schema
+	// 	Required properties of a non-required object property are not required in the flatted schema
+	static flattenSchema(
+		schema,
+		parentPath = '',
+		options = {},
+		result = {},
+		requiredPaths = new Set(),
+		defaultPropertiesPaths = new Set(),
+		isParentRequired = false,
+		isParentInDefaultProps = false
+	) {
 		const {
 			array_index_notation: arrayIndexNotation = '[0]',
 			notation = 'dot',
 			array_length: arrayLengthConfig
 		} = options;
-		
-		// Handle primitive types directly
+
+		// Gather the required or defaultProperties arrays for this object
+		const ownRequired = schema.type === 'object' ? (schema.required || []) : [];
+		const ownDefaultProps = schema.type === 'object' ? (schema.defaultProperties || []) : [];
+
+		// If not an object or array, handle as a primitive
 		if (schema.type !== 'object' && schema.type !== 'array') {
+			if (isParentRequired) {
+				requiredPaths.add(parentPath);
+			}
+			if (isParentInDefaultProps) {
+				defaultPropertiesPaths.add(parentPath);
+			}
 			result[parentPath] = schema;
 			return result;
 		}
-		
-		// Process object properties
+
+		// Handle objects
 		if (schema.type === 'object' && schema.properties) {
 			for (const [key, propSchema] of Object.entries(schema.properties)) {
+				const propertyIsRequired = isParentRequired && ownRequired.includes(key);
+				const propertyIsInDefaultProps = isParentInDefaultProps && ownDefaultProps.includes(key);
 				const newPath = mwjson.util.buildKey(parentPath, key, notation);
-				
+
 				if (propSchema.type === 'object') {
-					mwjson.util.flattenSchema(propSchema, newPath, options, result);
+					mwjson.util.flattenSchema(
+						propSchema,
+						newPath,
+						options,
+						result,
+						requiredPaths,
+						defaultPropertiesPaths,
+						propertyIsRequired,
+						propertyIsInDefaultProps
+					);
 				} else if (propSchema.type === 'array') {
+					// Mark the array itself if required
+					if (propertyIsRequired) {
+						requiredPaths.add(newPath);
+					}
+					if (propertyIsInDefaultProps) {
+						defaultPropertiesPaths.add(newPath);
+					}
 					let arrayLength;
 					if (arrayLengthConfig === 'auto') {
 						arrayLength = propSchema.maxItems;
 					} else {
 						arrayLength = mwjson.util.getArrayLengthForPath(
-							newPath, 
-							arrayLengthConfig, 
+							newPath,
+							arrayLengthConfig,
 							arrayIndexNotation
 						);
 					}
-					
 					if (arrayLength === undefined) {
-						result[newPath] = {...propSchema};
+						result[newPath] = { ...propSchema };
 					} else {
 						const items = propSchema.items || { type: 'null' };
+						const minItems = propSchema.minItems || 0;
 						for (let i = 0; i < arrayLength; i++) {
 							const itemPath = newPath + mwjson.util.formatArrayIndex(i, arrayIndexNotation);
-							mwjson.util.flattenSchema(items, itemPath, options, result);
+							const itemIsRequired = propertyIsRequired && i < minItems;
+							const itemIsInDefaultProps = propertyIsInDefaultProps && i < minItems;
+							mwjson.util.flattenSchema(
+								items,
+								itemPath,
+								options,
+								result,
+								requiredPaths,
+								defaultPropertiesPaths,
+								itemIsRequired,
+								itemIsInDefaultProps
+							);
 						}
 					}
 				} else {
+					// Primitive property
+					if (propertyIsRequired) {
+						requiredPaths.add(newPath);
+					}
+					if (propertyIsInDefaultProps) {
+						defaultPropertiesPaths.add(newPath);
+					}
 					result[newPath] = propSchema;
 				}
 			}
-		} 
-		// Process arrays at root level
+		}
+		// Handle arrays at root level
 		else if (schema.type === 'array') {
+			if (isParentRequired) {
+				requiredPaths.add(parentPath);
+			}
+			if (isParentInDefaultProps) {
+				defaultPropertiesPaths.add(parentPath);
+			}
 			let arrayLength;
 			if (arrayLengthConfig === 'auto') {
 				arrayLength = schema.maxItems;
 			} else {
 				arrayLength = mwjson.util.getArrayLengthForPath(
-					parentPath, 
-					arrayLengthConfig, 
+					parentPath,
+					arrayLengthConfig,
 					arrayIndexNotation
 				);
 			}
-			
 			if (arrayLength === undefined) {
 				result[parentPath] = schema;
 			} else {
 				const items = schema.items || { type: 'null' };
+				const minItems = schema.minItems || 0;
 				for (let i = 0; i < arrayLength; i++) {
 					const itemPath = parentPath + mwjson.util.formatArrayIndex(i, arrayIndexNotation);
-					mwjson.util.flattenSchema(items, itemPath, options, result);
+					const itemIsRequired = isParentRequired && i < minItems;
+					const itemIsInDefaultProps = isParentInDefaultProps && i < minItems;
+					mwjson.util.flattenSchema(
+						items,
+						itemPath,
+						options,
+						result,
+						requiredPaths,
+						defaultPropertiesPaths,
+						itemIsRequired,
+						itemIsInDefaultProps
+					);
 				}
 			}
 		}
-		
+
 		return result;
 	}
-	
-	static createFlattenedSchema(originalSchema, flatProperties, rootPath) {
-		// Create a new schema preserving all original properties except nested structures
+
+	static createFlattenedSchema(
+		originalSchema,
+		flatProperties,
+		rootPath,
+		requiredPaths,
+		defaultPropertiesPaths
+	) {
 		const newSchema = { ...originalSchema };
-		
-		// Remove properties that will be flattened
 		delete newSchema.properties;
 		delete newSchema.items;
-		
-		// Add the flattened properties to the root level
-		newSchema.properties = flatProperties;
-		
-		// Always set type to object since we've flattened everything
+
 		newSchema.type = 'object';
-		
+		newSchema.properties = flatProperties;
+
+		// Convert the collected Sets to arrays
+		newSchema.required = Array.from(requiredPaths);
+		newSchema.defaultProperties = Array.from(defaultPropertiesPaths);
+
 		return newSchema;
 	}
 	// ------------------
