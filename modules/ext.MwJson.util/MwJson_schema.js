@@ -13,6 +13,7 @@ mwjson.schema = class {
             },
             use_cache: true, // use local store schema cache
             target: null, // the target entity
+            flatten: false, // flatten the schema to allow a table editor
 		};
 		this.config = mwjson.util.mergeDeep(defaultConfig, args.config);
         this.debug = mwjson.util.defaultArg(args.debug, false);
@@ -393,6 +394,14 @@ mwjson.schema = class {
             this.setSchema(this._preprocess({schema: this.getSchema()}));
             this.log("preprocess finish");
             this.populateReverse().then(() => resolve());
+            
+            if (this.config.flatten) {
+                // replace all $ref with the actual schema
+                let schema = this.getSchema();
+                schema = mwjson.util.resolveSchema(schema);
+                schema = mwjson.util.flattenSchema(schema, undefined, {array_length: 1, array_index_notation: ".0"});
+                this.setSchema(schema);
+            }
         });
         return promise;
     }

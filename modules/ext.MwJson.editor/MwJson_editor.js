@@ -7,6 +7,8 @@ mwjson.editor = class {
 			target_namespace: 'Item',
 			target_exists: false,
 			mode: "default", // options: default, query
+			flatten: false, // flattens the schema for tabular editing
+			multi: false, // edit multiple entities within a table
 			copy: false, // editor is used to create a copy of an exiting entry => copy_ignore schema option is applied
 			submit_enabled: true, //if true, add save button
 			allow_submit_with_errors: undefined, //allow submitting forms even if schema validation fails (see option wgMwJsonAllowSubmitInvalide)
@@ -55,11 +57,36 @@ mwjson.editor = class {
 			this.config.popup = true;
 		}
 
-		this.jsonschema = new mwjson.schema({jsonschema: this.config.schema, config: {mode: this.config.mode, lang: this.config.lang, format: this.config.format, target: this.config.target}, debug: true});
+		this.jsonschema = new mwjson.schema({jsonschema: this.config.schema, config: {mode: this.config.mode, flatten: this.config.flatten, lang: this.config.lang, format: this.config.format, target: this.config.target}, debug: true});
 		this.jsonschema.bundle()
 			.then(() => this.jsonschema.preprocess())
 			.then(() => {
 				console.log("create editor");
+
+				if (this.config.flatten) {
+					// wrap schema in an array to allow editing multiple entities in a table
+					// ToDo: naming of the table
+					let schema = this.jsonschema.getSchema();
+					schema = {
+						"title": "Table Editor",
+						"type": "array",
+						"format": "table",
+						"items": schema
+					}
+
+					for (const p in schema["items"]["properties"]) {
+						if (this.config.include_properties && !this.config.include_properties.includes(p)) {
+							// hiding them will stil generate (empty) default values
+							// schema["items"]["properties"][p]["options"] = {...schema["items"]["properties"][p]["options"], ...{"hidden": true}}
+							// delete them completetly
+							delete schema["items"]["properties"][p]
+						}
+						else if (this.config.hide_properties && this.config.hide_properties.includes(p))
+							schema["items"]["properties"][p]["options"] = {...schema["items"]["properties"][p]["options"], ...{"hidden": true}}
+							
+					}
+					this.jsonschema.setSchema(schema);
+				}
 				this.createEditor();
 				this.createUI();
 			})
@@ -112,6 +139,19 @@ mwjson.editor = class {
 		//create editor
 		this.jsoneditor = new JSONEditor(this.container, this.config.JSONEditorConfig);
 		this.jsoneditor.mwjson_editor = this; //store back ref
+		if (this.config.multi) {
+			if (!mwjson.util.isArray(this.config.data)) this.config.data = [this.config.data]
+		}
+		if (this.config.flatten) {
+			if (this.config.multi) {
+				let data = [];
+				for (let _data of this.config.data) {
+					data.push(mwjson.util.flatten(_data, undefined, {array_index_notation: ".0", notation: "dot"}));
+				}
+				this.config.data = data;
+			}
+			else this.config.data = mwjson.util.flatten(this.config.data, undefined, {array_index_notation: ".0", notation: "dot"});
+		}
 		console.log(this.config.data);
 
 		// listen for loaded
@@ -125,6 +165,22 @@ mwjson.editor = class {
 					this.config.data[key] = value;
 				for (const [key, value] of Object.entries(this.jsonschema.default_reverse_property_values ? this.jsonschema.default_reverse_property_values : {})) 
 					this.config.data[key] = value;
+
+				if (this.config.flatten) {
+					// flatten data if configured
+					// remove properties not in include_properties
+					this.config.org_data_flatten = mwjson.util.deepCopy(this.config.data);
+					if (this.config.multi)
+						for (let _data of this.config.data)
+						for (const p in _data)
+							if (this.config.include_properties && !this.config.include_properties.includes(p))
+								delete _data[p]
+					else
+						for (const p in this.config.data)
+							if (this.config.include_properties && !this.config.include_properties.includes(p))
+								delete _data[p]
+				}
+
 				this.flags["initial-data-load"] = true;
 				this.jsoneditor.setValue(this.config.data);
 				if (this.config.copy) {
@@ -850,6 +906,24 @@ mwjson.editor = class {
 	_onsubmit(params = {}) {
 		let meta = params.meta;
 		let json = params.json || this.jsoneditor.getValue()
+
+		if (this.config.flatten) {
+			// we merge the properties which were included in the table editor with the full dictionary in flatten form
+			if (this.config.multi) {
+				let data = [];
+				for (let [index, _data] of json.entries()) {
+					_data = mwjson.util.mergeDeep(this.config.org_data_flatten[index], _data)
+					_data = mwjson.util.unflatten(_data, undefined, {array_index_notation: ".0", notation: "dot"})
+					data.push(_data);
+				}
+				json = data;
+			}
+			else {
+				json = mwjson.util.mergeDeep(this.config.org_data_flatten, json)
+				json = mwjson.util.unflatten(json, undefined, {array_index_notation: ".0", notation: "dot"});	
+			}		
+		}
+
 		document.activeElement.blur(); //ensure input is defocused to update final jsondata
 		const promise = new Promise((resolve, reject) => {
 			this.getSyntaxErrors().then((errors) => {
