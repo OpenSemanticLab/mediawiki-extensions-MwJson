@@ -43,10 +43,11 @@ mwjson.api = class {
 			format: 'json',
 		}).done(function (data) {
 			var pages = [];
-			for (var page_id of Object.keys(data.query.pages)) {
-				var page_data = data.query.pages[page_id];
-				pages.push(mwjson.api._createPageObjectFromApiResult(page_data));
-			}
+			if (data.query?.pages)
+				for (var page_id of Object.keys(data.query.pages)) {
+					var page_data = data.query.pages[page_id];
+					pages.push(mwjson.api._createPageObjectFromApiResult(page_data));
+				}
 			//console.log(page);
 			deferred.resolve(pages);
 		}).catch((error) => {
