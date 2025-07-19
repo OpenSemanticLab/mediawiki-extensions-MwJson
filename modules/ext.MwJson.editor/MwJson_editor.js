@@ -9,6 +9,8 @@ mwjson.editor = class {
 			mode: "default", // options: default, query
 			flatten: false, // flattens the schema for tabular editing
 			multi: false, // edit multiple entities within a table
+			include_properties: null, // only in flatten mode: space for table columns is limited => allow to specify properties to include
+			hide_properties: null, // only in flatten mode: usually auto-generated properties like uuid that need to be included but can be hidden
 			copy: false, // editor is used to create a copy of an exiting entry => copy_ignore schema option is applied
 			submit_enabled: true, //if true, add save button
 			allow_submit_with_errors: undefined, //allow submitting forms even if schema validation fails (see option wgMwJsonAllowSubmitInvalide)
