@@ -574,27 +574,6 @@ mwjson.util = class {
 			return current;
 		}
 	
-		function deepMerge(target, source) {
-			// Handle primitive types and arrays
-			if (source === null || typeof source !== 'object' || Array.isArray(source)) {
-				return source;
-			}
-			if (target === null || typeof target !== 'object' || Array.isArray(target)) {
-				return { ...source };
-			}
-			
-			// Recursively merge objects
-			const merged = { ...target };
-			for (const [key, value] of Object.entries(source)) {
-				if (key in target) {
-					merged[key] = deepMerge(target[key], value);
-				} else {
-					merged[key] = value;
-				}
-			}
-			return merged;
-		}
-	
 		function resolve(node) {
 			if (node === null || typeof node !== 'object') {
 				return node;
@@ -615,7 +594,7 @@ mwjson.util = class {
 				try {
 					const refTarget = resolve(resolvePointer(ref));
 					const { $ref, ...rest } = node;
-					const merged = deepMerge(refTarget, rest);
+					const merged = mwjson.util.mergeDeep(refTarget, rest);
 					return resolve(merged);
 				} finally {
 					visitedRefs.delete(ref);
@@ -627,10 +606,10 @@ mwjson.util = class {
 				let base = {};
 				for (const item of node.allOf) {
 					const resolvedItem = resolve(item);
-					base = deepMerge(base, resolvedItem);
+					base = mwjson.util.mergeDeep(base, resolvedItem);
 				}
 				const { allOf, ...rest } = node;
-				const merged = deepMerge(base, rest);
+				const merged = mwjson.util.mergeDeep(base, rest);
 				return resolve(merged);
 			}
 	
