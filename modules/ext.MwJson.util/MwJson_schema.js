@@ -252,7 +252,7 @@ mwjson.schema = class {
         // handle time, date and datetime-local format
         let format = schema.format;
         // https://json-schema.org/understanding-json-schema/reference/string#dates-and-times
-        if (format === "date" || format === "time" || format === "datetime" || format === "datetime-local") {
+        if (format === "date" || format === "time" || format === "datetime" || format === "date-time" || format === "datetime-local") {
             // note: json-schema specifies date-time, json-editor uses datetime-local
             if (format === "datetime" || format === "date-time") format = schema.format = "datetime-local";
             //set default values, see: https://github.com/flatpickr/flatpickr/issues/279
