@@ -868,7 +868,6 @@ mwjson.schema = class {
                 res += "[[SubClassOf::" + subschema.subclassof_range + "]]" 
                 + "OR[[SubClassOf.SubClassOf::" + subschema.subclassof_range + "]]"
                 + "OR[[SubClassOf.SubClassOf.SubClassOf::" + subschema.subclassof_range + "]]"
-                + "OR[[SubClassOf.SubClassOf.SubClassOf::" + subschema.subclassof_range + "]]"
                 + "OR[[SubClassOf.SubClassOf.SubClassOf.SubClassOf::" + subschema.subclassof_range + "]]"
                 + "OR[[SubClassOf.SubClassOf.SubClassOf.SubClassOf.SubClassOf::" + subschema.subclassof_range + "]]"
             }
