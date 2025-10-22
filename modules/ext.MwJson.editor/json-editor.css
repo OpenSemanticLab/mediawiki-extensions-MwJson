@@ -259,3 +259,8 @@ html[data-bs-theme="dark"] .choices__list div{
 .choices-dropdown {
     z-index: 2;
 }
+
+/* dark mode for flatpickr */
+html[data-bs-theme="dark"] .flatpickr-calendar {
+    filter: invert(0.9);
+}
