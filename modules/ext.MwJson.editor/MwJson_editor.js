@@ -1200,6 +1200,39 @@ mwjson.editor = class {
 				// So you need to add a variable to the callback to hold this (like the
 				// "jseditor_editor" variable in the examples below.)
 
+				// endpoint to search system info like user groups
+				search_sysinfo: (jseditor_editor, input) => {
+					return new Promise(function (resolve) {
+						console.warn("sysinfo autocomplete called", jseditor_editor.schema);
+						if (jseditor_editor.schema.options?.autocomplete?.sysinfo === "usergroups") {
+							mwjson.api.getUserInfo().then((data) => {
+								let result = data["groups"];
+								if (input && input.length > 0) {
+									result = result.filter(function (item) {
+										return item.toLowerCase().includes(input.toLowerCase());
+									});
+								}
+								// return max 10 results
+								resolve(result.slice(0,10));
+							});
+						} else {
+							resolve([]);
+						}
+					});
+				},
+				renderResult_sysinfo: (jseditor_editor, result, props) => {
+					return '<li ' + props + '>' + result + '</li>';
+				},
+				getResultValue_sysinfo: (jseditor_editor, result) => {
+					return result;
+				},
+				onUpdate_sysinfo: (jseditor_editor, input) => {
+					return;
+				},
+				onSubmit_sysinfo: (jseditor_editor, result) => {
+					return;
+				},
+
 				// Search function can return a promise
 				// which resolves with an array of
 				// results. In this case we're using
