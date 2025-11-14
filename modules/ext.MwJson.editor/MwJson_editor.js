@@ -1528,11 +1528,30 @@ mwjson.editor = class {
 			return options.inverse(this);
 		});
 
-		// register replace operator 
-		// e. g. {{#replace <find> <replace>}}{{string}}{{/replace}}
-		Handlebars.registerHelper('replace', function( find, replace, options) {
+		// register replace operator. Use of any flags enables regex mode
+		// e. g. {{#replace <find> <replace> <flags>}}{{string}}{{/replace}}
+		// {{#replace "old" "new"}}old text old{{/replace}} => new text new
+		// {{#replace "(\d{3})-(\d{3})-(\d{4})" "($1) $2-$3" "g"}}555-123-4567{{/replace}} => (555) 123-4567
+		// {{#replace "^[\s_]+|[\s_]+$" "" "g"}}  __text__  {{/replace}} => text
+		Handlebars.registerHelper('replace', function(find, replace, flags, options) {
+			// Handle case where flags is omitted (3 params instead of 4)
+			if (typeof flags === 'object') {
+				options = flags;
+				flags = null;
+			}
+			
 			let string = options.fn(this);
-			return string.replaceAll( find, replace );
+			
+			// If flags provided, use regex mode
+			if (flags) {
+				const globalFlags = flags.includes('g') ? flags : flags + 'g';
+				const regex = new RegExp(find, globalFlags);
+				const result = string.replaceAll(regex, replace);
+				return result;
+			}
+			
+			// Default: plain string replacement
+			return string.replaceAll(find, replace);
 		});
 
 		// register split operator 	
