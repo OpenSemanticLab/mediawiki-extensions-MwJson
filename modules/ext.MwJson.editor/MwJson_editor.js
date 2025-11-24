@@ -722,6 +722,8 @@ mwjson.editor = class {
 
 					if (data.query.results[key].printouts[context.property][0] !== undefined) {
 						context.highestExistingValue = data.query.results[key].printouts[context.property][0];
+						// handle undefined properties that still have the default type 'Page' instead of 'text'
+                        if (context.highestExistingValue.fulltext) context.highestExistingValue = context.highestExistingValue.fulltext;
 						if (context.debug) console.log("highestExistingValue:" + context.highestExistingValue);
 						var regex = new RegExp(context.value.replace("%_global_index_%", "([0-9]*)"), "g");
 						context.unique_number_string = regex.exec(context.highestExistingValue)[1];
