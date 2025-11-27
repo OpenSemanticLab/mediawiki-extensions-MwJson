@@ -258,14 +258,18 @@ mwjson.schema = class {
             //set default values, see: https://github.com/flatpickr/flatpickr/issues/279
             let storeFormats = {"date": "Y-m-d", "time": "H:i", "datetime-local": "Z"};
             let displayFormats = this.config.format;
-            schema.options = schema.options || {};
-            schema.options.flatpickr = schema.options.flatpickr || {};
-            schema.options.flatpickr.dateFormat = schema.options.flatpickr.dateFormat || storeFormats[format];
+            if (schema.template) {
+                schema.format = null; // workaround: template value not set if format is date-time
+            } else { 
+                schema.options = schema.options || {};
+                schema.options.flatpickr = schema.options.flatpickr || {};
+                schema.options.flatpickr.dateFormat = schema.options.flatpickr.dateFormat || storeFormats[format];
 
-            //set altInput option if not explicite disabled
-            if (!(schema.options.flatpickr.altInput === false)) {
-                schema.options.flatpickr.altInput = true;
-                schema.options.flatpickr.altFormat = schema.options.flatpickr.altFormat || displayFormats[format];
+                //set altInput option if not explicite disabled
+                if (!(schema.options.flatpickr.altInput === false)) {
+                    schema.options.flatpickr.altInput = true;
+                    schema.options.flatpickr.altFormat = schema.options.flatpickr.altFormat || displayFormats[format];
+                }
             }
         }
 
