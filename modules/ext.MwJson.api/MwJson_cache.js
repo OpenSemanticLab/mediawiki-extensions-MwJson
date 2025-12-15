@@ -150,7 +150,7 @@ mwjson.Cache = class {
             .then(response => response.json())
             .then(data => {
                 if (this.config.debug) console.log(data);
-                for (const page_key in data.query.pages) {
+                for (const page_key in data.query?.pages ? data.query.pages : {}) {
                     let page = data.query.pages[page_key];
                     let key = page.title;
                     if (page.revisions) {
@@ -176,7 +176,7 @@ mwjson.Cache = class {
         const response = await fetch(url);
         const data = await response.json();
         //if (this.config.debug) console.log(data.query.pages)
-        for (const page_key in data.query.pages) {
+        for (const page_key in data.query?.pages ? data.query.pages : {}) {
             let page = data.query.pages[page_key];
             let key = page.title;
             if (page.missing) {
