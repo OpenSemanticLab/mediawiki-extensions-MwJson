@@ -112,7 +112,7 @@ mwjson.parser = class {
 						//skip empty entries
 						if (Array.isArray(template.parameters[key][i_template])) {
 							if (template.parameters[key][i_template].type && template.parameters[key][i_template].type !== 'transclusion') { //e.g. 'list'
-								if (params.length === 0) params.push("")
+								if (params.length === 0) params.push("");
 								params[params.length - 1] += template.parameters[key][i_template]; //append plain string
 							}
 							else {
@@ -123,7 +123,7 @@ mwjson.parser = class {
 							}
 						}
 						else {
-							if (params.length === 0) params.push("")
+							if (params.length === 0) params.push("");
 							params[params.length - 1] += template.parameters[key][i_template]; //append plain string
 						}
 						i_template += 1;
@@ -140,12 +140,12 @@ mwjson.parser = class {
 
 	static parsePage(page) {
 		console.log("parsePage start");
-		var containsTemplateTage = page.content.includes("<noinclude>") || page.content.includes("<includeonly>")
+		var containsTemplateTage = page.content.includes("<noinclude>") || page.content.includes("<includeonly>");
 		if (containsTemplateTage) {
 			page.content = page.content.replaceAll("<noinclude>", "<Xnoinclude>");
 			page.content = page.content.replaceAll("</noinclude>", "<X/noinclude>");
 			page.content = page.content.replaceAll("<includeonly>", "<Xincludeonly>");
-			page.content = page.content.replaceAll("</includeonly>", "<X/includeonly>")
+			page.content = page.content.replaceAll("</includeonly>", "<X/includeonly>");
 		}
 		const parsed = CeL.wiki.parser(page.content);
 
@@ -317,7 +317,7 @@ mwjson.parser = class {
 			for (var index in org_value) {
 				for (var param_template in org_value[index]) {
 					var allMatch = true;
-					var anyMatch = false
+					var anyMatch = false;
 					for (var match_param in match) {
 						if (match_param in org_value[index][param_template] && org_value[index][param_template][match_param] == match[match_param]) {
 							anyMatch = true;
@@ -342,7 +342,7 @@ mwjson.parser = class {
 	}
 
 	static wikiJson2SchemaJson(wikiJson, isRoot = true) {
-		var schemaJson = {}
+		var schemaJson = {};
 		if (mwjson.util.isObjLiteral(wikiJson[0]) === false 
 		|| typeof wikiJson[1] !== 'string' 
 		|| mwjson.util.isObjLiteral(wikiJson[2]) === false) {
@@ -351,7 +351,7 @@ mwjson.parser = class {
 		}
 		var schemaJson = {};
 
-		schemaJson = mwjson.editor.mwjson.parser.wikiJson2SchemaJsonRecursion(wikiJson[0], wikiJson[2])
+		schemaJson = mwjson.editor.mwjson.parser.wikiJson2SchemaJsonRecursion(wikiJson[0], wikiJson[2]);
 		schemaJson['osl_wikitext'] = wikiJson[1];
 		return schemaJson;
 	}
@@ -424,7 +424,7 @@ mwjson.parser = class {
 			//wikitext += "\n";
 		}
 		if (data._template) {
-			wikitext += "\n}}"
+			wikitext += "\n}}";
 		}
 		return wikitext;
 	}
@@ -443,11 +443,11 @@ mwjson.parser = class {
 		var mapping = {
 			"header": "OslTemplate:KB/Term",
 			"footer": "OslTemplate:KB/Term/Footer"
-		}
+		};
 	}
 
 	static pagedict2data(pagedict) {
-		var data = {}
+		var data = {};
 		var textkey = "text";
 		var text_counter = 0;
 		for (var key in pagedict)
@@ -463,7 +463,7 @@ mwjson.parser = class {
 	}
 
 	static wikiJson2SchemaJsonRecursion(wikiJson, footerWikiJson = undefined) {
-		var schemaJson = {}
+		var schemaJson = {};
 		if (footerWikiJson != undefined) { 
 			schemaJson['osl_footer'] = mwjson.editor.mwjson.parser.wikiJson2SchemaJsonRecursion(footerWikiJson);
 			delete schemaJson['osl_footer']['extensions']; //not defined in schema
@@ -511,4 +511,4 @@ mwjson.parser = class {
 
 		return schemaJson;
 	}
-}
+};

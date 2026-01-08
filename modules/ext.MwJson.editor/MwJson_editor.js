@@ -34,14 +34,14 @@ mwjson.editor = class {
 		let langDatetimeFormats = {
 			"en": {"date": "F d, Y", "time": "G:i K", "datetime-local": "F d, Y G:i K"},
 			"de": {"date": "d.m.Y", "time": "H:i", "datetime-local": "d.m.Y H:i"},
-		}
+		};
 		let datetimeFormats = {
 			"default": langDatetimeFormats[config.lang ? config.lang : defaultConfig.lang],//No preference
 			"mdy": {"date": "F d, Y", "time": "G:i K", "datetime-local": "F d, Y G:i K"}, //16:12, January 15, 2011
 			"dmy": {"date": "d.m.Y", "time": "H:i", "datetime-local": "d.m.Y H:i"}, //16:12, 15 January 2011
 			"ymd": {"date": "Y/m/d", "time": "H:i", "datetime-local": "Y/m/d H:i"}, //16:12, 2011 January 15
 			"ISO 8601": {"date": "Y-m-d", "time": "H:i", "datetime-local": "Z"}, //2011-01-15T16:12:34
-		}
+		};
 		defaultConfig.format = datetimeFormats[mw.user.options.get("date")];
 		this.config = mwjson.util.mergeDeep(defaultConfig, config);
 		this.flags = {
@@ -74,17 +74,17 @@ mwjson.editor = class {
 						"type": "array",
 						"format": "table",
 						"items": schema
-					}
+					};
 
 					for (const p in schema["items"]["properties"]) {
 						if (this.config.include_properties && !this.config.include_properties.includes(p)) {
 							// hiding them will stil generate (empty) default values
 							// schema["items"]["properties"][p]["options"] = {...schema["items"]["properties"][p]["options"], ...{"hidden": true}}
 							// delete them completetly
-							delete schema["items"]["properties"][p]
+							delete schema["items"]["properties"][p];
 						}
 						else if (this.config.hide_properties && this.config.hide_properties.includes(p))
-							schema["items"]["properties"][p]["options"] = {...schema["items"]["properties"][p]["options"], ...{"hidden": true}}
+							schema["items"]["properties"][p]["options"] = {...schema["items"]["properties"][p]["options"], ...{"hidden": true}};
 							
 					}
 					this.jsonschema.setSchema(schema);
@@ -120,7 +120,7 @@ mwjson.editor = class {
 			disable_edit_json: true,
 			disable_properties: true,
 			use_default_values: true,
-			required_by_default: false,
+			required_by_default: false, 
 			display_required_only: false,
 			show_opt_in: true,
 			show_errors: 'always',
@@ -133,7 +133,7 @@ mwjson.editor = class {
 			form_name_root: this.jsonschema.getSchema().id,
 			//custom settings
 			user_language: this.config.lang,
-		}
+		};
 		this.config.JSONEditorConfig = mwjson.util.mergeDeep(defaultJSONEditorConfig, this.config.JSONEditorConfig);
 		this.config.JSONEditorConfig.schema = this.jsonschema.getSchema(),
 		console.log(this.config.JSONEditorConfig);
@@ -142,7 +142,7 @@ mwjson.editor = class {
 		this.jsoneditor = new JSONEditor(this.container, this.config.JSONEditorConfig);
 		this.jsoneditor.mwjson_editor = this; //store back ref
 		if (this.config.multi) {
-			if (!mwjson.util.isArray(this.config.data)) this.config.data = [this.config.data]
+			if (!mwjson.util.isArray(this.config.data)) this.config.data = [this.config.data];
 		}
 		if (this.config.flatten) {
 			if (this.config.multi) {
@@ -176,11 +176,11 @@ mwjson.editor = class {
 						for (let _data of this.config.data)
 						for (const p in _data)
 							if (this.config.include_properties && !this.config.include_properties.includes(p))
-								delete _data[p]
+								delete _data[p];
 					else
 						for (const p in this.config.data)
 							if (this.config.include_properties && !this.config.include_properties.includes(p))
-								delete _data[p]
+								delete _data[p];
 				}
 
 				this.flags["initial-data-load"] = true;
@@ -215,7 +215,7 @@ mwjson.editor = class {
 						this.config.data[key] = value;
 					this.jsoneditor.setValue(data);
 				}
-			})
+			});
 			this.updateSubjectId();
 		});
 
@@ -233,16 +233,16 @@ mwjson.editor = class {
 
 			var all_editors = [];
 			for (var subeditor_path of Object.keys(this.jsoneditor.editors)) {
-				var e = this.jsoneditor.editors[subeditor_path]
+				var e = this.jsoneditor.editors[subeditor_path];
 				if (e) {
-					all_editors.push(e)
+					all_editors.push(e);
 					if (e.editors) all_editors = all_editors.concat(e.editors); // actual multiple editors due to oneOf schema
 				}
 			}
 
 			for (var subeditor of all_editors) {
 
-				var input = subeditor.input
+				var input = subeditor.input;
 				var $input = $(input);
 
 				if (subeditor.schema?.dynamic_template) {
@@ -263,7 +263,7 @@ mwjson.editor = class {
 						// override getter and setter to handle label different from value
 						subeditor.getValue = (function() {
 								//console.log("Editor-Get ", this.key, ": ", this.input.value_id ? this.input.value_id : this.value )
-								return this.input.value_id ? this.input.value_id : this.value 
+								return this.input.value_id ? this.input.value_id : this.value; 
 							}
 						).bind(subeditor);
 						subeditor.setValue = (function(value, initial, fromTemplate, label) {
@@ -311,7 +311,7 @@ mwjson.editor = class {
 						var $autocomplete_div = $input.parent();
 						var $form_group = $input.parent().parent();
 						var $form_group_label = $input.parent().parent().find("label");
-						var $container = $(`<div style="display: flex;"></div>`)
+						var $container = $(`<div style="display: flex;"></div>`);
 						var $create_inline_button = $(`<div class="col-md-4">
 							<button type="button" class="inline-clear-btn btn btn-secondary"></button>
 							<button type="button" class="inline-edit-btn btn btn-primary"></button>
@@ -506,7 +506,7 @@ mwjson.editor = class {
 								this.setValue(jsonString);
 								this.change();
 							}).bind(subeditor) //arrow function binding to loop var subeditor does not work 
-						}
+						};
 						subeditor.jsoneditors = new JSONEditors(container, options);
 						subeditor.jsoneditors.set(JSON.parse(subeditor.input.value));
 					}
@@ -532,7 +532,7 @@ mwjson.editor = class {
 
 			if (this.data_jsoneditors) {
 				var jsondata = this.jsoneditor.getValue();
-				jsondata = mwjson.util.mergeDeep({"@context": this.jsonschema.getContext()}, jsondata)
+				jsondata = mwjson.util.mergeDeep({"@context": this.jsonschema.getContext()}, jsondata);
 				console.log("add context", this.jsonschema.getContext());
 				this.data_jsoneditors.set(jsondata);
 			}
@@ -543,9 +543,9 @@ mwjson.editor = class {
 		var resetAutocompleteEditors = () => {
 			var all_editors = [];
 			for (var subeditor_path of Object.keys(this.jsoneditor.editors)) {
-				var e = this.jsoneditor.editors[subeditor_path]
+				var e = this.jsoneditor.editors[subeditor_path];
 				if (e) {
-					all_editors.push(e)
+					all_editors.push(e);
 					if (e.editors) all_editors = all_editors.concat(e.editors); // actual multiple editors due to oneOf schema
 				}
 			}
@@ -558,7 +558,7 @@ mwjson.editor = class {
 					mwjson.util.setJsonEditorAutocompleteField(subeditor, subeditor.getValue(), null);
 				}
 			}
-		}
+		};
 
 		// listen for array changes
 		this.jsoneditor.on('moveRow', editor => {
@@ -569,7 +569,7 @@ mwjson.editor = class {
 		this.jsoneditor.on('deleteRow', value => {
 			// since the input elements stay in place but the editors are rewired
 			// we need to reset the input elements 
-			resetAutocompleteEditors()
+			resetAutocompleteEditors();
 		});
 
 		// problem: is called both when row is added or created
@@ -593,8 +593,8 @@ mwjson.editor = class {
 		let value = mwjson.util.deepCopy(editor.getValue());
 		let changed = false;
 		for (let p of ignored_properties) {
-			let keep = (editor.schema?.required?.includes(p) || editor.schema?.defaultProperties?.includes(p))
-			let default_value = null
+			let keep = (editor.schema?.required?.includes(p) || editor.schema?.defaultProperties?.includes(p));
+			let default_value = null;
 			if (Object.hasOwn(value, p)) {
 				if (value[p] && typeof value[p] === 'string') default_value = "";
 				//if (value[p]) keep ? value[p] = default_value : delete value[p];
@@ -605,7 +605,7 @@ mwjson.editor = class {
 					//console.log("delete"); 
 					delete value[p]; }
 				//console.log("Remove", p, keep, "=>", value);
-				changed = true
+				changed = true;
 			}
 			//value[p] = default_value
 		}
@@ -674,7 +674,7 @@ mwjson.editor = class {
 			else override = 'empty'; // set override_empty true if not hidden and not read-only
 		}
 		// set-state based on the current value of the editor
-		if (override === 'empty') set = (jseditor_editor.getValue() && jseditor_editor.getValue() !== "")
+		if (override === 'empty') set = (jseditor_editor.getValue() && jseditor_editor.getValue() !== "");
 		if (!set || override === 'always') {
 			//retrieve the existing property value with the highest value for the unique number
 			var context = {
@@ -732,12 +732,12 @@ mwjson.editor = class {
 				}
 				if (context.unique_number_string === "NaN") context.unique_number_string = "";
 				context.unique_number_string = (context.number_pattern + context.unique_number_string).substr(-context.number_pattern.length);
-				watched_values["_global_index_"] = context.unique_number_string
+				watched_values["_global_index_"] = context.unique_number_string;
 			}
 			context.value = Handlebars.compile(jseditor_editor.schema.dynamic_template)(watched_values);
 			//console.log("Set value", context)
 			set_value = context.value;
-			jseditor_editor.setValue(set_value)
+			jseditor_editor.setValue(set_value);
 		}
 		else {
 			//do not re-set the previous value here to enable user changes
@@ -782,7 +782,7 @@ mwjson.editor = class {
 					var jsondata = this.jsoneditor.getValue();
 					jsondata["_schema_"] = this.jsonschema.getSchema();
 					mwjson.extData.fetchData([data_source_map], this.jsoneditor.getValue()).then((jsondata) => {
-						delete jsondata["_schema_"]
+						delete jsondata["_schema_"];
 						$("#fetch-external-data-" + index).text(btn_label + ": Done (Click to re-run)").css('background-color', 'green');
 						this.jsoneditor.setValue(jsondata);
 					});
@@ -794,9 +794,9 @@ mwjson.editor = class {
 			var options = {
 				mode: 'code',
 				modes: ['code', 'form', 'text', 'tree', 'view', 'preview'], // allowed modes
-			}
+			};
 			var container = $("#" + this.config.schema_editor.container_id);
-			container.addClass('mwjson-code-container')
+			container.addClass('mwjson-code-container');
 			var editor_container = $('<div class="mwjson-code-editor-container"></div>');
 			container.append(editor_container);
 			this.schema_jsoneditors = new JSONEditors(editor_container[0], options);
@@ -817,9 +817,9 @@ mwjson.editor = class {
 					if (jsondata['@context']) delete jsondata['@context'];
 					this.jsoneditor.setValue(jsondata);
 				}
-			}
+			};
 			var container = $("#" + this.config.data_editor.container_id);
-			container.addClass('mwjson-code-container')
+			container.addClass('mwjson-code-container');
 			var editor_container = $('<div class="mwjson-code-editor-container"></div>');
 			container.append(editor_container);
 			this.data_jsoneditors = new JSONEditors(editor_container[0], options);
@@ -839,14 +839,14 @@ mwjson.editor = class {
 
 	getSyntaxErrors() {
 		const promise = new Promise((resolve, reject) => {
-		var errors = []
+		var errors = [];
 		var validation_promises = [];
 
 		var all_editors = [];
 		for (var subeditor_path of Object.keys(this.jsoneditor.editors)) {
-			var e = this.jsoneditor.editors[subeditor_path]
+			var e = this.jsoneditor.editors[subeditor_path];
 			if (e) {
-				all_editors.push(e)
+				all_editors.push(e);
 				if (e.editors) all_editors = all_editors.concat(e.editors); // actual multiple editors due to oneOf schema
 			}
 		}
@@ -857,12 +857,12 @@ mwjson.editor = class {
 					if (error.type == 'error') {
 						error.editor_path = subeditor.path;
 						error.editor_label = subeditor.label.innerText;
-						errors.push(error)
+						errors.push(error);
 					}
 				}
 			}
 				if (subeditor.jsoneditors) {
-					validation_promises.push(subeditor.jsoneditors.validate())
+					validation_promises.push(subeditor.jsoneditors.validate());
 		}
 			}
 			if (validation_promises.length) {
@@ -872,7 +872,7 @@ mwjson.editor = class {
 							if (error.type == 'error') {
 								error.editor_path = subeditor.path;
 								error.editor_label = subeditor.label.innerText;
-								errors.push(error)
+								errors.push(error);
 							}
 						}
 					}
@@ -912,21 +912,21 @@ mwjson.editor = class {
 
 	_onsubmit(params = {}) {
 		let meta = params.meta;
-		let json = params.json || this.jsoneditor.getValue()
+		let json = params.json || this.jsoneditor.getValue();
 
 		if (this.config.flatten) {
 			// we merge the properties which were included in the table editor with the full dictionary in flatten form
 			if (this.config.multi) {
 				let data = [];
 				for (let [index, _data] of json.entries()) {
-					_data = mwjson.util.mergeDeep(this.config.org_data_flatten[index], _data)
-					_data = mwjson.util.unflatten(_data, undefined, {array_index_notation: ".0", notation: "dot"})
+					_data = mwjson.util.mergeDeep(this.config.org_data_flatten[index], _data);
+					_data = mwjson.util.unflatten(_data, undefined, {array_index_notation: ".0", notation: "dot"});
 					data.push(_data);
 				}
 				json = data;
 			}
 			else {
-				json = mwjson.util.mergeDeep(this.config.org_data_flatten, json)
+				json = mwjson.util.mergeDeep(this.config.org_data_flatten, json);
 				json = mwjson.util.unflatten(json, undefined, {array_index_notation: ".0", notation: "dot"});	
 			}		
 		}
@@ -949,10 +949,10 @@ mwjson.editor = class {
 								if (labelPath !== "") labelPath += " > ";
 								var pathElement = key;
 								const e = this.jsoneditor.editors[path];
-								const i = Number.parseInt(key)
+								const i = Number.parseInt(key);
 								if (!Number.isNaN(i)) pathElement = "Element " + (i+1).toString();
 								else if (e && e.schema && e.schema.title) {
-									pathElement = e.schema.title
+									pathElement = e.schema.title;
 								}
 								labelPath += pathElement;
 							}
@@ -1019,7 +1019,7 @@ mwjson.editor = class {
 	}
 
 	onsubmitPage(json, meta) {
-		meta = meta || {}
+		meta = meta || {};
 		meta.comment = meta.comment || "Edited with JsonEditor";
 		const promise = new Promise((resolve, reject) => {
 			if (!this.config.target) {
@@ -1035,12 +1035,12 @@ mwjson.editor = class {
 			console.log(JSON.stringify(json));
 			mwjson.api.getPage(this.config.target).then((page) => {
 				if (page.content_model[this.config.target_slot] === 'wikitext') {
-					page.content = mwjson.editor.mwjson.parser.data2template(json)
+					page.content = mwjson.editor.mwjson.parser.data2template(json);
 					//add edit link with base64 encode data
 					//page.content = "<noinclude>[" + url + " Edit Template]</noinclude>\n<br\>" + page.content;
 					page.changed = true;
 					//console.log(page.content);
-					var wikiJson = mwjson.editor.mwjson.parser.schemaJson2WikiJson(json)
+					var wikiJson = mwjson.editor.mwjson.parser.schemaJson2WikiJson(json);
 					page.dict = wikiJson;
 					mwjson.parser.updateContent(page);
 					console.log(wikiJson);
@@ -1186,9 +1186,9 @@ mwjson.editor = class {
 	static setCallbacks() {
 		window.JSONEditor.defaults.callbacks = {
 			'now': (jseditor_editor, e) => {
-				var t = new Date()
-				t.setDate(t.getDate())
-				return t.toISOString().split('T')[0] + 'T00:00'
+				var t = new Date();
+				t.setDate(t.getDate());
+				return t.toISOString().split('T')[0] + 'T00:00';
 			},
 			"template": {
 				"dynamic_template": (jseditor_editor, watched_values) => {
@@ -1266,7 +1266,7 @@ mwjson.editor = class {
 					const uuid_regex = /([a-f0-9]{8})(_|-| |){1}([a-f0-9]{4})(_|-| |){1}([a-f0-9]{4})(_|-| |){1}([a-f0-9]{4})(_|-| |){1}([a-f0-9]{12})/gm;
 					const matches = input.match(uuid_regex);
 					if (matches && matches.length) {
-						let uuidQuery = ""
+						let uuidQuery = "";
 						for (const match of matches) uuidQuery += "[[HasUuid::" + match.replace(uuid_regex, `$1-$3-$5-$7-$9`) + "]]OR";
 						uuidQuery = uuidQuery.replace(/OR+$/, ''); // trim last 'OR'
 						query = query.replace(query.split('|')[0], uuidQuery); // replace filter ([[...]]) before print statements (|?...)
@@ -1288,10 +1288,10 @@ mwjson.editor = class {
 							.then(response => response.json())
 							.then(data => {
 								//convert result dict to list/array
-								var resultList = []
+								var resultList = [];
 								if (data.error) {
 									jseditor_editor.unhandled_input = false;
-									console.warn("Error while fetching autocomplete data: ", data.error)
+									console.warn("Error while fetching autocomplete data: ", data.error);
 								}
 								else if (jseditor_editor.unhandled_input === false) {
 									//aborted in the meantime
@@ -1302,7 +1302,7 @@ mwjson.editor = class {
 									if (result_property) { //use objects as results
 										resultList = [];
 										Object.values(data.query.results).forEach(result => {
-											resultList = resultList.concat(result.printouts[result_property])
+											resultList = resultList.concat(result.printouts[result_property]);
 										});
 										resultList = [...new Set(resultList)]; //remove duplicates
 									}
@@ -1311,7 +1311,7 @@ mwjson.editor = class {
 										return mwjson.util.normalizeString(JSON.stringify(result)).includes(mwjson.util.normalizeString(input)); //slow but generic
 									});*/
 									//sort list
-									resultList.sort((a, b) => input.length/b.displaytitle.length - input.length/a.displaytitle.length)
+									resultList.sort((a, b) => input.length/b.displaytitle.length - input.length/a.displaytitle.length);
 								}
 								resolve(resultList);
 							});
@@ -1604,15 +1604,15 @@ mwjson.editor = class {
 			let value = "";
 			if (!options && !value_or_options) return value; // no pattern given
 			if (!options) { // helper used as block
-				options = value_or_options
+				options = value_or_options;
 				value = options.fn(this);
 			}
 			else value = value_or_options; // helper used as function
 			if (typeof (value) == 'number') value = value.toString();
 
-			let pre_pattern = pattern.split('.')[0] //format for int
-			let post_pattern = ""
-			if (pattern.includes('.')) post_pattern = pattern.split('.')[1]
+			let pre_pattern = pattern.split('.')[0]; //format for int
+			let post_pattern = "";
+			if (pattern.includes('.')) post_pattern = pattern.split('.')[1];
 			if (post_pattern !== "") {
 				//format floats with rounding
 				value = "" + parseFloat(value).toFixed(post_pattern.length);
@@ -1622,8 +1622,8 @@ mwjson.editor = class {
 				//format integers or strings with leading chars
 				value = (pre_pattern + value).substr(-pre_pattern.length);
 			}
-			return value
-		})
+			return value;
+		});
 
 		// register current datetime
 		// {{now}}
@@ -1631,7 +1631,7 @@ mwjson.editor = class {
 		// consider: https://github.com/userfrosting/UserFrosting/issues/756
 		Handlebars.registerHelper('_now_', function (options) {
 			return new Date(Date.now()).toISOString();
-		})
+		});
 		// register alias
 		//Handlebars.registerHelper('now', function (options) {
 		//	return Handlebars.helpers.__now__.apply(options);
@@ -1647,7 +1647,7 @@ mwjson.editor = class {
 				(c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
 			);
 			//return crypto.randomUUID().toString(); //only works in safe env: localhost or https
-		})
+		});
 
 		// register date formater
 		// {{__format_datetime__ <format> <date>}}
@@ -1656,13 +1656,13 @@ mwjson.editor = class {
 		Handlebars.registerHelper('dateformat', function (format, date, options) {
 			if (!options) {
 				options = format;
-				format = "YYYY-MM-DD HH:MM"
+				format = "YYYY-MM-DD HH:MM";
 			}
 			//return new Date(Date.parse(date)).toISOString()
 			date = new Date(Date.parse(date));
 			let result = flatpickr.formatDate(date, format);
 			return result;
-		})
+		});
 
 		// register math callback
 		// {{calc <operand1> <operator> <operand2>}}
@@ -1704,17 +1704,17 @@ mwjson.editor = class {
 			}
 			if (!options) {
 				options = separator; // shift arguments
-				separator = ", "
+				separator = ", ";
 			}
 			if (!context) context = [];
 			let items = [];
 			for (var i = 0, j = context.length; i < j; i++) {
 				items.push(options.fn(context[i]));
 			}
-			items = items.filter(item => item.trim() !== '') // Remove empty or whitespace-only elements
+			items = items.filter(item => item.trim() !== ''); // Remove empty or whitespace-only elements
 			if (!items.length) intro = outro = "";
 
 			return intro + items.join(separator) + outro; // Join with separator, wrap with intro + outro
 		});
 	};
-}
+};

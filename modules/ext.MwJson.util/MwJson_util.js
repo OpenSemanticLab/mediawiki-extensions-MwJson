@@ -39,7 +39,7 @@ mwjson.util = class {
 			'\u00e4': 'ae',
 			'\u00f6': 'oe',
 			'\u00df': 'ss',
-		}
+		};
 
 		return str
 			.replace(/[\u00dc|\u00c4|\u00d6][a-z]/g, (a) => {
@@ -140,7 +140,7 @@ mwjson.util = class {
 	}
 
 	static isString(item) {
-		return (typeof item === 'string' || item instanceof String)
+		return (typeof item === 'string' || item instanceof String);
 	}
 
 	static isInteger(item) {
@@ -152,7 +152,7 @@ mwjson.util = class {
 	}
 
 	static deepCopy(object) {
-		if (object) return JSON.parse(JSON.stringify(object))
+		if (object) return JSON.parse(JSON.stringify(object));
 		else return object;
 	}
 
@@ -166,7 +166,7 @@ mwjson.util = class {
 	}
 
 	static uniqueArray(array) {
-		var result = []
+		var result = [];
 		for (const item of array) {
 			var add = true;
 			for (const added_item of result) {
@@ -256,7 +256,7 @@ mwjson.util = class {
 			"added": added_entities,
 			"changed": changed_entities,
 			"removed": removed_entities
-		}
+		};
 
 	}
 	// creates a flat dict from a nested object
@@ -738,11 +738,11 @@ mwjson.util = class {
 					result.push(last);
 					last = null;
 				}
-				result.push(e)
+				result.push(e);
 			}
 		}
 		if (last) result.push(last);
-		return result
+		return result;
 	}
 
 	static isUndefined(arg) {
@@ -868,4 +868,4 @@ mwjson.util = class {
 		//console.log("Set value of ", editor.key,  " to value: ", value_id, " with label: ", value_label)
 		editor.setValue(value_id, false, false, value_label);
 	}
-}
+};

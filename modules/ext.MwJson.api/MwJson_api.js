@@ -211,9 +211,9 @@ mwjson.api = class {
 		}
 		else {
 			const deferred = $.Deferred();
-			var slot_list = []
+			var slot_list = [];
 			for (var slot_key of Object.keys(page.slots)) {
-				if (page.slots_changed[slot_key]) slot_list.push(slot_key)
+				if (page.slots_changed[slot_key]) slot_list.push(slot_key);
 				//mwjson.api.editSlot(page.title, slot_key, page.slots[slot_key], summary); //parallel edit does not work
 			}
 
@@ -245,7 +245,7 @@ mwjson.api = class {
 	}
 
 	static copyPage(sourceTitle, targetTitle, summary = "", modify = undefined) { //(p) => { const d = $.Deferred(); d.resolve(p); return d.promise(); }) {
-		if (!modify) modify = (p) => { const d = $.Deferred(); d.resolve(p); return d.promise(); }
+		if (!modify) modify = (p) => { const d = $.Deferred(); d.resolve(p); return d.promise(); };
 		const deferred = $.Deferred();
 		mwjson.api.getPage(sourceTitle).then((sourcePage) => {
 			mwjson.api.getPage(targetTitle).then((targetPage) => {
@@ -262,8 +262,8 @@ mwjson.api = class {
 										type: 'success'
 									});
 									deferred.resolve();
-								})
-							})
+								});
+							});
 						}
 					});
 				}
@@ -278,8 +278,8 @@ mwjson.api = class {
 								type: 'success'
 							});
 							deferred.resolve();
-						})
-					})
+						});
+					});
 				}
 			});
 		});
@@ -560,7 +560,7 @@ mwjson.api = class {
 									var value = $(this).find("a").attr("title");
 									//console.log("-> " + value);
 							});
-					})
+					});
 					$html.find(inverse_property_container_selector).each(function () {
 							var $prop = $(this).find(inverse_property_link_selector);
 							//var propName = $prop.text();
@@ -576,7 +576,7 @@ mwjson.api = class {
 									var value = $(this).find("a").attr("title");
 									//console.log("-> " + value);
 							});
-					})
+					});
 					deferred.resolve(page_properties);
 				},
 					(error) => {
@@ -594,14 +594,14 @@ mwjson.api = class {
 					if (title.includes('#')) { //subobject
 						for (var i = 0; i < data.query.sobj.length; i++) {
 							if (data.query.sobj[i].subject.endsWith(title.split('#').pop().replace(' ', ''))) {
-								properties = data.query.sobj[i].data
+								properties = data.query.sobj[i].data;
 								break;
 							}
 						}
 					}
 					for (var i = 0; i < properties.length; i++) {
 						if (!properties[i].property.startsWith("_")) { //skip system properties
-							page_properties.push(properties[i].property)
+							page_properties.push(properties[i].property);
 						}
 					}
 					deferred.resolve(page_properties);
@@ -637,7 +637,7 @@ mwjson.api = class {
 			query += "]]";
 			first = false;
 		}
-		query += "|?HasLabel=label|?HasUuid=uuid&format=json"
+		query += "|?HasLabel=label|?HasUuid=uuid&format=json";
 
 		fetch(query)
 			.then(response => response.json())
@@ -659,11 +659,11 @@ mwjson.api = class {
 											label = result.printouts.label[0].Text.item[0];
 									label_dict[title] = label;
 								}
-								else label = result.printouts.label[0]
+								else label = result.printouts.label[0];
 
 					if (label !== "") {
-						label_dict[result.fulltext] = label
-						if (result.printouts.uuid && result.printouts.uuid[0]) label_dict[result.printouts.uuid[0]] = label
+						label_dict[result.fulltext] = label;
+						if (result.printouts.uuid && result.printouts.uuid[0]) label_dict[result.printouts.uuid[0]] = label;
 					}
 				}
 
@@ -704,7 +704,7 @@ mwjson.api = class {
 				//	console.log(mw.loader.getState(module));
 				//}
 				//mw.loader.state(states); //force reset state from ready to registered
-				mw.loader.using(data.parse.modules)
+				mw.loader.using(data.parse.modules);
 				let $header = $(data.parse.headhtml['*']);
 				console.log($header);
 				console.log($header.filter('script:contains(mw.config.set)'));
@@ -776,4 +776,4 @@ mwjson.api = class {
 
 		return deferred.promise();
 	}
-}
+};

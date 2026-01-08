@@ -69,7 +69,7 @@ mwjson.Cache = class {
                     }
                 }
                 if (item && item.meta.hash) {
-                    let hash = this.getHash(key)
+                    let hash = this.getHash(key);
                     if (params.hash) hash = params.hash;
                     // compare the expiry time of the item with the current time
                     if (hash && item.meta.hash !== hash) {
@@ -101,7 +101,7 @@ mwjson.Cache = class {
     load() {
         let loadedString = localStorage.getItem(this.id, JSON.stringify(this.data));
         if (loadedString) {
-            this.data = JSON.parse(loadedString)
+            this.data = JSON.parse(loadedString);
         }
     }
     // this will delete all cached entries
@@ -128,14 +128,14 @@ mwjson.Cache = class {
     }
     setHash(key, hash) {
         this.hash[key] = hash;
-        if (this.config.debug) console.log("Set hash ", key, " :", hash)
+        if (this.config.debug) console.log("Set hash ", key, " :", hash);
     }
     getHash(key) {
         return this.hash[key];
     }
     getKeys(load = true) {
-        this.load()
-        let keys = []
+        this.load();
+        let keys = [];
         for (let key in this.data.value) keys.push(key);
         return keys;
     }
@@ -145,7 +145,7 @@ mwjson.Cache = class {
         let titles = keys.join("|");
         let url = mw.config.get("wgScriptPath") + "/api.php?action=query&format=json&prop=revisions&rvprop=ids%7Ctimestamp%7Csha1";
         url += "&titles=" + encodeURIComponent(titles);
-        if (this.config.debug) console.log("Fetch: " + url)
+        if (this.config.debug) console.log("Fetch: " + url);
         fetch(url)
             .then(response => response.json())
             .then(data => {
@@ -171,7 +171,7 @@ mwjson.Cache = class {
         let url = mw.config.get("wgScriptPath") + "/api.php?action=query&format=json&prop=revisions&rvprop=ids|timestamp|sha1|content&rvslots=main|jsonschema";
         url += "&titles=" + encodeURIComponent(titles);
 
-        let items = {}
+        let items = {};
 
         const response = await fetch(url);
         const data = await response.json();

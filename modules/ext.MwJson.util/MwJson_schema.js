@@ -53,7 +53,7 @@ mwjson.schema = class {
             https://test.com/index.php?title=Category:Item
             ../Category/OSW5044076ed688412391116162b574f017.slot_jsonschema.json //new syntax, will not be handled
         */
-        let server = mw.config.get("wgServer")
+        let server = mw.config.get("wgServer");
         server = server.split("//")[server.split("//").length-1];
         server=server.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // escape for use in regex, e. g. '.' => '\.'
         let regex = new RegExp("^(?<domain>.*" + server + ")?(?<base>[^:]*)\/(.*title=)?(?<title>[^?&.]*?)(?<params>[?&].*)?$");
@@ -93,9 +93,9 @@ mwjson.schema = class {
                     .then(text => {
                         if (!text || text === "") text = "{}"; // fallback to empty schema
                         callback(null, text);
-                    })
+                    });
             }
-        }
+        };
     }
 
     static selftest() {
@@ -133,7 +133,7 @@ mwjson.schema = class {
             include_extern: true, //skos, schema.org, etc.
             include_intern: true, //wiki Properities
             include_custom: false, //wiki Properities
-        }
+        };
         config = mwjson.util.mergeDeep(_config, config);
         var res = {};
         var context = this._context;
@@ -216,7 +216,7 @@ mwjson.schema = class {
 			}
 		}
         // fix https://github.com/APIDevTools/json-schema-ref-parser/issues/356
-        if (schema['$ref'] && mwjson.util.isString(schema['$ref'])) schema['$ref'] = schema['$ref'].replaceAll("%24defs", "$defs")
+        if (schema['$ref'] && mwjson.util.isString(schema['$ref'])) schema['$ref'] = schema['$ref'].replaceAll("%24defs", "$defs");
 
         //include all required properties within defaultProperties. see https://github.com/json-editor/json-editor/issues/1275
         if (schema.required) {
@@ -277,11 +277,11 @@ mwjson.schema = class {
             for (const property of Object.keys(schema["x-oold-reverse-properties"])) {
                 var property_schema = schema["x-oold-reverse-properties"][property];
                 if (property_schema.type === "object" || property_schema.items?.type === "object") {
-                    console.error("x-oold-reverse-properties must not be of type object or array of objects")
+                    console.error("x-oold-reverse-properties must not be of type object or array of objects");
                     continue;
                 }
-                if (!schema.properties) schema.properties = {}
-                schema.properties["_x-oold-reverse_" + property] = property_schema
+                if (!schema.properties) schema.properties = {};
+                schema.properties["_x-oold-reverse_" + property] = property_schema;
             }
         }
         if (schema["x-oold-reverse-required"]) {
@@ -354,11 +354,11 @@ mwjson.schema = class {
 
                         // remove it also from required and defaultProperties
                         if (schema.required) {
-                            schema.required = schema.required.filter(function(e) { return e !== property });
+                            schema.required = schema.required.filter(function(e) { return e !== property; });
                             if (schema.required.length == 0) delete schema.required;
                         }
                         if (schema.defaultProperties) {
-                            schema.defaultProperties = schema.defaultProperties.filter(function(e) { return e !== property });
+                            schema.defaultProperties = schema.defaultProperties.filter(function(e) { return e !== property; });
                             if (schema.defaultProperties.length == 0) delete schema.defaultProperties;
                         }
                     }
@@ -372,9 +372,9 @@ mwjson.schema = class {
         
                                 // remove it also from required and defaultProperties
                                 if (schema.required)
-                                    schema.required = schema.required.filter(function(e) { return e !== property });
+                                    schema.required = schema.required.filter(function(e) { return e !== property; });
                                 if (schema.defaultProperties)
-                                    schema.defaultProperties = schema.defaultProperties.filter(function(e) { return e !== property });
+                                    schema.defaultProperties = schema.defaultProperties.filter(function(e) { return e !== property; });
                             }
 						}
 					} 
@@ -462,9 +462,9 @@ mwjson.schema = class {
     populateReverse() {
         //this.log("populateReverse start");
         const promise = new Promise((resolve, reject) => {
-            let schema = this.getSchema()
+            let schema = this.getSchema();
             let context = this._context;
-            let fetch_promises = []
+            let fetch_promises = [];
             this._interateSchema({schema: schema, callback: {
                 onProperty: (params) => {
                     //console.log(params);
@@ -510,9 +510,9 @@ mwjson.schema = class {
                                             //if (params.property_definition.default?.length && )
                                         }
                                         resolve();
-                                    })
+                                    });
                                 });
-                                fetch_promises.push(fetch_promise)
+                                fetch_promises.push(fetch_promise);
                             }
                         }
                         //params.property_definition["XXTest"] = "test";
@@ -520,7 +520,7 @@ mwjson.schema = class {
                         //params.property_definition.default.push("Item:OSW364f8de07a054fe682f60fa1939e16b9")
                     }
                 }
-            }})
+            }});
 
             Promise.allSettled(fetch_promises).then(() => {
                 this.log("populateReverse finish");
@@ -533,9 +533,9 @@ mwjson.schema = class {
     storeAndRemoveReverse(jsondata) {
         //this.log("storeAndRemoveReverse start");
         const promise = new Promise((resolve, reject) => {
-            let schema = this.getSchema()
+            let schema = this.getSchema();
             let context = this._context;
-            let fetch_promises = []
+            let fetch_promises = [];
             this._interateSchema({schema: schema, callback: {
                 onProperty: (params) => {
                     if (this.config.target && params.property_key.startsWith("_x-oold-reverse_") && context) {
@@ -548,8 +548,8 @@ mwjson.schema = class {
                                 let added = [];
                                 let removed = [];
                                 for (const v of [...old_values, ...new_values]) {
-                                    if (!old_values.includes(v)) added.push(v)
-                                    if (!new_values.includes(v)) removed.push(v)
+                                    if (!old_values.includes(v)) added.push(v);
+                                    if (!new_values.includes(v)) removed.push(v);
                                 }
                                 const changed = [...added, ...removed];
                                 if (changed.length) {
@@ -586,7 +586,7 @@ mwjson.schema = class {
                                                             resolve(schema_cache[schema_hash]);
                                                         }
                                                         else {
-                                                            let schema = new mwjson.schema({jsonschema: jsonschema})
+                                                            let schema = new mwjson.schema({jsonschema: jsonschema});
                                                             schema.bundle()
                                                             .then(() => schema.preprocess())
                                                             .then(() => { schema_cache[schema_hash] = schema; resolve(schema_cache[schema_hash]); })
@@ -605,7 +605,7 @@ mwjson.schema = class {
                                                     let page_jsondata = page.slots["jsondata"];
                                                     if (mwjson.util.isString(page_jsondata)) page_jsondata = JSON.parse(page_jsondata);
 
-                                                    const schema = page_schemas[page.title]
+                                                    const schema = page_schemas[page.title];
                                                     if (!schema) {
                                                         console.warn("No schema for page '" + page.title + "' found.");
                                                         continue;
@@ -662,7 +662,7 @@ mwjson.schema = class {
                         }
                     }
                 }
-            }})
+            }});
 
             Promise.allSettled(fetch_promises).then(() => {
                 // this.log("storeAndRemoveReverse finish");
@@ -687,7 +687,7 @@ mwjson.schema = class {
                         let match = this.title_regex.exec(v);
                         if (match && match.groups && match.groups.title) {
                             var category = match.groups.title;  // e.g. "Category:Test"
-                            if (!includeNamespace) { category = category.replaceAll("Category:", "") };
+                            if (!includeNamespace) { category = category.replaceAll("Category:", ""); };
                             categories.push(category);
                         }
                     }
@@ -709,9 +709,9 @@ mwjson.schema = class {
                 result["" + index] = subcontext;
                 index++;
             } 
-            else result = mwjson.util.mergeDeep(result, subcontext)
+            else result = mwjson.util.mergeDeep(result, subcontext);
         }
-        return {context:result}
+        return {context:result};
     }
 
     //maps jsondata values to semantic properties by using the @context attribute within the schema
@@ -731,13 +731,13 @@ mwjson.schema = class {
 				for (const subschema of schema.allOf) {
                     args.schema = subschema;
 					//mwjson.util.mergeDeep(this._getSemanticProperties(args), { properties: properties, definitions: property_data });
-                    this._getSemanticProperties(args)
+                    this._getSemanticProperties(args);
 				}
 			}
 			else {
                 args.schema = schema.allOf;
                 //mwjson.util.mergeDeep(this._getSemanticProperties(args), { properties: properties, definitions: property_data });
-                this._getSemanticProperties(args)
+                this._getSemanticProperties(args);
 			}
 		}
 
@@ -747,14 +747,14 @@ mwjson.schema = class {
             if (debug) {
                 for (const [k, v] of Object.entries(context)) {
                     this.log("" + k + " maps to " + v);
-                    if (mwjson.util.isNumber(k)) this.log("imports " + v)
-                    else if (mwjson.util.isObject(v)) this.log("" + k + " maps to " + v["@id"]) 
-                    else this.log("" + k + " maps to " + v)
+                    if (mwjson.util.isNumber(k)) this.log("imports " + v);
+                    else if (mwjson.util.isObject(v)) this.log("" + k + " maps to " + v["@id"]); 
+                    else this.log("" + k + " maps to " + v);
                 }
             }
             for (const [k, v] of Object.entries(jsondata)) {
                 if (mwjson.util.isDefined(context[k])) {
-                    if (debug) { this.log(context[k]) };
+                    if (debug) { this.log(context[k]); };
 
                     var property_definition = [];
                     if (mwjson.util.isObject(context[k])) property_definition = context[k]["@id"].split(':');
@@ -789,7 +789,7 @@ mwjson.schema = class {
     }
 
     getSemanticQuery(args) {
-        var jsondata = mwjson.util.defaultArg(args.jsondata, {})
+        var jsondata = mwjson.util.defaultArg(args.jsondata, {});
         //var schema = mwjson.util.defaultArg(args.jsonschema, {})
         var res = "";
         var where = "";
@@ -822,7 +822,7 @@ mwjson.schema = class {
             or_where = or_where + "\n[[Has_subobject." + def.property + "::" + value + "]]"; //property chain with build-in property "Has subobject" to include matching subobjects. ToDo: do this only for subobjects within the schema
             select = select + "\n|?" + def.property;
             or_select = or_select + "\n|?Has_subobject." + def.property;
-            if (mwjson.util.isDefined(def.schema_data.title)) { select = select + "=" + def.schema_data.title }
+            if (mwjson.util.isDefined(def.schema_data.title)) { select = select + "=" + def.schema_data.title; }
         }
         where = where + "OR" + or_where;
         select = select + or_select;
@@ -833,14 +833,14 @@ mwjson.schema = class {
         options += "|theme=bootstrap";
         options += "|limit=1000";
 
-        if (where !== "") { res = "{{#ask:" + res + where + select + options + "}}" }
+        if (where !== "") { res = "{{#ask:" + res + where + select + options + "}}"; }
 
         return { wikitext: res };
     }
 
     static getAutocompleteQuery(subschema) {
         if (subschema.query) { //legacy (deprecated)
-            console.log("Warning: schema.query is deprecated. Use schema.options.autocomplete.query")
+            console.log("Warning: schema.query is deprecated. Use schema.options.autocomplete.query");
             return subschema.query; 
         }
 
@@ -851,13 +851,13 @@ mwjson.schema = class {
             "image": "HasImage",
             "description": "HasDescription",
             "type": "HasType.Display_title_of" // ToDo: Change to HasType.HasLabel - currently leads to SMW exceptions, see https://github.com/SemanticMediaWiki/SemanticMediaWiki/issues/5713
-        }
+        };
         const defaultOptions = {
             "limit": "10"
-        }
+        };
         var res = "";
         if (subschema.options?.autocomplete?.query_filter_property) {
-            res += "[[" + subschema.options.autocomplete.query_filter_property + "::like:*{{{_user_input}}}*]]"
+            res += "[[" + subschema.options.autocomplete.query_filter_property + "::like:*{{{_user_input}}}*]]";
         }
         if (subschema.options?.autocomplete?.query) {
             res += subschema.options.autocomplete.query;
@@ -873,14 +873,14 @@ mwjson.schema = class {
                 + "OR[[SubClassOf.SubClassOf::" + subschema.subclassof_range + "]]"
                 + "OR[[SubClassOf.SubClassOf.SubClassOf::" + subschema.subclassof_range + "]]"
                 + "OR[[SubClassOf.SubClassOf.SubClassOf.SubClassOf::" + subschema.subclassof_range + "]]"
-                + "OR[[SubClassOf.SubClassOf.SubClassOf.SubClassOf.SubClassOf::" + subschema.subclassof_range + "]]"
+                + "OR[[SubClassOf.SubClassOf.SubClassOf.SubClassOf.SubClassOf::" + subschema.subclassof_range + "]]";
             }
-            else res += "[[" + subschema.range + "]]"
+            else res += "[[" + subschema.range + "]]";
         }
         else if (subschema.options?.autocomplete?.category) {
-            res += "[[" + subschema.options.autocomplete.category + "]]"
+            res += "[[" + subschema.options.autocomplete.category + "]]";
         }
-        else if (subschema.options?.autocomplete?.property) res += "[[" + subschema.options.autocomplete.property + ":+]]"
+        else if (subschema.options?.autocomplete?.property) res += "[[" + subschema.options.autocomplete.property + ":+]]";
 
         if (!res.includes("_user_input")) res = res.replace(/(?<!\|)\|(?!\|)/, defaultFilter + "|"); // inject before first property selector or param (match the first non-doubled '|') [[A]]|?... => [[A]][[...like...]]|?...
         if (!res.includes("_user_input")) res += defaultFilter; // no property selector or param found: just append it
@@ -898,7 +898,7 @@ mwjson.schema = class {
     }
     static getAutocompletePreviewTemplate(subschema) {
         if (subschema.previewWikiTextTemplate) { //legacy (deprecated)
-            console.log("Warning: schema.previewWikiTextTemplate is deprecated. Use schema.options.autocomplete.render_template")
+            console.log("Warning: schema.previewWikiTextTemplate is deprecated. Use schema.options.autocomplete.render_template");
             return {type: ["handlebars", "wikitext"], value: subschema.previewWikiTextTemplate}; 
         }
         else if (subschema.options) {
@@ -917,7 +917,7 @@ mwjson.schema = class {
     }
     static getAutocompleteLabelTemplate(subschema) {
         if (subschema.labelTemplate) { //legacy (deprecated)
-            console.log("Warning: schema.labelTemplate is deprecated. Use schema.options.autocomplete.label_template")
+            console.log("Warning: schema.labelTemplate is deprecated. Use schema.options.autocomplete.label_template");
             return {type: ["handlebars"], value: subschema.labelTemplate}; 
         }
         else if (subschema.options) {
@@ -939,7 +939,7 @@ mwjson.schema = class {
     }
     static getAutocompleteResultProperty(subschema) {
         if (subschema.listProperty) { //legacy (deprecated)
-            console.log("Warning: schema.listProperty is deprecated. Use schema.options.autocomplete.result_property")
+            console.log("Warning: schema.listProperty is deprecated. Use schema.options.autocomplete.result_property");
             return {type: ["handlebars"], value: subschema.labelTemplate}; 
         }
         else if (subschema.options) {
@@ -953,6 +953,6 @@ mwjson.schema = class {
         if (this.debug) console.log(arg);
     }
 
-}
+};
 
 //mwjson.schema.selftest();

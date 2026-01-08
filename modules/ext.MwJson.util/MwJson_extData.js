@@ -29,7 +29,7 @@ mwjson.extData = class {
                 obj[k] = {};
                 mwjson.extData.mapObjectMap(obj[k], v, data, mode);
             }
-            else console.log("invalide map entry: ", v)
+            else console.log("invalide map entry: ", v);
         }
     }
 
@@ -39,9 +39,9 @@ mwjson.extData = class {
                 const value = mwjson.extData.getValue(data, k, mode);
                 console.log("eval ", k, " with ", value);
                 const template = Handlebars.compile(v);
-                obj = mwjson.util.mergeDeep(obj, JSON.parse(template(value)))
+                obj = mwjson.util.mergeDeep(obj, JSON.parse(template(value)));
             }
-            else console.log("invalide map entry: ", v)
+            else console.log("invalide map entry: ", v);
         }
         return obj;
     }
@@ -97,7 +97,7 @@ mwjson.extData = class {
                                 var parser = new DOMParser();
                                 data = parser.parseFromString(data, 'text/html');
                             }
-                            resolve({ data_source: data_source, data: data })
+                            resolve({ data_source: data_source, data: data });
                         }
                         );
                 });
@@ -125,7 +125,7 @@ mwjson.extData = class {
         // ToDo: inline files as base64 strings
         let jsonschema = editor.jsonschema.getSchema();
         let promt = "Complete the following data while keeping existing values:\n";
-        promt += JSON.stringify(jsondata, null, 2)
+        promt += JSON.stringify(jsondata, null, 2);
         //console.log(jsondata, jsonschema);
 
         let org_data_flatten = mwjson.util.flatten(jsondata, "root", { notation: "dot", array_index_notation: ".0" });
@@ -176,8 +176,8 @@ mwjson.extData = class {
             },
             method: "POST",
             body: JSON.stringify({ promt: promt, jsonschema: jsonschema, files: fileDataUrls })
-        })
-        let data = await res.json()
+        });
+        let data = await res.json();
 
         // this will create subeditors for all suppied data
         editor.jsoneditor.setValue(data.result);
@@ -201,7 +201,7 @@ mwjson.extData = class {
             if (subeditor.format === 'autocomplete') {
                 //query ids for labels put into autocomplete editors
                 let query = mwjson.schema.getAutocompleteQuery(subeditor.schema);
-                let input = value
+                let input = value;
                 jsondata = mwjson.util.deepCopy(data.result);
 
                 ///// From MwJson_editor
@@ -220,7 +220,7 @@ mwjson.extData = class {
                 const uuid_regex = /([a-f0-9]{8})(_|-| |){1}([a-f0-9]{4})(_|-| |){1}([a-f0-9]{4})(_|-| |){1}([a-f0-9]{4})(_|-| |){1}([a-f0-9]{12})/gm;
                 const matches = input.match(uuid_regex);
                 if (matches && matches.length) {
-                    let uuidQuery = ""
+                    let uuidQuery = "";
                     for (const match of matches) uuidQuery += "[[HasUuid::" + match.replace(uuid_regex, `$1-$3-$5-$7-$9`) + "]]OR";
                     uuidQuery = uuidQuery.replace(/OR+$/, ''); // trim last 'OR'
                     query = query.replace(query.split('|')[0].split(';')[0], uuidQuery); // replace filter ([[...]]) before print statements (|?...)
@@ -239,7 +239,7 @@ mwjson.extData = class {
         }
         if (Object.values(autocompleteQueryPromises).length) {
             const autocompleteResults = await Promise.all(Object.values(autocompleteQueryPromises));
-            let jsonPromises = []
+            let jsonPromises = [];
             for (const resultValue of autocompleteResults) {
                 jsonPromises.push(resultValue.json());
             }
@@ -265,4 +265,4 @@ mwjson.extData = class {
         editor.jsoneditor.setValue(jsondata);
     }
 
-}
+};

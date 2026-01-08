@@ -9,10 +9,10 @@ mwjson.editor.prototype.addCss = function () {
     }
     `;
     document.head.appendChild(styleSheet);
-}
+};
 
 mwjson.editor.createModal = function (config) {
-    config = config || {}
+    config = config || {};
     var defaultConfig = {
         "size": "lg",
         "class": "",
@@ -20,13 +20,13 @@ mwjson.editor.createModal = function (config) {
         "body": "",
         "footer": "",
         "cancelCallback": null
-    }
+    };
     config = mwjson.util.mergeDeep(defaultConfig, config);
     if (config.body && config.body !== "")
         config.body = `
         	        <div class="modal-body">
                         ${config.body}
-                    </div>`
+                    </div>`;
     else config.body = "";
 
     if (document.getElementById(config.id)) {
@@ -76,11 +76,11 @@ mwjson.editor.createModal = function (config) {
         backdrop: 'static', // Includes a modal-backdrop element. Alternatively, specify static for a backdrop which doesn’t close the modal when clicked.
         focus: true, // Puts the focus on the modal when initialized.
         keyboard: false, //	Closes the modal when escape key is pressed.
-    })
+    });
 
     //modal.show()
     return modal;
-}
+};
 
 // drop-in replacement for OO.ui.alert
 mwjson.editor.prototype.alert = function (msg) {
@@ -94,9 +94,9 @@ mwjson.editor.prototype.alert = function (msg) {
             ]
         });
         confirmClose_modal.show(); 
-    })  
+    });  
     return promise;
-}
+};
 
 // drop-in replacement for OO.ui.confirm
 mwjson.editor.prototype.confirm = function (msg) {
@@ -112,13 +112,13 @@ mwjson.editor.prototype.confirm = function (msg) {
             ]
         });
         confirmClose_modal.show(); 
-    })
+    });
        
     return promise;
-}
+};
 
 mwjson.editor.prototype.createPopupDialog = function (_config) {
-    _config = _config || {}
+    _config = _config || {};
     var editor = this;
     var defaultConfig = {
         size: "medium", //small, medium, large, larger or full,
@@ -177,7 +177,7 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
 
         });
         confirmClose_modal.show();
-    }
+    };
 
     const aiBtnLabel = mw.message("mwjson-editor-ai-completion-label").text(),
       aiBtnTooltip = mw.message("mwjson-editor-ai-completion-tooltip").text(),
@@ -247,12 +247,12 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
     document.getElementById("dataEditorModal_" + editor.config.id).addEventListener('hidden.bs.modal', () => {
         dataEditor_modal.dispose(); // does not remove DOM
         document.getElementById("dataEditorModal_" + editor.config.id).remove();
-    })
+    });
     
-}
+};
 
 mwjson.editor.prototype.createPopupDialog_old = function (_config) {
-    _config = _config || {}
+    _config = _config || {};
     var editor = this;
     var defaultConfig = {
         size: "medium", //small, medium, large, larger or full,
@@ -456,7 +456,7 @@ mwjson.editor.prototype.createPopupDialog_old = function (_config) {
 
     // Open the window!   
     windowManager.openWindow(dialog, { pageTitle: _config.title });
-}
+};
 
 /*
 Creates an autocomplete input
@@ -487,7 +487,7 @@ mwjson.editor.createAutocompleteInput = function (config) {
             else return result.fulltext.split(":")[result.fulltext.split(":").length - 1];
         },
         onSubmit: result => { }
-    }
+    };
 
     config = { ...config_defaults, ...config };
 
@@ -536,20 +536,20 @@ mwjson.editor.createAutocompleteInput = function (config) {
             config.onSubmit(result);
         }
     });
-}
+};
 
 mwjson.editor.createCopyPageDialog = function (_config) {
     var defaultConfig = { "title": "", "template": mw.config.get("wgPageName"), "hide_template": true, "hide_template_preview": true };
     _config = { ...defaultConfig, ..._config };
     //_config.beforeSubmit = (targetTitle) => {return mwjson.api.copyPage(_config.sourceTitle, targetTitle)};
     mwjson.editor.createPageDialog(_config);
-}
+};
 
 mwjson.editor.createSubpageDialog = function (_config) {
     var defaultConfig = { "superpage": mw.config.get("wgPageName"), "namespace": "", "title": "" };
     _config = { ...defaultConfig, ..._config };
     mwjson.editor.createPageDialog(_config);
-}
+};
 
 mwjson.editor.createPageDialog = function (_config) {
     var defaultConfig = {
@@ -626,7 +626,7 @@ mwjson.editor.createPageDialog = function (_config) {
                     });
             });
         }
-    }
+    };
     _config = mwjson.util.mergeDeep(defaultConfig, _config);
 
     //inject a page modification before safing the new page
@@ -644,7 +644,7 @@ mwjson.editor.createPageDialog = function (_config) {
                 deferred.resolve(page);
             });
             return deferred.promise();
-        }
+        };
     }
 
     // Make a subclass of ProcessDialog 
@@ -744,7 +744,7 @@ mwjson.editor.createPageDialog = function (_config) {
                 if (_config.superpage) title += _config.superpage + "/";
                 title += this.titleInput.getValue();
 
-                if (_config.template !== "" && !_config.beforeSubmit) _config.beforeSubmit = (targetTitle, template) => { return mwjson.api.copyPage(template, targetTitle, "", _config.modify) };
+                if (_config.template !== "" && !_config.beforeSubmit) _config.beforeSubmit = (targetTitle, template) => { return mwjson.api.copyPage(template, targetTitle, "", _config.modify); };
 
                 if (_config.beforeSubmit) {
                     _config.beforeSubmit(title, _config.template).then(() => {
@@ -797,7 +797,7 @@ mwjson.editor.createPageDialog = function (_config) {
 
     // Open the window!   
     windowManager.openWindow(dialog, { pageTitle: _config.title });
-}
+};
 
 mwjson.editor.initDataTables = function () {
     mw.loader.using( 'ext.srf.datatables', function(){
@@ -853,4 +853,4 @@ mwjson.editor.initDataTables = function () {
     } );
 
     });
-}
+};

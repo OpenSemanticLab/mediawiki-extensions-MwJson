@@ -74,7 +74,7 @@ var schema = {
             "default": ""
         }
     }
-}
+};
 
 var schema2 = {
     "title": "Lab Process",
@@ -707,7 +707,7 @@ var schema2 = {
 `
         },
     }
-}
+};
 
 var schema3 = {
     "title": "KB/Term",
@@ -759,7 +759,7 @@ var schema3 = {
             }
         }
     }
-}
+};
 
 data1 = {
     "osl_template": "OslTemplate:KB/Entity",
@@ -788,7 +788,7 @@ data1 = {
     "osl_footer": {
       "osl_template": "OslTemplate:KB/Entity/Footer"
     }
-  }
+  };
 
 data2 = {
     "osl_template": "OslTemplate:KB/Entity",
@@ -817,7 +817,7 @@ data2 = {
         "extensions": [],
         "osl_template": "OslTemplate:KB/Entity/Footer"
       }
-  }
+  };
 
 
 $(document).ready(function () {
@@ -845,7 +845,7 @@ $(document).ready(function () {
                 if ((searchParams.has('slot') && !(searchParams.get('slot') === ""))) config.target_slot = searchParams.get('slot');
                 if ((searchParams.has('schema') && !(searchParams.get('schema') === ""))) config.schema = JSON.parse(searchParams.get('schema'));
                 if ((searchParams.has('data') && !(searchParams.get('data') === ""))) config.data = mwjson.util.objectFromCompressedBase64(decodeURIComponent(searchParams.get('data')));
-                if (!config.schema) config.schema = {"$ref": mw.util.getUrl("Category:Entity", {"action":"raw", "slot": "jsondata"}) }
+                if (!config.schema) config.schema = {"$ref": mw.util.getUrl("Category:Entity", {"action":"raw", "slot": "jsondata"}) };
                 //config.target = "VisualTest:Extension/WSSlots/MultiSlotPage"
                 //config.data = data2;
                 config.container = this;
