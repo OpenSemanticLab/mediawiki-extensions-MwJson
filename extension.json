@@ -1,7 +1,7 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.52.4",
+    "version":"0.53.0",
     "author":[
         "[https://github.com/simontaurus Simon Stier]",
         "[https://github.com/ademolaomosanya Ademola Omosanya]"
@@ -265,7 +265,7 @@
 		},
         "MwJsonSlotRenderResultTransformation": {
 			"value": {
-                "enabled": false,
+                "enabled": null,
                 "wrap": true,
                 "order": true,
                 "skip_toc": false,

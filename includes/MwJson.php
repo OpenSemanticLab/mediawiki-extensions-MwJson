@@ -31,6 +31,10 @@ class MwJson {
 		//return;
 		$config = MediaWikiServices::getInstance()->getMainConfig();
 		$settings = $config->get( 'MwJsonSlotRenderResultTransformation' );
+		if ( $settings["enabled"] === null ) {
+			// Default to true for MW >= 1.43, false otherwise
+			$settings["enabled"] = version_compare( MW_VERSION, '1.43', '>=' );
+		}
 		if (!$settings["enabled"]) return;
 
 		// Skip e.g. pages in NS Special
