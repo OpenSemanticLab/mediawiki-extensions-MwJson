@@ -7,7 +7,9 @@ class MwJson {
 	public static function onBeforePageDisplay( $out, $skin ) {
 
 		$out->addModules( 'ext.MwJson' );
-		return MwJson::transformSlotRenderResults($out);
+		if ( version_compare( MW_VERSION, '1.43', '>=' ) ) {
+			return MwJson::transformSlotRenderResults($out);
+		}
 		return true;
 
 	}
@@ -19,11 +21,12 @@ class MwJson {
 	}
 
 	public static function onOutputPageParserOutput($out, $parserOutput) {
-		//return MwJson::transformSlotRenderResults($out, $parserOutput);
+		if ( version_compare( MW_VERSION, '1.43', '<' ) ) {
+			return MwJson::transformSlotRenderResults($out, $parserOutput);
+		}
 	}
 
-	//protected static function transformSlotRenderResults($out, $parserOutput)
-	protected static function transformSlotRenderResults($out)
+	protected static function transformSlotRenderResults($out, $parserOutput = null)
 	{
 		//return;
 		$config = MediaWikiServices::getInstance()->getMainConfig();
@@ -34,10 +37,13 @@ class MwJson {
 		if ( !$out->getTitle()->isContentPage() ) return; 
 
 		//$wgHooks['BeforePageDisplay'][] = function ( $out, $skin ) {
-		// get the HTML from the parser output when using hook OutputPageParserOutput
-		//$html = $parserOutput->getText();
-		// get the HTML from the output when using hook BeforePageDisplay
-		$html = $out->getHtml();
+		if ( $parserOutput !== null ) {
+			// MW < 1.43: get HTML from parser output (OutputPageParserOutput hook)
+			$html = $parserOutput->getText();
+		} else {
+			// MW >= 1.43: get HTML from output (BeforePageDisplay hook)
+			$html = $out->getHtml();
+		}
 
 		if ($html === null || trim($html) === "") return;
 
@@ -158,11 +164,14 @@ class MwJson {
 			}
 		}
 
-		// Save the modified HTML back to the parser output when using OutputPageParserOutput
-		//$parserOutput->setText($dom->saveHTML());
-		// when using BeforePageDisplay
-		$out->clearHtml();
-		$out->addHtml( $dom->saveHTML() );
+		if ( $parserOutput !== null ) {
+			// MW < 1.43: save back to parser output
+			$parserOutput->setText($dom->saveHTML());
+		} else {
+			// MW >= 1.43: save back to output page
+			$out->clearHtml();
+			$out->addHtml( $dom->saveHTML() );
+		}
 
 		// e.g. Skin:Citizen does wrap the toc => hide it in the main content section
 		// custom toc is still displayed in the right sidebar
