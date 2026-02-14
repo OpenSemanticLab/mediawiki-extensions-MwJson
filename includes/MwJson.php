@@ -7,7 +7,7 @@ class MwJson {
 	public static function onBeforePageDisplay( $out, $skin ) {
 
 		$out->addModules( 'ext.MwJson' );
-
+		return MwJson::transformSlotRenderResults($out);
 		return true;
 
 	}
@@ -19,10 +19,11 @@ class MwJson {
 	}
 
 	public static function onOutputPageParserOutput($out, $parserOutput) {
-		return MwJson::transformSlotRenderResults($out, $parserOutput);
+		//return MwJson::transformSlotRenderResults($out, $parserOutput);
 	}
 
-	protected static function transformSlotRenderResults($out, $parserOutput)
+	//protected static function transformSlotRenderResults($out, $parserOutput)
+	protected static function transformSlotRenderResults($out)
 	{
 		//return;
 		$config = MediaWikiServices::getInstance()->getMainConfig();
@@ -34,9 +35,9 @@ class MwJson {
 
 		//$wgHooks['BeforePageDisplay'][] = function ( $out, $skin ) {
 		// get the HTML from the parser output when using hook OutputPageParserOutput
-		$html = $parserOutput->getText();
+		//$html = $parserOutput->getText();
 		// get the HTML from the output when using hook BeforePageDisplay
-		//$html = $out->getHtml();
+		$html = $out->getHtml();
 
 		if ($html === null || trim($html) === "") return;
 
@@ -73,7 +74,7 @@ class MwJson {
 
 				// Iterate over all child nodes of the div
 				foreach ($div->childNodes as $child) {
-					if ($child->nodeType === XML_ELEMENT_NODE && $child->hasAttributes() && $child->getAttribute('class') === 'mw-slot-header') {
+					if ($child->nodeType === XML_ELEMENT_NODE && $child->hasAttributes() && strpos($child->getAttribute('class'), 'mw-slot-header') !== false) {
 						// Create a new slot with the text content of the mw-slot-header
 						$currentSlot = trim($child->textContent);
 						$slots[$currentSlot] = [];
@@ -148,22 +149,25 @@ class MwJson {
 				}
 
 				// Replace the original content with the new wrapped content
+				// this doesn't work: $div->innerHTML = '';
 				while ($div->firstChild) {
 					$div->removeChild($div->firstChild);
 				}
+				//$div->innerHTML = '';
 				$div->appendChild($newFragment);
 			}
 		}
 
 		// Save the modified HTML back to the parser output when using OutputPageParserOutput
-		$parserOutput->setText($dom->saveHTML());
+		//$parserOutput->setText($dom->saveHTML());
 		// when using BeforePageDisplay
-		//$out->clearHtml();
-		//$out->addHtml( $dom->saveHTML() );
+		$out->clearHtml();
+		$out->addHtml( $dom->saveHTML() );
 
 		// e.g. Skin:Citizen does wrap the toc => hide it in the main content section
 		// custom toc is still displayed in the right sidebar
 		if ($settings["hide_toc"]) $out->addInlineStyle( ".mw-slot-wrapper #toc { display: none; }" );
+		$out->addInlineStyle( ".mw-slot-header { display: none; }" );
 
 		return true;
 	}
