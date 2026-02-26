@@ -61,7 +61,7 @@ mwjson.api = class {
 		const page_id = page_data.pageid;
 		var page = {
 			title: title, exists: false, changed: false, content: "",
-			slots: { main: "" }, slots_changed: { main: false }, content_model: { main: "wikitext" },
+			slots: { main: "" }, slots_changed: { main: false }, slots_original: [], content_model: { main: "wikitext" },
 			schema: {
 				"title": title,
 				"type": "object",
@@ -114,6 +114,8 @@ mwjson.api = class {
 					else page.schema.properties[slot_key] = { "type": "string", "format": "handlebars", "options": { "wikieditor": "" } };
 				}
 			}
+			// Record which slots existed on page load, for deletion detection later
+			page.slots_original = Object.keys(page.slots);
 
 		}
 		var site_slots = mw.config.get('wgWSSlotsDefinedSlots');
@@ -204,8 +206,22 @@ mwjson.api = class {
 				console.log("Edit slot " + slot_key);
 				page.slots_changed[slot_key] = false;
 				var content = page.slots[slot_key];
-				if (page.content_model[slot_key] === 'json' && !(typeof content === 'string')) content = JSON.stringify(content);
+				if (content === null || content === undefined || content === "") {
+					content = "";
+				} else if (page.content_model[slot_key] === 'json' && !(typeof content === 'string')) {
+					content = JSON.stringify(content);
+				}
 				params['slot_' + slot_key] = content;
+			}
+			// Detect slots that were removed (present at load time but deleted from page.slots)
+			if (page.slots_original) {
+				for (var orig_key of page.slots_original) {
+					if (orig_key === 'main') continue; // never delete main slot
+					if (!(orig_key in page.slots)) {
+						console.log("Delete slot " + orig_key);
+						params['slot_' + orig_key] = "";
+					}
+				}
 			}
 			return new mw.Api().postWithToken("csrf", params);
 		}
@@ -216,14 +232,27 @@ mwjson.api = class {
 				if (page.slots_changed[slot_key]) slot_list.push(slot_key);
 				//mwjson.api.editSlot(page.title, slot_key, page.slots[slot_key], summary); //parallel edit does not work
 			}
+			// Detect slots that were removed and need deletion
+			if (page.slots_original) {
+				for (var orig_key of page.slots_original) {
+					if (orig_key === 'main') continue; // never delete main slot
+					if (!(orig_key in page.slots)) slot_list.push(orig_key);
+				}
+			}
 
 			function do_edit() {
 				const slot_key = slot_list.pop();
 				if (slot_key) {
 					console.log("Edit slot " + slot_key);
 					page.slots_changed[slot_key] = false;
-					var content = page.slots[slot_key];
-					if (page.content_model[slot_key] === 'json' && !(typeof content === 'string')) content = JSON.stringify(content);
+					var content;
+					if (!(slot_key in page.slots) || page.slots[slot_key] === null || page.slots[slot_key] === undefined || page.slots[slot_key] === "") {
+						content = "";
+						console.log("Delete slot " + slot_key);
+					} else {
+						content = page.slots[slot_key];
+						if (page.content_model[slot_key] === 'json' && !(typeof content === 'string')) content = JSON.stringify(content);
+					}
 					mwjson.api.editSlot(page.title, slot_key, content, summary).done(do_edit);
 				}
 				else deferred.resolve(page);
@@ -376,6 +405,12 @@ mwjson.api = class {
 		}
 
 		for (var slot_key of Object.keys(page.slots)) { if (page.slots_changed[slot_key]) slots_changed = true; }
+		// Also detect if any slots were removed (need deletion)
+		if (page.slots_original) {
+			for (var orig_key of page.slots_original) {
+				if (orig_key !== 'main' && !(orig_key in page.slots)) { slots_changed = true; break; }
+			}
+		}
 
 		if (!page.exists && page.title && slots_changed) {
 			mwjson.api.createPage(page.title, page.slots['main'], summary).then((data) => {

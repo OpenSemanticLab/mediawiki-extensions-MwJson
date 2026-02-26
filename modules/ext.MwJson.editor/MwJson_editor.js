@@ -13,6 +13,7 @@ mwjson.editor = class {
 			hide_properties: null, // only in flatten mode: usually auto-generated properties like uuid that need to be included but can be hidden
 			copy: false, // editor is used to create a copy of an exiting entry => copy_ignore schema option is applied
 			submit_enabled: true, //if true, add save button
+			remove_empty_properties_on_submit: true, //removes empty string properties from JSON before saving
 			allow_submit_with_errors: undefined, //allow submitting forms even if schema validation fails (see option wgMwJsonAllowSubmitInvalide)
 			lang: mw.config.get('wgUserLanguage'),
 			format: {}, // e.g. datetime format
@@ -935,6 +936,10 @@ mwjson.editor = class {
 		const promise = new Promise((resolve, reject) => {
 			this.getSyntaxErrors().then((errors) => {
 				if (!json) json = this.jsoneditor.getValue();
+				if (this.config.remove_empty_properties_on_submit) {
+					json = mwjson.util.removeEmpty(json);
+					this.jsoneditor.setValue(json);
+				}
 				const validation_errors = this.jsoneditor.validate();
 				if (errors.length || validation_errors.length) {
 					let msg = mw.message("mwjson-editor-fields-contain-error").text() + ":<br><ul>";
