@@ -23,6 +23,7 @@ mwjson.editor = class {
 			onchange: (json) => {},
 			onEditInline: null, //callback to edit a connected entity directly from the current entity edit form
 			onCreateInline: null, //callback to create a new connected entity directly from the current entity edit form
+			//onCopyInline: null, //callback to copy an existing entity directly to a new connected entity edit form
 			getSubjectId: (params) => { //callback to determine the currently edited subjects @id
 				//params.jsondata : Current json content of the editor
 				//params.editor : The mwjson editor instance
@@ -121,7 +122,8 @@ mwjson.editor = class {
 			disable_edit_json: true,
 			disable_properties: true,
 			use_default_values: true,
-			required_by_default: false, 
+			//remove_empty_properties: true,
+			required_by_default: false,
 			display_required_only: false,
 			show_opt_in: true,
 			show_errors: 'always',
@@ -132,6 +134,7 @@ mwjson.editor = class {
 			no_additional_properties: true,
 			case_sensitive_property_search: false,
 			form_name_root: this.jsonschema.getSchema().id,
+			//startval: ..., // this will prevent removing defaultProperties after the first edit, should be combined with remove_empty_properties / remove_false_properties 
 			//custom settings
 			user_language: this.config.lang,
 		};
@@ -139,9 +142,6 @@ mwjson.editor = class {
 		this.config.JSONEditorConfig.schema = this.jsonschema.getSchema(),
 		console.log(this.config.JSONEditorConfig);
 
-		//create editor
-		this.jsoneditor = new JSONEditor(this.container, this.config.JSONEditorConfig);
-		this.jsoneditor.mwjson_editor = this; //store back ref
 		if (this.config.multi) {
 			if (!mwjson.util.isArray(this.config.data)) this.config.data = [this.config.data];
 		}
@@ -155,7 +155,36 @@ mwjson.editor = class {
 			}
 			else this.config.data = mwjson.util.flatten(this.config.data, undefined, {array_index_notation: ".0", notation: "dot"});
 		}
+
+		if (this.config.data) {
+			// inject reverse properties
+			for (const [key, value] of Object.entries(this.jsonschema.required_reverse_property_values ? this.jsonschema.required_reverse_property_values : {})) 
+				this.config.data[key] = value;
+			for (const [key, value] of Object.entries(this.jsonschema.default_reverse_property_values ? this.jsonschema.default_reverse_property_values : {})) 
+				this.config.data[key] = value;
+
+			if (this.config.flatten) {
+				// flatten data if configured
+				// remove properties not in include_properties
+				this.config.org_data_flatten = mwjson.util.deepCopy(this.config.data);
+				if (this.config.multi)
+					for (let _data of this.config.data)
+					for (const p in _data)
+						if (this.config.include_properties && !this.config.include_properties.includes(p))
+							delete _data[p]
+				else
+					for (const p in this.config.data)
+						if (this.config.include_properties && !this.config.include_properties.includes(p))
+							delete _data[p]
+			}
+		}
+
+		//if (this.config.data) this.config.JSONEditorConfig.startval = this.config.data;
 		console.log(this.config.data);
+
+		//create editor
+		this.jsoneditor = new JSONEditor(this.container, this.config.JSONEditorConfig);
+		this.jsoneditor.mwjson_editor = this; //store back ref
 
 		// listen for loaded
 		this.jsoneditor.on('ready', () => {
@@ -163,10 +192,14 @@ mwjson.editor = class {
 			this.flags["change-after-load"] = true;
 			console.log(this.jsoneditor);
 			if (this.config.data) {
+				// this.config.data = mwjson.util.mergeDeep(this.jsoneditor.getValue(), this.config.data); //get empty defaultProperties from editor schema
+				// flat merge to skip array items
+				this.config.data = {...this.jsoneditor.getValue(), ...this.config.data};
+
 				// inject reverse properties
-				for (const [key, value] of Object.entries(this.jsonschema.required_reverse_property_values ? this.jsonschema.required_reverse_property_values : {})) 
+				for (const [key, value] of Object.entries(this.jsonschema.required_reverse_property_values ? this.jsonschema.required_reverse_property_values : {}))
 					this.config.data[key] = value;
-				for (const [key, value] of Object.entries(this.jsonschema.default_reverse_property_values ? this.jsonschema.default_reverse_property_values : {})) 
+				for (const [key, value] of Object.entries(this.jsonschema.default_reverse_property_values ? this.jsonschema.default_reverse_property_values : {}))
 					this.config.data[key] = value;
 
 				if (this.config.flatten) {
@@ -184,8 +217,8 @@ mwjson.editor = class {
 								delete _data[p];
 				}
 
-				this.flags["initial-data-load"] = true;
 				this.jsoneditor.setValue(this.config.data);
+				this.flags["initial-data-load"] = true;
 				if (this.config.copy) {
 					this.applyCopyIgnoreOption(this.jsoneditor.root);
 					this.config.data = this.jsoneditor.getValue();
@@ -283,14 +316,16 @@ mwjson.editor = class {
 						//field was not filled yet.
 						//user has entered a value in the field but did not select a result from the suggestion list
 						//reset the state of the input to empty
+						//console.log("user has entered a value in the field but did not select a result from the suggestion list")
 						subeditor.unhandled_input = false;
 						mwjson.util.setJsonEditorAutocompleteField(subeditor, null, null); // clear the field
-						//mwjson.util.setJsonEditorAutocompleteField(subeditor, input.value_id ? input.value_id : null, input.value_label ? input.value_label : null); // restore previous value
+						//mwjson.util.setJsonEditorAutocompleteField(s
 					}
 					else if (subeditor.unhandled_input && input.value === "") {
 						//field was already filled yet.
 						//user has removed the value from field so it's now empty
 						//reset the state of the input to empty
+						//console.log("user has removed the value from field so it's now empty")
 						subeditor.unhandled_input = false;
 						mwjson.util.setJsonEditorAutocompleteField(subeditor, null, null);
 					}
@@ -299,6 +334,35 @@ mwjson.editor = class {
 						labeled_inputs.push({editor: subeditor, input: input, value_id: input.value_id ? input.value_id : subeditor.value});
 						label_requests.push(input.value_id ? input.value_id : subeditor.value);
 					}
+
+					//guess mimetype
+					/*if (subeditor.schema?.links?.length && subeditor.value && subeditor.value !== "") {
+						var mediaType = subeditor.schema.links[0].mediaType || "image";
+						if (["mp4", "mov", "avi"].includes(subeditor.value.split(".").pop())) mediaType = "video";
+						console.log("Guess mediatype for ", subeditor.value);
+						if (subeditor.schema.links[0].mediaType !== mediaType) {
+							console.log("mediatype is ", subeditor.schema.links[0].mediaType, " but should be ", mediaType);
+							var tag_names = {image: "img", video: "video", audio: "audio"};
+
+							$form_group = $input.parent().parent();
+							var $media = $form_group.siblings().find(tag_names[subeditor.schema.links[0].mediaType]);
+							
+							if ($media.length) {
+								
+								var attrs = { };
+								$.each($media[0].attributes, function(idx, attr) {
+									attrs[attr.nodeName] = attr.nodeValue;
+								});
+								$media.replaceWith(function () {
+									return $("<" + tag_names[mediaType] + "/>", attrs).append($(this).contents());
+								});
+								subeditor.schema.links[0].mediaType = mediaType;
+							}
+							else console.log("media element not found");
+						}
+						//subeditor.onChange(true);
+
+					}*/
 
 					var categories = subeditor.schema?.range;
 					if (!categories) categories = subeditor.schema?.options?.autocomplete?.category; //legacy
@@ -311,18 +375,34 @@ mwjson.editor = class {
 						// in order to add a button beside the autocomplete input field we have to rearrange the elements
 						var $autocomplete_div = $input.parent();
 						var $form_group = $input.parent().parent();
-						var $form_group_label = $input.parent().parent().find("label");
+						var $form_group_label = $form_group.find("label");
+						var $form_group_parent = $form_group.parent();
 						var $container = $(`<div style="display: flex;"></div>`);
 						var $create_inline_button = $(`<div class="col-md-4">
 							<button type="button" class="inline-clear-btn btn btn-secondary"></button>
 							<button type="button" class="inline-edit-btn btn btn-primary"></button>
 							<button type="button" class="inline-clone-btn btn btn-primary"></button>
 						</div>`);
-						if ($form_group_label.length) {
-							$container.insertAfter($form_group_label); // normal layout
+
+						// check if form group parent is a table (table layout) or a div (normal layout)
+						if ($form_group_parent.is("td")) {
+							// table layout
+							$form_group.append($container);
+							$autocomplete_div.addClass("col-md-10");
+						} else {
+							// normal layout
+							$container.insertAfter($form_group_label);
 							$autocomplete_div.addClass("col-md-8");
 						}
-						else $form_group.append($container); // table layout
+
+						// if ($form_group_label.length) {
+						// 	$container.insertAfter($form_group_label); // normal layout
+						// 	$autocomplete_div.addClass("col-md-8");
+						// }
+						// else {
+						// 	$form_group.append($container); // table layout
+						// 	$autocomplete_div.addClass("col-md-8");
+						// }
 						$container.append($autocomplete_div.detach());
 						$container.append($create_inline_button);
 
@@ -436,8 +516,10 @@ mwjson.editor = class {
 						console.log("Create VisualEditor for ", input);
 						$input.attr('type', 'textarea');
 						$input.addClass('toolbarOnTop');
+						console.log($.fn.applyVisualEditor)
 						if ( $.fn.applyVisualEditor ) subeditor.visualEditor = $input.applyVisualEditor();
 						else $(document).on('VEForAllLoaded', function(e) { 
+							console.log("VEForAllLoaded")
 							subeditor.visualEditor = $input.applyVisualEditor(); 
 						});
 						//$('.ve-ui-surface-visual').addClass('form-control');
@@ -516,6 +598,7 @@ mwjson.editor = class {
 
 			//fetch labels
 			if (label_requests.length) mwjson.api.getLabels(label_requests, this.jsoneditor.options.user_language).then((label_dict) => {
+				//console.log("Set labels ", label_dict)
 				for (const labeled_input of labeled_inputs) {
 					if (label_dict[labeled_input.value_id] && label_dict[labeled_input.value_id] !== "") {
 						// only set label if display title was found
@@ -584,6 +667,10 @@ mwjson.editor = class {
 			// not implemented (yet) by json-editor
 			//console.log('copyRow', value);
 		});
+
+		/*this.jsoneditor.validator.prototype._validateDateTimeSubSchema = function(schema, value, path, editor) {
+			return [];
+		}*/
 	}
 
 	// remove properties named in options.copy_ignore but keep empty values for required and defaultProperties
@@ -935,12 +1022,12 @@ mwjson.editor = class {
 		document.activeElement.blur(); //ensure input is defocused to update final jsondata
 		const promise = new Promise((resolve, reject) => {
 			this.getSyntaxErrors().then((errors) => {
-				if (!json) json = this.jsoneditor.getValue();
 				if (this.config.remove_empty_properties_on_submit) {
 					json = mwjson.util.removeEmpty(json);
 					this.jsoneditor.setValue(json);
 				}
 				const validation_errors = this.jsoneditor.validate();
+				//console.log(validation_errors);
 				if (errors.length || validation_errors.length) {
 					let msg = mw.message("mwjson-editor-fields-contain-error").text() + ":<br><ul>";
 					for (const err of validation_errors) {
@@ -1156,6 +1243,7 @@ mwjson.editor = class {
 			"search": "search_smw",
 			"getResultValue": "getResultValue_smw",
 			"renderResult": "renderResult_smw",
+			"onUpdate": "onUpdate_smw",
 			"onSubmit": "onSubmit_smw",
 			"autoSelect": "true",
 			"debounceTime": 200
@@ -1186,6 +1274,22 @@ mwjson.editor = class {
 			upload_handler: "fileUpload", // function, Callback function for handling uploads to server 	
 			icon: "upload", // undocumented, but missing if not set
 		};
+
+		// Custom validators must return an array of errors or an empty array if valid
+		/*window.JSONEditor.defaults.custom_validators.push((schema, value, path) => {
+			const errors = [];
+			if (schema.format==="datetime-local") {
+			if (!/(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))/.test(value)) {
+				// Errors must be an object with `path`, `property`, and `message`
+				errors.push({
+				path: path,
+				property: 'format',
+				message: 'Dates must be in the format "XXYYYY-MM-DD". Value: ' + value
+				});
+			}
+			}
+			return errors;
+		});*/
 	}
 
 	static setCallbacks() {
@@ -1196,6 +1300,27 @@ mwjson.editor = class {
 				return t.toISOString().split('T')[0] + 'T00:00';
 			},
 			"template": {
+				'__now': (jseditor_editor, e) => {
+					console.log("Set NOW")
+					jseditor_editor.always_disabled = false
+					jseditor_editor.enable()
+					console.log(jseditor_editor)
+					var t = new Date()
+					t.setDate(t.getDate())
+					return "2017-03-04T01:23:43.000Z"
+					//return t.toISOString().split('T')[0] + 'T00:00'
+				},
+				"__uuid": (jseditor_editor, watched_values) => {
+					//return "test";//mwjson.util.uuidv4();
+					/*return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+					(c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+					);*/
+					setTimeout(() => {
+						var resultVal = crypto.randomUUID();
+						jseditor_editor.setValue(resultVal)
+					  }, 100)
+					return "";//crypto.randomUUID();
+				},
 				"dynamic_template": (jseditor_editor, watched_values) => {
 					return jseditor_editor.jsoneditor.mwjson_editor.formatDynamicTemplate(jseditor_editor, watched_values);
 				},
@@ -1246,6 +1371,10 @@ mwjson.editor = class {
 				// the SMW query API.
 				search_smw: (jseditor_editor, input) => {
 					jseditor_editor.unhandled_input = true; // mark started user input
+					if (jseditor_editor.autocomplete_noresult) {
+						jseditor_editor.autocomplete_noresult.style.display = "none";
+					}
+
 					if (jseditor_editor.watched_values) console.log("Watched: " + jseditor_editor.watched_values);
 					var query = mwjson.schema.getAutocompleteQuery(jseditor_editor.schema, input);
 					
@@ -1255,6 +1384,20 @@ mwjson.editor = class {
 						}
 						if (jseditor_editor.watched_values[key] === undefined) query = query.replace('$(' + key + ')', encodeURIComponent('+'));
 						query = query.replaceAll('$(' + key + ')', jseditor_editor.watched_values[key]);
+					}
+
+					// note: this may fail if $smwgQMaxSize is to low,
+					// e.g. 5 SubcategoryOf-Levels with 2 tokens are 5*3 = 15 query conditions
+					console.log('{{{_user_input_normalized_tokenized}}}' )
+					if ( query.includes( '{{{_user_input_normalized_tokenized}}}' ) ) {
+						query = query.replace(
+							/(\[\[[\s]*[^\s\[]+[\s]*::[^\[]*){{{_user_input_normalized_tokenized}}}([^\]]*\]\])/gm,
+							( match, pre, post ) => {
+								let res = '';
+								for ( const token of input.split( ' ' ) ) { if ( token !== '' ) { res += pre + token.toLowerCase().replace( /[^0-9a-z]/gi, '' ) + post; } }
+								return res;
+							}
+						);
 					}
 
 					//create a copy here since we add addition properties
@@ -1274,13 +1417,14 @@ mwjson.editor = class {
 						let uuidQuery = "";
 						for (const match of matches) uuidQuery += "[[HasUuid::" + match.replace(uuid_regex, `$1-$3-$5-$7-$9`) + "]]OR";
 						uuidQuery = uuidQuery.replace(/OR+$/, ''); // trim last 'OR'
-						query = query.replace(query.split('|')[0], uuidQuery); // replace filter ([[...]]) before print statements (|?...)
+						query = query.replace(query.split('|')[0].split(';')[0], uuidQuery); // replace filter ([[...]]) before print statements (|?...)
 					}
 
 					var result_property = mwjson.schema.getAutocompleteResultProperty(jseditor_editor.schema);
 					//console.log("Search with schema: " + query);
-					var url = mw.config.get("wgScriptPath") + `/api.php?action=ask&query=${query}`;
-					if (!url.includes("|limit=")) url += "|limit=100";
+					//var url = mw.config.get("wgScriptPath") + `/api.php?action=ask&query=${query}`;
+					var url = mw.config.get("wgScriptPath") + `/api.php?action=compoundquery&query=${query}`;
+					//if (!url.includes("|limit=")) url += "|limit=100";
 					url += "&format=json";
 
 					return new Promise(resolve => {
@@ -1399,6 +1543,32 @@ mwjson.editor = class {
 								jseditor_editor.jsoneditor.editors[target_editor].setValue(value);
 							}
 						}
+					}
+				},
+				onUpdate_smw: (jseditor_editor, results, selectedIndex) => {
+					return;
+					//console.log("onUpdate results: ", results.length, " selected: ", selectedIndex, jseditor_editor);
+					if (results.length === 0 && selectedIndex === -1) {
+						// see https://github.com/trevoreyre/autocomplete/issues/93
+						if (!jseditor_editor.autocomplete_noresult) {
+							let noresult = document.createElement("ul");
+							noresult.classList.add("autocomplete-result-list");
+							noresult.style.display = "block";
+							let noresult_entry = document.createElement("li");
+							noresult_entry.classList.add("autocomplete-result");
+							noresult_entry.textContent = mw.message("mwjson-editor-no-result").text();
+							noresult.appendChild(noresult_entry);
+							if (jseditor_editor.autocomplete_wrapper) jseditor_editor.autocomplete_wrapper.append(noresult);
+							jseditor_editor.autocomplete_noresult = noresult;
+							jseditor_editor.input.addEventListener("blur", () => {
+								console.log("blur")
+								jseditor_editor.autocomplete_noresult.style.display = "none";
+							});
+						}
+						jseditor_editor.autocomplete_noresult.style.display = "block";
+					}
+					else if (jseditor_editor.autocomplete_noresult) {
+						jseditor_editor.autocomplete_noresult.style.display = "none";
 					}
 				},
 			},

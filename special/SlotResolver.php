@@ -9,6 +9,7 @@
 use SpecialPage;
 use WSSlots\WSSlots;
 use WikiPage;
+use \MediaWiki\MediaWikiServices;
 
 class SpecialSlotResolver extends SpecialPage {
 	public function __construct() {
@@ -28,21 +29,29 @@ class SpecialSlotResolver extends SpecialPage {
         //<repo>/<package-id>/<version>/<path>/<file>
         //https://raw.githubusercontent.com/OpenSemanticWorld-Packages/world.opensemantic.core/0599a766decf07d9cdc4a338cb37d0614ae7f447/core/Category/AnnotationProperty.slot_jsonschema.json
 
-        $parts = explode("/", $par);
-        $file = array_pop($parts);
-        $ns = array_pop($parts);
-        $fileParts =  explode(".", $file);
-        $extension = array_pop($fileParts);
-        $slot = str_replace("slot_", "", array_pop($fileParts));
-        $page = $ns . ":" . implode(".", $fileParts);
+        $parts = explode("/", $par); // ["Category", "AnnotationProperty.slot_jsonschema.json"]
+        $file = array_pop($parts); // "AnnotationProperty.slot_jsonschema.json"
+        $ns = array_pop($parts); // "Category"
+        $fileParts =  explode(".", $file); // ["AnnotationProperty", "slot_jsonschema", "json"]
+        $extension = array_pop($fileParts); // "json"
+        $slot = str_replace("slot_", "", array_pop($fileParts)); // "jsonschema"
+        $page = $ns . ":" . implode(".", $fileParts); // "AnnotationProperty"
 
 		$redirect_url = "";
 		$msg = "";
         $content = "";
 
+        if ( $slot === "bundle" ) {
+            $cache = MediaWikiServices::getInstance()->getMainObjectStash();
+            $cacheKey = $cache->makeKey( 'LuaCache', implode(".", $fileParts) . ".header.schema" );
+            $msg .= $cacheKey;
+            $content = $cache->get( $cacheKey );    
+        }
+        else {
         //create a WikiPage object from the title string
         $wikiPage = new WikiPage(Title::newFromText($page));
         $content = WSSlots::getSlotContent( $wikiPage, $slot )->getText();
+        }
 
 		if ( $redirect_url != "") {
             $out = $this->getOutput();
@@ -57,7 +66,7 @@ class SpecialSlotResolver extends SpecialPage {
                 header('Content-Type: application/json; charset=UTF-8');
             }
             echo($content);
-            exit;
+            //exit;
         }
 		else {
             // print result

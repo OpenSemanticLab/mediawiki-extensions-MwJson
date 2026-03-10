@@ -171,7 +171,10 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
             id: "confirmClose", title: msg, description: "", body: "",
             size: "md", class: "modal-warning",
             buttons: [
-                {label: msg_confirm, class: "btn btn-secondary", closing: true, onclick: () => {dataEditor_modal.hide();}},
+                {label: msg_confirm, class: "btn btn-secondary", closing: true, onclick: () => {
+                    dataEditor_modal.hide();
+                    //dataEditor_modal.dispose();
+                }},
                 {label: msg_reject, closing: true}
             ]
 
@@ -227,8 +230,10 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
                 if (editor.config.mode !== "query" && _config.edit_comment) 
                     meta.comment = document.getElementById(`${editor.config.id}_edit-comment-input`).value;
                 editor._onsubmit({meta:meta})
-                    .then(() => dataEditor_modal.hide())
-                    .catch();
+                    .then(() => {
+                        dataEditor_modal.hide();
+                        //dataEditor_modal.dispose();
+                    }).catch();
             }}
         ]
 
@@ -251,7 +256,7 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
     
 };
 
-mwjson.editor.prototype.createPopupDialog_old = function (_config) {
+mwjson.editor.prototype.createPopupDialog2 = function (_config) {
     _config = _config || {};
     var editor = this;
     var defaultConfig = {
@@ -472,16 +477,7 @@ mwjson.editor.createAutocompleteInput = function (config) {
             else return result.fulltext.split(":")[result.fulltext.split(":").length - 1].toLowerCase().includes(input.toLowerCase());
         },
         renderMode: "html",
-        renderResult: (result, props) => `
-			<li ${props}>
-				<div class="wiki-title">
-					${result.printouts['HasDisplayName'][0]} (${result.fulltext})
-				</div>
-			</li>
-			<div class="wiki-snippet">
-			${result.printouts['HasDescription'][0]}
-			</div>
-			`,
+        renderResult: (result, props) => Handlebars.compile(mwjson.schema.getAutocompletePreviewTemplate({}).value)({ result: result }),
         getResultValue: result => {
             if (result.printouts['HasDisplayName'][0]) return result.printouts['HasDisplayName'][0];
             else return result.fulltext.split(":")[result.fulltext.split(":").length - 1];

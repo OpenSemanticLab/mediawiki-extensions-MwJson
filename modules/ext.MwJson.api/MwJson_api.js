@@ -91,6 +91,7 @@ mwjson.api = class {
 						//page.schema.properties[slot_key] = { "type": "string", "format": "json" }; //Todo: Fetch schema from categories
 						page.schema.properties[slot_key] = { "type": "string", "format": "textarea", "options": { "wikieditor": "jsoneditors" } };
 						//page.schema.properties[slot_key] = { "$ref": mw.util.getUrl( "MediaWiki:Slot-jsonschema-jsondata.json", {"action": "raw"} ) };
+						//if (page.slots[slot_key]["name"]) page.schema.title = page.slots[slot_key]["name"]; //json string not parsed yet
 					}
 					else if (slot_key == 'jsonschema') {
 						page.slots[slot_key] = slot["*"];
@@ -422,12 +423,18 @@ mwjson.api = class {
 						mwjson.api.uploadFile(page.file.contentBlob, page.file.name, summary).then((data) => {
 							page.file.changed = false;
 							page.file.exists = true;
-							deferred.resolve(page);
+							//mwjson.api.purgePage(page.title);
+							//deferred.resolve(page);
+							mwjson.api.purgePage(page.title).then(()=> deferred.resolve(page));
 						}, (error) => {
 							deferred.reject(error);
 						});
 					}
-					else deferred.resolve(page);
+					else {
+						//mwjson.api.purgePage(page.title);
+						//deferred.resolve(page);
+						mwjson.api.purgePage(page.title).then(()=> deferred.resolve(page));
+					}
 				}, (error) => {
 					deferred.reject(error);
 				});
@@ -442,12 +449,18 @@ mwjson.api = class {
 					mwjson.api.uploadFile(page.file.contentBlob, page.file.name, summary).then((data) => {
 						page.file.changed = false;
 						page.file.exists = true;
-						deferred.resolve(page);
+						//mwjson.api.purgePage(page.title);
+						mwjson.api.purgePage(page.title).then(()=> deferred.resolve(page));
+						//deferred.resolve(page);
 					}, (error) => {
 						deferred.reject(error);
 					});
 				}
-				else deferred.resolve(page);
+				else {
+					//mwjson.api.purgePage(page.title);
+					mwjson.api.purgePage(page.title).then(()=> deferred.resolve(page));
+					//deferred.resolve(page);
+				}
 			}, (error) => {
 				deferred.reject(error);
 			});
@@ -727,6 +740,7 @@ mwjson.api = class {
 			text: params.text,
 			contentmodel: 'wikitext',
 			format: 'json',
+			// useskin: 'vector' does not load properly
 		}).done(function (data) {
 
 
@@ -764,6 +778,9 @@ mwjson.api = class {
 				//$('body', $header).html($(data.parse.text['*']));
 				console.log(htmlDoc);
 				if (params.copy_parent_frame_style) $('head', htmlDoc).append($('head').children('style').clone());
+				//let module_list_str = "['" + data.parse.modules.join("', '") + "']";
+				// does not work (mw.loader.using is not a function)
+				//$('head', htmlDoc).append($('<script>console.log("HELLO FROM THE IFRAME");window.onload = function () { mw.loader.using(' + module_list_str + '); }</script>')); 
 				//$('head', $header).append($(data.parse.headhtml['*']).children());
 				//$('head', htmlDoc).append($('<script>mw.loader.using("ext.smw.style", "ext.smw.tooltips", "ext.srf.datatables");</script>'));
 				console.log(htmlDoc.documentElement.innerHTML);

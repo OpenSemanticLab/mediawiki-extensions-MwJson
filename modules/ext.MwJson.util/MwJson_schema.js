@@ -238,9 +238,18 @@ mwjson.schema = class {
             }
         }
 
+        // make string literal arrays compact
+        if (schema.type === "array" && schema.items?.type === "string") {// && !schema.items.options?.upload) {
+            schema.format = schema.format ? schema.format : "table";
+            var isFileUpload = false;
+            if (schema.items.options?.upload) //&& schema.format === "url") 
+                isFileUpload = true;
+            schema.items.options = mwjson.util.mergeDeep(schema.items.options, {"compact": true}); // to not display titles on items
+            if (isFileUpload && !schema.items.options["upload"]) schema.items.options["upload"] = {}; //empty object will be striped by merge
+        }
+
         // handle string literal arrays
         if (schema.type === "array" && schema.format === "table" && schema.items?.type === "string") {
-            //schema.options = mwjson.util.mergeDeep(schema.options, {"compact": true, "array_controls_top": false}); // display only item title
             schema.items.title = schema.items.title ? schema.items.title : schema.title; // use parent title if not set 
         }
 
@@ -845,7 +854,8 @@ mwjson.schema = class {
         }
 
         // ToDo: move to jsoneditor options
-        const defaultFilter = "[[HasNormalizedLabel::like:*{{{_user_input_normalized_tokenized}}}*]]";
+        const defaultFilter = "[[HasNormalizedLabel::~*{{{_user_input_normalized_tokenized}}}*]]";
+        const defaultFilterExact = "[[HasNormalizedLabel::{{{_user_input_normalized}}}]]" // ;?HasLabel=displaytitle;?HasType.Display_title_of=type;?HasImage=thumbnail;?HasDescription=desc;limit=1|[[HasNormalizedLabel::~*{{{_user_input_normalized_tokenized}}}*]];?HasLabel=displaytitle;?Category.Display_title_of=type;?HasImage=thumbnail;?HasDescription=desc;limit=7";
         const defaultProperties = {
             "label": "HasLabel",
             "image": "HasImage",
@@ -880,6 +890,9 @@ mwjson.schema = class {
         else if (subschema.options?.autocomplete?.category) {
             res += "[[" + subschema.options.autocomplete.category + "]]";
         }
+        else if (subschema.options?.autocomplete?.subcategory) {
+            res += "[[-HasType::<q>[[" + subschema.options.autocomplete.subcategory + "]]</q>]]";
+        }
         else if (subschema.options?.autocomplete?.property) res += "[[" + subschema.options.autocomplete.property + ":+]]";
 
         if (!res.includes("_user_input")) res = res.replace(/(?<!\|)\|(?!\|)/, defaultFilter + "|"); // inject before first property selector or param (match the first non-doubled '|') [[A]]|?... => [[A]][[...like...]]|?...
@@ -894,6 +907,11 @@ mwjson.schema = class {
         }
 
         if (res === "") res = defaultFilter;
+        // add compound query exact match condition
+        res = res.replaceAll("|", ";")
+        let res_exact_match = res.replaceAll(defaultFilter, defaultFilterExact);//.replace("|limit=10", "|limit=1")
+        res = res_exact_match + "|" + res;
+
         return res;
     }
     static getAutocompletePreviewTemplate(subschema) {

@@ -18,18 +18,43 @@ mwjson.extData = class {
         return value;
     }
 
+    static handleMapValue(value, data, mode) {
+        var result = null;
+        if (value.startsWith("$")) {
+            var result = mwjson.extData.getValue(data, value, mode);
+            if (mwjson.util.isArray(result)) result = mwjson.util.uniqueArray(result);
+        }
+        else {
+            const template = Handlebars.compile(value);
+            result = template(data)
+            try {
+                result = JSON.parse(result);
+            } catch (e) {
+            }
+        }
+        return result;
+    }
+
     static mapObjectMap(obj, map, data, mode) {
         for (const [k, v] of Object.entries(map)) {
             if (mwjson.util.isString(v)) {
-                var value = mwjson.extData.getValue(data, v, mode);
-                if (mwjson.util.isArray(value)) value = mwjson.util.uniqueArray(value);
-                obj[k] = value;
+                //var value = mwjson.extData.getValue(data, v, mode);
+                //if (mwjson.util.isArray(value)) value = mwjson.util.uniqueArray(value);
+                obj[k] = mwjson.extData.handleMapValue(v, data, mode);
             }
+            /*else if (mwjson.util.isArray(v)) {
+                var value = null
+                for (const map_value of v) {
+                    value = handleMapArray(value, data, mode)
+                }
+
+                obj[k] = value;
+            }*/
             else if (mwjson.util.isObject(v)) {
                 obj[k] = {};
                 mwjson.extData.mapObjectMap(obj[k], v, data, mode);
             }
-            else console.log("invalide map entry: ", v);
+            else obj[k] = v;//console.log("invalide map entry: ", v)
         }
     }
 
@@ -178,6 +203,10 @@ mwjson.extData = class {
             body: JSON.stringify({ promt: promt, jsonschema: jsonschema, files: fileDataUrls })
         });
         let data = await res.json();
+        if (!data.ok) {
+            console.error(data.error_msg);
+            return;
+        }
 
         // this will create subeditors for all suppied data
         editor.jsoneditor.setValue(data.result);

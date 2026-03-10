@@ -259,6 +259,37 @@ mwjson.util = class {
 		};
 
 	}
+
+	// https://stackoverflow.com/questions/286141/remove-blank-attributes-from-an-object-in-javascript
+	// https://github.com/json-editor/json-editor/blob/4debf05552e2eb2a4693980b0b1d41b81c758569/src/editors/object.js#L1136-L1156
+	static removeEmpty(v, options = {empty_strings: true}) {
+
+		let result = null
+		if (mwjson.util.isArray(v)) {
+			for (let i of v) {
+				i = mwjson.util.removeEmpty(i);
+				if (mwjson.util.isDefined(i)) {
+					if (mwjson.util.isUndefined(result)) result = []
+					result.push(i)
+				}
+			}
+		}
+		else if (mwjson.util.isObject(v)) {
+			Object.entries(v).forEach(([k, i]) => {
+				i = mwjson.util.removeEmpty(i);
+				if (mwjson.util.isDefined(i)) {
+					if (mwjson.util.isUndefined(result)) result = {}
+					result[k] = i
+				}
+			});
+		}
+		else {
+			result = v
+			if (options.empty_strings && result === "") result = null
+		}
+		return result
+	}
+
 	// creates a flat dict from a nested object
 	// notation: dot => store.book[0].title
 	// notation: bracket => ['store']['book'][0]['title']

@@ -190,6 +190,10 @@ button.json-editor-btn-edit_properties::after {
     overflow-x: unset;
 }
 
+.je-ready table {
+    display: table;
+}
+
 /* Extensions */
 
 /* xxl modal - leave a 5% border (!=fullsreen) to inducate it's still a popup */
