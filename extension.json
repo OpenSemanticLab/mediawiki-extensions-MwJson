@@ -92,6 +92,7 @@
             "styles":[
                 "autocomplete.min.css",
                 "flatpickr.min.css",
+                "select2.min.css",
                 "json-editor.css",
                 "jsoneditor.css"
             ],
@@ -101,6 +102,7 @@
                 "imask.min.js",
                 "signature_pad.umd.min.js",
                 "flatpickr.min.js",
+                "select2.min.js",
                 "json-editor.min.js",
                 "jsoneditor.min.js",
                 "MwJson_editor.js",

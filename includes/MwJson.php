@@ -20,6 +20,71 @@ class MwJson {
 		$vars['wgMwJsonAiCompletionApiUrl'] = $config->get( 'MwJsonAiCompletionApiUrl' );
 	}
 
+	/**
+	 * Defines the roles for the given SlotRoleRegistry.
+	 *
+	 * @param SlotRoleRegistry $registry The registry to define the meta-data role for
+	 * @return void
+	 */
+	public static function defineRoles( SlotRoleRegistry $registry ) {
+
+		// matches $wgWSSlotsDefaultSlotRoleLayout
+		$defaultSlotRoleLayout = [ 
+			"display" => "none",
+			"region" => "center",
+			"placement" => "append"
+		];
+
+		// matches $wgWSSlotsDefaultContentModel
+		$defaultContentModel = "wikitext";
+
+		// matches $wgWSSlotsDefinedSlots
+		$definedSlots = [
+			"jsonschema"      => ["content_model" => "json", "slot_role_layout" => [ "region" => "footer", "display" => "details"]],
+			"jsondata"        => ["content_model" => "json", "slot_role_layout" => [ "region" => "footer", "display" => "details"]],
+			"schema_template" => ["content_model" => "text", "slot_role_layout" => [ "display" => "none"]],
+			"data_template"   => ["content_model" => "wikitext", "slot_role_layout" => [ "display" => "none"]],
+			"header_template" => ["content_model" => "wikitext", "slot_role_layout" => [ "display" => "none"]],
+			"footer_template" => ["content_model" => "wikitext", "slot_role_layout" => [ "display" => "none"]],
+			"header" => [
+				"content_model" => "wikitext",
+				"slot_role_layout" => [
+					"display" => "plain",
+					"region" => "header",
+					"placement" => "prepend"
+				]
+			],
+			"footer" => [
+				"content_model" => "wikitext",
+				"slot_role_layout" => [
+					"display" => "plain",
+					"region" => "footer",
+					"placement" => "prepend"
+				]
+			],
+		];
+
+		foreach ( $definedSlots as $key => $value ) {
+			if ( is_string( $key ) && is_array( $value ) && $value !== [] ) {
+				$slotName = $key;
+				$slotSettings = $value;
+			} elseif ( is_int( $key ) && is_string( $value ) ) {
+				$slotName = $value;
+				$slotSettings = [];
+			} else {
+				// This slot definition is invalid
+				continue;
+			}
+
+			$slotSettings["content_model"] = $slotSettings["content_model"] ?? $defaultContentModel;
+			$slotSettings["slot_role_layout"] = $slotSettings["slot_role_layout"] ?? $defaultSlotRoleLayout;
+
+			if ( !$registry->isDefinedRole( $slotName ) ) {
+				$registry->defineRoleWithModel( $slotName, $slotSettings["content_model"], $slotSettings["slot_role_layout"] );
+			}
+		}
+	}
+
 	public static function onOutputPageParserOutput($out, $parserOutput) {
 		if ( version_compare( MW_VERSION, '1.43', '<' ) ) {
 			return MwJson::transformSlotRenderResults($out, $parserOutput);
