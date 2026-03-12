@@ -5075,7 +5075,7 @@ __webpack_require__.r(__webpack_exports__);
     /**
      * HTTP request timeout (in milliseconds).
      */
-    timeout: 60_000, // 60 seconds
+    timeout: 60000, // 60 seconds
     /**
      * The maximum number of HTTP redirects to follow.
      * To disable automatic following of redirects, set this to zero.
