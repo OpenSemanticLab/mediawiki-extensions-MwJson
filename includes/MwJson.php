@@ -28,7 +28,6 @@ class MwJson {
 
 	protected static function transformSlotRenderResults($out, $parserOutput = null)
 	{
-		//return;
 		$config = MediaWikiServices::getInstance()->getMainConfig();
 		$settings = $config->get( 'MwJsonSlotRenderResultTransformation' );
 		if ( $settings["enabled"] === null ) {
@@ -38,9 +37,8 @@ class MwJson {
 		if (!$settings["enabled"]) return;
 
 		// Skip e.g. pages in NS Special
-		if ( !$out->getTitle()->isContentPage() ) return; 
+		if ( !$out->getTitle()->isContentPage() ) return;
 
-		//$wgHooks['BeforePageDisplay'][] = function ( $out, $skin ) {
 		if ( $parserOutput !== null ) {
 			// MW < 1.43: get HTML from parser output (OutputPageParserOutput hook)
 			$html = $parserOutput->getText();
@@ -54,12 +52,15 @@ class MwJson {
 		// Ensure the HTML is properly encoded in UTF-8
 		$html = mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8');
 
-		// Note: this manipulation interactes with Skin:Citizen if wgCitizenEnableCollapsibleSections is true
-		// The behavior of those section is correct but the elements are located in the wrong wrapper
-		// which is not a major as long as those wrappers are not visible
+		// Note: this manipulation interacts with Skin:Citizen if wgCitizenEnableCollapsibleSections is true
+		// The behavior of those sections is correct but the elements are located in the wrong wrapper
+		// which is not a major issue as long as those wrappers are not visible
 		$wrap = $settings["wrap"];
 
-		// Use DOMDocument to parse the HTML
+		// Wrap in temporary root to prevent DOMDocument::loadHTML with LIBXML_HTML_NOIMPLIED
+		// from merging sibling root elements (e.g. SMW warning divs before .mw-parser-output)
+		$html = '<div id="mwjson-tmp-root">' . $html . '</div>';
+
 		$dom = new DOMDocument('1.0', 'UTF-8');
 		@$dom->loadHTML($html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
 
@@ -168,13 +169,24 @@ class MwJson {
 			}
 		}
 
+		// Unwrap temporary root element
+		$tmpRoot = $dom->getElementById('mwjson-tmp-root');
+		$savedHtml = '';
+		if ($tmpRoot) {
+			foreach ($tmpRoot->childNodes as $child) {
+				$savedHtml .= $dom->saveHTML($child);
+			}
+		} else {
+			$savedHtml = $dom->saveHTML();
+		}
+
 		if ( $parserOutput !== null ) {
 			// MW < 1.43: save back to parser output
-			$parserOutput->setText($dom->saveHTML());
+			$parserOutput->setText($savedHtml);
 		} else {
 			// MW >= 1.43: save back to output page
 			$out->clearHtml();
-			$out->addHtml( $dom->saveHTML() );
+			$out->addHtml( $savedHtml );
 		}
 
 		// e.g. Skin:Citizen does wrap the toc => hide it in the main content section
