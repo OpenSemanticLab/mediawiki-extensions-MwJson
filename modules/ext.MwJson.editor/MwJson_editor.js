@@ -598,11 +598,11 @@ mwjson.editor = class {
 			if (Object.hasOwn(value, p)) {
 				if (value[p] && typeof value[p] === 'string') default_value = "";
 				//if (value[p]) keep ? value[p] = default_value : delete value[p];
-				if (value[p] && keep) { 
-					//console.log("default", default_value); 
+				if (value[p] && keep) {
+					//console.log("default", default_value);
 					value[p] = default_value; }
-				if (value[p] && !keep) { 
-					//console.log("delete"); 
+				if (value[p] && !keep) {
+					//console.log("delete");
 					delete value[p]; }
 				//console.log("Remove", p, keep, "=>", value);
 				changed = true;
@@ -611,6 +611,19 @@ mwjson.editor = class {
 		}
 		//console.log(JSON.stringify(value));
 		if (changed) editor.setValue(value);
+
+		// Recurse into child editors (objects and array items)
+		if (editor.editors) {
+			for (const key of Object.keys(editor.editors)) {
+				this.applyCopyIgnoreOption(editor.editors[key]);
+			}
+		}
+		// For array editors, also recurse into rows
+		if (editor.rows) {
+			for (const row of editor.rows) {
+				if (row) this.applyCopyIgnoreOption(row);
+			}
+		}
 	}
 
 	updateSubjectId() {
