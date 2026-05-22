@@ -5121,7 +5121,12 @@ async function download(u, httpOptions, _redirects) {
     redirects.push(u.href);
     try {
         const res = await get(u, httpOptions);
-        if (res.status >= 400) {
+        if (res.status === 404) {
+            // Return empty schema for missing $ref targets (e.g. Property page without jsonschema slot)
+            console.warn("json-schema-ref-parser: 404 for " + u.href + ", returning empty schema");
+            return Buffer.from("{}");
+        }
+        else if (res.status >= 400) {
             const error = new Error(`HTTP ERROR ${res.status}`);
             error.status = res.status;
             throw error;

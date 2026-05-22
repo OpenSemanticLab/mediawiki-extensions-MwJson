@@ -61,7 +61,11 @@ mwjson.schema = class {
         this.resolver = {
             order: 1,
             canRead: regex,
-            read: (file, callback, $refs) => {
+            // Return a Promise instead of using callbacks
+            // $RefParser handles Promise-based resolvers natively and waits for resolution
+            // before falling through to the next plugin. Callback-based resolvers with async
+            // fetch can cause the library to move to the next plugin prematurely.
+            read: (file) => {
                 let url = file.url;
                 //console.log("Fetch: ", url);
                 let query = new mw.Uri(file.url).query;
@@ -79,20 +83,24 @@ mwjson.schema = class {
                 }
                 if (this.config.use_cache && title) {
                     //console.log("Fetch from cache: ", match.groups.title);
-                    this.cache.get(title).then((item) => callback(null, item.value ? item.value : "{}"));
+                    return this.cache.get(title).then((item) => item.value ? item.value : "{}");
                 }
-                else fetch(url)
+                return fetch(url)
                     .then(response => {
                         if (!response.ok) {
-                            callback(new Error("HTTP error " + response.status));
+                            // Return empty schema for missing $ref targets (e.g. Property without jsonschema slot)
+                            console.warn("MwJson schema resolver: HTTP " + response.status + " for " + url + ", returning empty schema");
+                            return "{}";
                         }
-                        else {
-                            return response.text();
-                        }
+                        return response.text();
                     })
                     .then(text => {
                         if (!text || text === "") text = "{}"; // fallback to empty schema
-                        callback(null, text);
+                        return text;
+                    })
+                    .catch(err => {
+                        console.warn("MwJson schema resolver: fetch failed for " + url + ", returning empty schema", err);
+                        return "{}";
                     });
             }
         };
