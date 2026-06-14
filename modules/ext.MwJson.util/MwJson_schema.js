@@ -890,9 +890,22 @@ mwjson.schema = class {
         }
         else if (subschema.options?.autocomplete?.property) res += "[[" + subschema.options.autocomplete.property + ":+]]";
 
-        if (!res.includes("_user_input")) res = res.replace(/(?<!\|)\|(?!\|)/, defaultFilter + "|"); // inject before first property selector or param (match the first non-doubled '|') [[A]]|?... => [[A]][[...like...]]|?...
-        if (!res.includes("_user_input")) res += defaultFilter; // no property selector or param found: just append it
-        res = res.replaceAll(/\]\s*OR\s*\[/g, "]"+defaultFilter + "OR["); // inject on every OR condition: [[A]]OR[[B]][[...like...]]=>[[A]][[...like...]]OR[[B]][[...like...]]
+        // Capture the author-supplied _user_input state ONCE before any auto-injection.
+        // defaultFilter itself contains "_user_input_normalized_tokenized", so a per-step
+        // res.includes("_user_input") check would treat #1's injection as "author supplied"
+        // and incorrectly skip the OR-clause injection (#3) - leaving only the last clause
+        // filtered and silently dropping subobjects from earlier clauses.
+        // See https://github.com/OpenSemanticLab/mediawiki-extensions-MwJson/issues/24
+        const hasUserInput = res.includes("_user_input");
+        if (!hasUserInput) {
+            const singlePipeRegex = /(?<!\|)\|(?!\|)/;
+            if (singlePipeRegex.test(res)) {
+                res = res.replace(singlePipeRegex, defaultFilter + "|"); // #1: inject before first property selector or param (match the first non-doubled '|') [[A]]|?... => [[A]][[...like...]]|?...
+            } else {
+                res += defaultFilter; // #2: no property selector or param found - just append it (fallback for #1)
+            }
+            res = res.replaceAll(/\]\s*OR\s*\[/g, "]" + defaultFilter + "OR["); // #3: inject on every OR condition: [[A]]OR[[B]][[...like...]]=>[[A]][[...like...]]OR[[B]][[...like...]]
+        }
 
         for (const key of Object.keys(defaultProperties)) {
             if (!res.match(RegExp("\\|\\s*\\?\\s*[^=]+\\s*=\\s*" + key))) res += "|?" + defaultProperties[key] + "=" + key; // add e. g. '|?Display_title_of=label' if not present
