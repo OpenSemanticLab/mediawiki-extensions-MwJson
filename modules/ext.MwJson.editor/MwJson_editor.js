@@ -1109,24 +1109,63 @@ mwjson.editor = class {
 		}
 		const scriptPath = mw.config.get('wgScriptPath') || '/w';
 		const whatLinksHere = scriptPath + '/index.php?title=Special:WhatLinksHere/' + encodeURIComponent(fileTitle);
-		let bodyHtml;
-		if (usage.error) {
-			bodyHtml = '<p><strong>' + mw.html.escape(fileTitle) + '</strong></p>'
-				+ '<p>Could not verify file usage (' + mw.html.escape(usage.error.message || 'unknown error') + '). Delete anyway?</p>';
-		} else {
+		const pageUrl = function (title) {
+			return scriptPath + '/index.php?title=' + encodeURIComponent(title);
+		};
+
+		// Fetch displaytitles via the core MW query API so the dialog can render
+		// each backlink as a human-readable label. One batched call - no SMW
+		// roundtrip. Falls back to the raw title when no displaytitle exists.
+		const fetchDisplayTitles = function (titles) {
+			if (!titles.length) return Promise.resolve({});
+			return new Promise(function (resolve) {
+				new mw.Api().get({
+					action: 'query',
+					prop: 'info',
+					inprop: 'displaytitle',
+					titles: titles.join('|'),
+					format: 'json'
+				}).done(function (data) {
+					const pages = (data && data.query && data.query.pages) || {};
+					const map = {};
+					Object.keys(pages).forEach(function (id) {
+						const p = pages[id];
+						if (p && p.title) map[p.title] = p.displaytitle || p.title;
+					});
+					resolve(map);
+				}).fail(function () { resolve({}); });
+			});
+		};
+
+		const buildBody = function (titleMap) {
+			if (usage.error) {
+				return '<p><strong>' + mw.html.escape(fileTitle) + '</strong></p>'
+					+ '<p>Could not verify file usage (' + mw.html.escape(usage.error.message || 'unknown error') + '). Delete anyway?</p>';
+			}
 			const countLabel = usage.total + (usage.hasMore ? '+' : '');
 			let listHtml = '';
 			if (usage.sample && usage.sample.length) {
 				listHtml = '<ul>' + usage.sample.map(function (r) {
-					return '<li>' + mw.html.escape(r.title) + '</li>';
+					const label = (titleMap && titleMap[r.title]) ? titleMap[r.title] : r.title;
+					return '<li><a href="' + pageUrl(r.title) + '" target="_blank" rel="noopener" title="' + mw.html.escape(r.title) + '">'
+						+ label + '</a></li>'; // displaytitle is sanitized HTML from the API
 				}).join('') + '</ul>';
 			}
-			bodyHtml = '<p><strong>' + mw.html.escape(fileTitle) + '</strong> is used on '
+			return '<p><strong>' + mw.html.escape(fileTitle) + '</strong> is used on '
 				+ countLabel + ' other page(s):</p>'
 				+ listHtml
 				+ '<p><a href="' + whatLinksHere + '" target="_blank" rel="noopener">See all backlinks</a></p>'
 				+ '<p>Delete and replace?</p>';
-		}
+		};
+
+		const sampleTitles = !usage.error && usage.sample ? usage.sample.map(function (r) { return r.title; }) : [];
+		return fetchDisplayTitles(sampleTitles).then(function (titleMap) {
+			const bodyHtml = buildBody(titleMap);
+			return mwjson.editor._showFileDeleteConfirmModal(bodyHtml);
+		});
+	}
+
+	static _showFileDeleteConfirmModal(bodyHtml) {
 		// Use the same Bootstrap-modal helper as the editor's "close anyway?"
 		// confirmation so nested-modal stacking and z-index work correctly.
 		// OO.ui dialogs conflict with the editor's outer Bootstrap modal and
