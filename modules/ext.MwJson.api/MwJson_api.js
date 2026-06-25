@@ -507,32 +507,40 @@ mwjson.api = class {
 				// });
 				deferred.reject(new Error(errorMessage));
 			}
-		}).fail(function (data) {
-			// Prepare error message based on the response
+		}).fail(function (errorCode, data) {
+			// mw.Api rejects with (errorCode, fullResponse). The first arg is the
+			// API error code string; the second is the parsed body. The previous
+			// implementation only read the first arg as `data` and looked at
+			// `data.error.code`, which never matched and always produced
+			// "Unexpected response from server".
 			let errorMessage = "Page deletion failed. ";
-			// Check for specific error conditions
-			if (data && data.error) {
-				if (data.error.code === "permissiondenied") {
+			const apiError = data && data.error;
+			let code = (apiError && apiError.code) || (typeof errorCode === 'string' ? errorCode : null);
+			if (apiError) {
+				if (apiError.code === "permissiondenied") {
 					errorMessage += "You do not have permission to delete this page.";
 				}
-				else if (data.error.code === "cantdelete") {
+				else if (apiError.code === "cantdelete") {
 					errorMessage += "This page cannot be deleted.";
 				}
-				else {
-					errorMessage += data.error.info || "Unknown error";
+				else if (apiError.code === "missingtitle") {
+					errorMessage += "The page does not exist.";
 				}
+				else {
+					errorMessage += apiError.info || apiError.code || "Unknown error";
+				}
+			} else if (typeof errorCode === 'string' && errorCode) {
+				errorMessage += errorCode;
 			} else if (data && data.errorinfo) {
-				errorMessage += data.errorinfo || "Unknown error";
+				errorMessage += data.errorinfo;
 			} else if (data && data.statusText) {
-				errorMessage += data.statusText || "Unknown error";
+				errorMessage += data.statusText;
 			} else {
 				errorMessage += "Unexpected response from server";
 			}
-			// mw.notify(errorMessage + ". Please save your work locally.", {
-			// 	title: 'Error',
-			// 	type: 'error'
-			// });
-			deferred.reject(new Error(errorMessage));
+			const err = new Error(errorMessage);
+			if (code) err.code = code;
+			deferred.reject(err);
 		});
 		return deferred.promise();
 	}

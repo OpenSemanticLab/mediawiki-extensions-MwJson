@@ -1317,9 +1317,9 @@ mwjson.editor = class {
 					};
 					mwjson.api.deletePage(title, { comment: 'Deleted via MwJson editor' }).done(clearField).fail(function (e) {
 						const msg = (e && e.message) || '';
+						const code = e && e.code;
 						// Tolerate already-gone pages (stale reference, concurrent delete).
-						// MW returns missingtitle / "The page you specified doesn't exist."
-						if (msg.indexOf("doesn't exist") !== -1 || msg.toLowerCase().indexOf('missingtitle') !== -1) {
+						if (code === 'missingtitle' || msg.indexOf("doesn't exist") !== -1 || msg.toLowerCase().indexOf('missingtitle') !== -1) {
 							clearField();
 							return;
 						}
@@ -1664,14 +1664,15 @@ mwjson.editor = class {
 							};
 							mwjson.api.deletePage(existingTitle, { comment: 'Replaced via MwJson editor' }).done(renameAndUpload).fail(function (err) {
 								const msg = err && err.message ? err.message : String(err);
+								const code = err && err.code;
 								// Tolerate already-gone pages (stale reference, concurrent delete).
-								if (msg.indexOf("doesn't exist") !== -1 || msg.toLowerCase().indexOf('missingtitle') !== -1) {
+								if (code === 'missingtitle' || msg.indexOf("doesn't exist") !== -1 || msg.toLowerCase().indexOf('missingtitle') !== -1) {
 									renameAndUpload();
 									return;
 								}
-								if (msg.toLowerCase().indexOf('permission') !== -1) {
+								if (code === 'permissiondenied' || msg.toLowerCase().indexOf('permission') !== -1) {
 									cbs.failure('Replace requires delete permission on ' + existingTitle);
-								} else if (msg.toLowerCase().indexOf('cantdelete') !== -1) {
+								} else if (code === 'cantdelete' || msg.toLowerCase().indexOf('cantdelete') !== -1) {
 									cbs.failure(existingTitle + ' lives on an external repository and cannot be replaced here.');
 								} else {
 									cbs.failure('Replace failed: ' + msg);
