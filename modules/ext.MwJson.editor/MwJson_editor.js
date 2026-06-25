@@ -1570,9 +1570,57 @@ mwjson.editor = class {
 							else {
 								//the file page already exists
 								if (file_extension !== upload_file_extension) {
-									let error = "File extension of uploaded file '" + upload_file_extension + "' does not match existing '" + file_extension + "'";
-									cbs.failure('Upload failed:' + error);
-									return;
+									// Delete the existing file page, then continue the upload with the
+									// new extension. Reuses the existing root so OswId-based identity
+									// is preserved (e.g. File:OSWabc.png -> File:OSWabc.jpeg).
+									const existingTitle = mwjson_editor.config.target;
+									const excludes = [mw.config.get('wgPageName')];
+									mwjson.api.getFileUsage(existingTitle, excludes).then(function (usage) {
+										return mwjson.editor.confirmFileDelete(existingTitle, usage);
+									}).then(function (ok) {
+										if (!ok) {
+											cbs.failure('Upload cancelled');
+											return;
+										}
+										mwjson.api.deletePage(existingTitle, { comment: 'Replaced via MwJson editor' }).done(function () {
+											const newTarget = existingTitle.replace(/^File:/, '').replace(/\.[^.]+$/, '.' + upload_file_extension);
+											mwjson_editor.config.target = mwjson_editor.config.target_namespace + ':' + newTarget;
+											Object.defineProperty(file, 'name', { writable: true, value: newTarget });
+											mwjson.api.getFilePage(newTarget).done(function (page) {
+												page.file = file;
+												page.file.contentBlob = file;
+												page.file.changed = true;
+												mwjson.api.updatePage(page).done(function () {
+													cbs.success('File:' + newTarget);
+													mw.hook('jsoneditor.file.uploaded').fire({ exists: false, name: newTarget, label: label });
+												}).fail(function (e) {
+													cbs.failure('Upload after delete failed: ' + e);
+												});
+											}).fail(function () {
+												mwjson.api.getPage('File:' + newTarget).done(function (page) {
+													page.file = file;
+													page.file.contentBlob = file;
+													page.file.changed = true;
+													mwjson.api.updatePage(page).done(function () {
+														cbs.success('File:' + newTarget);
+														mw.hook('jsoneditor.file.uploaded').fire({ exists: false, name: newTarget, label: file.name });
+													}).fail(function (e) {
+														cbs.failure('Upload after delete failed: ' + e);
+													});
+												});
+											});
+										}).fail(function (err) {
+											const msg = err && err.message ? err.message : String(err);
+											if (msg.toLowerCase().indexOf('permission') !== -1) {
+												cbs.failure('Replace requires delete permission on ' + existingTitle);
+											} else if (msg.toLowerCase().indexOf('cantdelete') !== -1) {
+												cbs.failure(existingTitle + ' lives on an external repository and cannot be replaced here.');
+											} else {
+												cbs.failure('Replace failed: ' + msg);
+											}
+										});
+									});
+									return; // async branch takes over; do not fall through to the legacy sync path
 								}
 							}
 							target = mwjson_editor.config.target.replace(mwjson_editor.config.target_namespace + ":", "");
