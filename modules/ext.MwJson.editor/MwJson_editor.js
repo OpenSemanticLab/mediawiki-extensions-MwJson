@@ -1127,18 +1127,34 @@ mwjson.editor = class {
 				+ '<p><a href="' + whatLinksHere + '" target="_blank" rel="noopener">See all backlinks</a></p>'
 				+ '<p>Delete and replace?</p>';
 		}
+		// Use the same Bootstrap-modal helper as the editor's "close anyway?"
+		// confirmation so nested-modal stacking and z-index work correctly.
+		// OO.ui dialogs conflict with the editor's outer Bootstrap modal and
+		// can freeze the editor when triggered from inside it.
 		return new Promise(function (resolve) {
-			OO.ui.confirm(new OO.ui.HtmlSnippet(bodyHtml), {
+			let settled = false;
+			const settle = function (v) {
+				if (settled) return;
+				settled = true;
+				resolve(v);
+			};
+			const modalId = 'mwjson-confirm-file-delete';
+			const modal = mwjson.editor.createModal({
+				id: modalId,
 				title: 'Delete file?',
-				actions: [
-					{ action: 'reject', label: 'Cancel', flags: ['safe', 'close'] },
-					{ action: 'accept', label: 'Delete', flags: ['primary', 'destructive'] }
+				body: bodyHtml,
+				size: 'md',
+				class: 'modal-warning',
+				buttons: [
+					{ label: 'Cancel', class: 'btn btn-secondary', closing: true, onclick: function () { settle(false); } },
+					{ label: 'Delete', class: 'btn btn-danger', closing: true, onclick: function () { settle(true); } }
 				]
-			}).then(function (confirmed) {
-				resolve(!!confirmed);
-			}, function () {
-				resolve(false);
 			});
+			const el = document.getElementById(modalId);
+			if (el) {
+				el.addEventListener('hidden.bs.modal', function () { settle(false); });
+			}
+			modal.show();
 		});
 	}
 
