@@ -1103,7 +1103,10 @@ mwjson.editor = class {
 	 *   - the result from mwjson.api.getFileUsage().
 	 * @returns {Promise<boolean>}
 	 */
-	static confirmFileDelete(fileTitle, usage) {
+	static confirmFileDelete(fileTitle, usage, intent) {
+		// intent: 'delete' (explicit Delete button, default) or 'replace'
+		// (auto cross-extension upload). Drives the trailing question.
+		intent = intent === 'replace' ? 'replace' : 'delete';
 		if (usage.error == null && usage.total === 0) {
 			return Promise.resolve(true);
 		}
@@ -1137,9 +1140,15 @@ mwjson.editor = class {
 			});
 		};
 
+		const fileLink = function (titleMap) {
+			const label = (titleMap && titleMap[fileTitle]) ? titleMap[fileTitle] : mw.html.escape(fileTitle);
+			return '<a href="' + pageUrl(fileTitle) + '" target="_blank" rel="noopener" title="' + mw.html.escape(fileTitle) + '">'
+				+ label + '</a>';
+		};
+
 		const buildBody = function (titleMap) {
 			if (usage.error) {
-				return '<p><strong>' + mw.html.escape(fileTitle) + '</strong></p>'
+				return '<p><strong>' + fileLink(titleMap) + '</strong></p>'
 					+ '<p>Could not verify file usage (' + mw.html.escape(usage.error.message || 'unknown error') + '). Delete anyway?</p>';
 			}
 			const countLabel = usage.total + (usage.hasMore ? '+' : '');
@@ -1151,15 +1160,17 @@ mwjson.editor = class {
 						+ label + '</a></li>'; // displaytitle is sanitized HTML from the API
 				}).join('') + '</ul>';
 			}
-			return '<p><strong>' + mw.html.escape(fileTitle) + '</strong> is used on '
+			const question = intent === 'replace' ? 'Delete and replace?' : 'Delete this file?';
+			return '<p><strong>' + fileLink(titleMap) + '</strong> is used on '
 				+ countLabel + ' other page(s):</p>'
 				+ listHtml
 				+ '<p><a href="' + whatLinksHere + '" target="_blank" rel="noopener">See all backlinks</a></p>'
-				+ '<p>Delete and replace?</p>';
+				+ '<p>' + question + '</p>';
 		};
 
 		const sampleTitles = !usage.error && usage.sample ? usage.sample.map(function (r) { return r.title; }) : [];
-		return fetchDisplayTitles(sampleTitles).then(function (titleMap) {
+		const queryTitles = [fileTitle].concat(sampleTitles);
+		return fetchDisplayTitles(queryTitles).then(function (titleMap) {
 			const bodyHtml = buildBody(titleMap);
 			return mwjson.editor._showFileDeleteConfirmModal(bodyHtml);
 		});
@@ -1705,7 +1716,7 @@ mwjson.editor = class {
 						const existingTitle = 'File:' + target;
 						const excludes = [mw.config.get('wgPageName')];
 						mwjson.api.getFileUsage(existingTitle, excludes).then(function (usage) {
-							return mwjson.editor.confirmFileDelete(existingTitle, usage);
+							return mwjson.editor.confirmFileDelete(existingTitle, usage, 'replace');
 						}).then(function (ok) {
 							if (!ok) {
 								cbs.failure('Upload cancelled');
