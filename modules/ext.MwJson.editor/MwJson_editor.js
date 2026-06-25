@@ -1198,6 +1198,7 @@ mwjson.editor = class {
 				}
 				mwjson.editor.setCallbacks();
 				mwjson.editor.setDefaultOptions();
+				mwjson.editor.setUploadEditor();
 				//console.log("JsonEditor initialized");
 				deferred.resolve();
 			});
@@ -1241,6 +1242,71 @@ mwjson.editor = class {
 			max_upload_size: 0, // integer, Maximum file size allowed. 0 = no limit, default: 0
 			upload_handler: "fileUpload", // function, Callback function for handling uploads to server 	
 			icon: "upload", // undocumented, but missing if not set
+			allow_delete: true, // boolean, render a Delete button next to Browse, default: true
+		};
+	}
+
+	static setUploadEditor() {
+		const BaseUploadEditor = window.JSONEditor.defaults.editors.upload;
+		window.JSONEditor.defaults.editors.upload = class MwJsonUploadEditor extends BaseUploadEditor {
+			build() {
+				super.build();
+				if (this.options.allow_delete === false) return;
+				if (!this.browseButton || !this.browseButton.parentNode) return; // hidden_input or unusual theme
+				this.deleteButton = this.theme.getButton ? this.theme.getButton('Delete', 'delete', 'Delete file') : this.getButton('Delete', 'delete', 'Delete file');
+				this.deleteButton.classList.add('mwjson-upload-delete');
+				this.deleteButton.style.marginLeft = '0.5em';
+				const self = this;
+				this.deleteButton.addEventListener('click', function (e) {
+					e.preventDefault();
+					self._mwjsonHandleDelete();
+				});
+				this.browseButton.parentNode.insertBefore(this.deleteButton, this.browseButton.nextSibling);
+				this._mwjsonRefreshDeleteVisibility();
+				// Permission probe: gray out the button if the user lacks 'delete'.
+				const rightsPromise = (mw.user && mw.user.getRights) ? mw.user.getRights() : null;
+				if (rightsPromise && typeof rightsPromise.then === 'function') {
+					rightsPromise.then(function (rights) {
+						self._mwjsonCanDelete = Array.isArray(rights) && rights.indexOf('delete') !== -1;
+						if (!self._mwjsonCanDelete) {
+							self.deleteButton.disabled = true;
+							self.deleteButton.title = 'Delete permission required';
+						}
+					}, function () {
+						self._mwjsonCanDelete = false;
+						self.deleteButton.disabled = true;
+						self.deleteButton.title = 'Delete permission required';
+					});
+				} else {
+					this._mwjsonCanDelete = false;
+					this.deleteButton.disabled = true;
+					this.deleteButton.title = 'Delete permission required';
+				}
+			}
+			setValue(value, initial) {
+				super.setValue(value, initial);
+				this._mwjsonRefreshDeleteVisibility();
+			}
+			_mwjsonRefreshDeleteVisibility() {
+				if (!this.deleteButton) return;
+				this.deleteButton.style.display = (this.value && this.value !== '') ? '' : 'none';
+			}
+			_mwjsonHandleDelete() {
+				const self = this;
+				const raw = this.value;
+				const title = raw.indexOf('File:') === 0 ? raw : 'File:' + raw;
+				const excludes = [mw.config.get('wgPageName')];
+				mwjson.api.getFileUsage(title, excludes).then(function (usage) {
+					return mwjson.editor.confirmFileDelete(title, usage);
+				}).then(function (ok) {
+					if (!ok) return;
+					mwjson.api.deletePage(title, { comment: 'Deleted via MwJson editor' }).done(function () {
+						self.setValue('');
+					}).fail(function (e) {
+						mw.notify((e && e.message) || 'Delete failed', { type: 'error' });
+					});
+				});
+			}
 		};
 	}
 
