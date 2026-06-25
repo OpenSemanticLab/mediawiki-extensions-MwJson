@@ -1304,7 +1304,16 @@ mwjson.editor = class {
 				}).then(function (ok) {
 					if (!ok) return;
 					mwjson.api.deletePage(title, { comment: 'Deleted via MwJson editor' }).done(function () {
+						// setValue('') updates the hidden input + preview and fires onChange,
+						// but the visible readonly fileDisplay shows the original filename and
+						// is not refreshed by the base editor. Clear it explicitly so the field
+						// looks empty. Also call change() to make sure the parent JSON value
+						// is rebuilt (some root editors don't bubble via onChange alone).
 						self.setValue('');
+						if (self.fileDisplay) self.fileDisplay.value = '';
+						if (self.preview) self.preview.innerHTML = '';
+						if (typeof self.change === 'function') self.change();
+						self._mwjsonRefreshDeleteVisibility();
 					}).fail(function (e) {
 						mw.notify((e && e.message) || 'Delete failed', { type: 'error' });
 					});
