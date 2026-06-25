@@ -1735,14 +1735,21 @@ mwjson.editor = class {
 								if (mwjson_editor && mwjson_editor.config && mwjson_editor.config.target_namespace) {
 									mwjson_editor.config.target = mwjson_editor.config.target_namespace + ':' + target;
 								}
-								// Cross-extension replace means the file identity changed; the previous
-								// label is stale. Overwrite with the new file's original name regardless
-								// of whether the label was empty. Safe no-op when the schema has no
-								// root.label.0.text editor (e.g. generic upload fields outside WikiFile).
-								const labelEditor = jseditor.jsoneditor.editors && jseditor.jsoneditor.editors["root.label.0.text"];
-								if (labelEditor) {
-									labelEditor.setValue(label);
-									labelEditor.change();
+								// Only refresh root.label.0.text when the editor is the WikiFile
+								// itself (same gate as the original first-upload label-set above).
+								// On any other context the label belongs to the containing item,
+								// not to the file being replaced, and must not be overwritten.
+								const isWikiFileEditor = jseditor.key === 'file'
+									&& mwjson_editor
+									&& mwjson_editor.jsonschema
+									&& mwjson_editor.jsonschema.subschemas_uuids
+									&& mwjson_editor.jsonschema.subschemas_uuids.includes('11a53cdfbdc24524bf8ac435cbf65d9d');
+								if (isWikiFileEditor) {
+									const labelEditor = jseditor.jsoneditor.editors && jseditor.jsoneditor.editors['root.label.0.text'];
+									if (labelEditor) {
+										labelEditor.setValue(label);
+										labelEditor.change();
+									}
 								}
 								runSharedUpload();
 							};
