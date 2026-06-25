@@ -1303,7 +1303,7 @@ mwjson.editor = class {
 					return mwjson.editor.confirmFileDelete(title, usage);
 				}).then(function (ok) {
 					if (!ok) return;
-					mwjson.api.deletePage(title, { comment: 'Deleted via MwJson editor' }).done(function () {
+					const clearField = function () {
 						// setValue('') updates the hidden input + preview and fires onChange,
 						// but the visible readonly fileDisplay shows the original filename and
 						// is not refreshed by the base editor. Clear it explicitly so the field
@@ -1314,8 +1314,16 @@ mwjson.editor = class {
 						if (self.preview) self.preview.innerHTML = '';
 						if (typeof self.change === 'function') self.change();
 						self._mwjsonRefreshDeleteVisibility();
-					}).fail(function (e) {
-						mw.notify((e && e.message) || 'Delete failed', { type: 'error' });
+					};
+					mwjson.api.deletePage(title, { comment: 'Deleted via MwJson editor' }).done(clearField).fail(function (e) {
+						const msg = (e && e.message) || '';
+						// Tolerate already-gone pages (stale reference, concurrent delete).
+						// MW returns missingtitle / "The page you specified doesn't exist."
+						if (msg.indexOf("doesn't exist") !== -1 || msg.toLowerCase().indexOf('missingtitle') !== -1) {
+							clearField();
+							return;
+						}
+						mw.notify(msg || 'Delete failed', { type: 'error' });
 					});
 				});
 			}
@@ -1647,14 +1655,20 @@ mwjson.editor = class {
 								cbs.failure('Upload cancelled');
 								return;
 							}
-							mwjson.api.deletePage(existingTitle, { comment: 'Replaced via MwJson editor' }).done(function () {
+							const renameAndUpload = function () {
 								target = target.replace(/\.[^.]+$/, '.' + upload_file_extension);
 								if (mwjson_editor && mwjson_editor.config && mwjson_editor.config.target_namespace) {
 									mwjson_editor.config.target = mwjson_editor.config.target_namespace + ':' + target;
 								}
 								runSharedUpload();
-							}).fail(function (err) {
+							};
+							mwjson.api.deletePage(existingTitle, { comment: 'Replaced via MwJson editor' }).done(renameAndUpload).fail(function (err) {
 								const msg = err && err.message ? err.message : String(err);
+								// Tolerate already-gone pages (stale reference, concurrent delete).
+								if (msg.indexOf("doesn't exist") !== -1 || msg.toLowerCase().indexOf('missingtitle') !== -1) {
+									renameAndUpload();
+									return;
+								}
 								if (msg.toLowerCase().indexOf('permission') !== -1) {
 									cbs.failure('Replace requires delete permission on ' + existingTitle);
 								} else if (msg.toLowerCase().indexOf('cantdelete') !== -1) {
