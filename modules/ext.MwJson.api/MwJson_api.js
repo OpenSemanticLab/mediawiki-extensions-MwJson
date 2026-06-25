@@ -430,6 +430,54 @@ mwjson.api = class {
 		return deferred.promise();
 	}
 
+	/**
+	 * Look up which pages embed/link a file via MediaWiki imageusage.
+	 * SMW subobjects collapse to parent rows, so excluding the parent page
+	 * also covers any subobjects on that page.
+	 *
+	 * @param {string} fileTitle - e.g. "File:Foo.png"
+	 * @param {string[]} [excludeTitles=[]] - titles to drop from the count.
+	 *   Any result whose title equals an entry, or starts with `<entry>/`,
+	 *   is excluded.
+	 * @returns {jQuery.Promise} resolves to
+	 *   { total, sample, hasMore, error } where total is undefined on error.
+	 */
+	static getFileUsage(fileTitle, excludeTitles = []) {
+		const deferred = $.Deferred();
+		const api = new mw.Api();
+		api.get({
+			action: 'query',
+			list: 'imageusage',
+			iutitle: fileTitle,
+			iulimit: 'max',
+			iunamespace: '*',
+			format: 'json'
+		}).done(function (data) {
+			const rows = (data && data.query && data.query.imageusage) || [];
+			const hasMore = !!(data && data.continue && data.continue.iucontinue);
+			const filtered = rows.filter(function (r) {
+				return !excludeTitles.some(function (ex) {
+					return r.title === ex || r.title.indexOf(ex + '/') === 0;
+				});
+			});
+			deferred.resolve({
+				total: filtered.length,
+				sample: filtered.slice(0, 5),
+				hasMore: hasMore,
+				error: null
+			});
+		}).fail(function (code, data) {
+			const err = new Error((data && data.error && data.error.info) || code || 'imageusage failed');
+			deferred.resolve({
+				total: undefined,
+				sample: [],
+				hasMore: false,
+				error: err
+			});
+		});
+		return deferred.promise();
+	}
+
 	static deletePage(title, meta) {
 		meta = meta || {comment: ""};
 		const deferred = $.Deferred();
