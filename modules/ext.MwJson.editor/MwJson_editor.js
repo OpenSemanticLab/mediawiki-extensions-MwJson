@@ -1572,59 +1572,10 @@ mwjson.editor = class {
 							}
 							else {
 								//the file page already exists
-								if (file_extension !== upload_file_extension) {
-									// Delete the existing file page, then continue the upload with the
-									// new extension. Reuses the existing root so OswId-based identity
-									// is preserved (e.g. File:OSWabc.png -> File:OSWabc.jpeg).
-									const existingTitle = mwjson_editor.config.target;
-									const excludes = [mw.config.get('wgPageName')];
-									mwjson.api.getFileUsage(existingTitle, excludes).then(function (usage) {
-										return mwjson.editor.confirmFileDelete(existingTitle, usage);
-									}).then(function (ok) {
-										if (!ok) {
-											cbs.failure('Upload cancelled');
-											return;
-										}
-										mwjson.api.deletePage(existingTitle, { comment: 'Replaced via MwJson editor' }).done(function () {
-											const newTarget = existingTitle.replace(/^File:/, '').replace(/\.[^.]+$/, '.' + upload_file_extension);
-											mwjson_editor.config.target = mwjson_editor.config.target_namespace + ':' + newTarget;
-											Object.defineProperty(file, 'name', { writable: true, value: newTarget });
-											mwjson.api.getFilePage(newTarget).done(function (page) {
-												page.file = file;
-												page.file.contentBlob = file;
-												page.file.changed = true;
-												mwjson.api.updatePage(page).done(function () {
-													cbs.success('File:' + newTarget);
-													mw.hook('jsoneditor.file.uploaded').fire({ exists: false, name: newTarget, label: label });
-												}).fail(function (e) {
-													cbs.failure('Upload after delete failed: ' + e);
-												});
-											}).fail(function () {
-												mwjson.api.getPage('File:' + newTarget).done(function (page) {
-													page.file = file;
-													page.file.contentBlob = file;
-													page.file.changed = true;
-													mwjson.api.updatePage(page).done(function () {
-														cbs.success('File:' + newTarget);
-														mw.hook('jsoneditor.file.uploaded').fire({ exists: false, name: newTarget, label: file.name });
-													}).fail(function (e) {
-														cbs.failure('Upload after delete failed: ' + e);
-													});
-												});
-											});
-										}).fail(function (err) {
-											const msg = err && err.message ? err.message : String(err);
-											if (msg.toLowerCase().indexOf('permission') !== -1) {
-												cbs.failure('Replace requires delete permission on ' + existingTitle);
-											} else if (msg.toLowerCase().indexOf('cantdelete') !== -1) {
-												cbs.failure(existingTitle + ' lives on an external repository and cannot be replaced here.');
-											} else {
-												cbs.failure('Replace failed: ' + msg);
-											}
-										});
-									});
-									return; // async branch takes over; do not fall through to the legacy sync path
-								}
+								// Cross-extension replacement is now handled by the unified pre-flight
+								// check just before the shared upload path runs (see below). That path
+								// catches mismatches for both WikiFile-uuid fields and generic upload
+								// editors whose value carries an existing filename.
 							}
 							target = mwjson_editor.config.target.replace(mwjson_editor.config.target_namespace + ":", "");
 							//console.log("set target to config.target: ", target);
@@ -1643,34 +1594,70 @@ mwjson.editor = class {
 						}
 					}
 
-					Object.defineProperty(file, 'name', {writable: true, value: target}); //name is readonly, so file.name = target does not work
-					mwjson.api.getFilePage(target).done((page) => {
-						//console.log("File does exists");
-						page.file = file;
-						page.file.contentBlob = file;
-						page.file.changed = true;
-						mwjson.api.updatePage(page).done((page) => {
-							console.log("Upload succesful");
-							cbs.success('File:' + target);
-							mw.hook( 'jsoneditor.file.uploaded' ).fire({exists: false, name: target, label: label});
-						}).fail(function (error) {
-							console.log("Upload failed:", error);
-							cbs.failure('Upload failed:' + error);
-						});
-					}).fail(function (error) {
-						//console.log("File does not exists");
-						mwjson.api.getPage("File:" + target).done((page) => {
+					// Shared upload path. Wrapped in a closure so the unified mismatch pre-flight
+					// can call it AFTER an async delete+rename of the existing target.
+					const runSharedUpload = function () {
+						Object.defineProperty(file, 'name', {writable: true, value: target}); //name is readonly, so file.name = target does not work
+						mwjson.api.getFilePage(target).done((page) => {
 							page.file = file;
 							page.file.contentBlob = file;
 							page.file.changed = true;
 							mwjson.api.updatePage(page).done((page) => {
 								cbs.success('File:' + target);
-								mw.hook( 'jsoneditor.file.uploaded' ).fire({exists: false, name: target, label: file.name});
+								mw.hook('jsoneditor.file.uploaded').fire({exists: false, name: target, label: label});
 							}).fail(function (error) {
 								cbs.failure('Upload failed:' + error);
 							});
+						}).fail(function (error) {
+							mwjson.api.getPage("File:" + target).done((page) => {
+								page.file = file;
+								page.file.contentBlob = file;
+								page.file.changed = true;
+								mwjson.api.updatePage(page).done((page) => {
+									cbs.success('File:' + target);
+									mw.hook('jsoneditor.file.uploaded').fire({exists: false, name: target, label: file.name});
+								}).fail(function (error) {
+									cbs.failure('Upload failed:' + error);
+								});
+							});
 						});
-					});
+					};
+
+					// Unified cross-extension replacement pre-flight. Runs for any upload editor
+					// where the resolved target already has a different extension than the new file.
+					// Deletes the old wiki file page, renames the target to the new extension, then
+					// runs the shared upload. Reuses the OswId-based root so entity identity persists.
+					const target_ext = target && target.includes('.') ? target.split('.').pop().toLowerCase() : '';
+					if (target_ext && target_ext !== upload_file_extension) {
+						const existingTitle = 'File:' + target;
+						const excludes = [mw.config.get('wgPageName')];
+						mwjson.api.getFileUsage(existingTitle, excludes).then(function (usage) {
+							return mwjson.editor.confirmFileDelete(existingTitle, usage);
+						}).then(function (ok) {
+							if (!ok) {
+								cbs.failure('Upload cancelled');
+								return;
+							}
+							mwjson.api.deletePage(existingTitle, { comment: 'Replaced via MwJson editor' }).done(function () {
+								target = target.replace(/\.[^.]+$/, '.' + upload_file_extension);
+								if (mwjson_editor && mwjson_editor.config && mwjson_editor.config.target_namespace) {
+									mwjson_editor.config.target = mwjson_editor.config.target_namespace + ':' + target;
+								}
+								runSharedUpload();
+							}).fail(function (err) {
+								const msg = err && err.message ? err.message : String(err);
+								if (msg.toLowerCase().indexOf('permission') !== -1) {
+									cbs.failure('Replace requires delete permission on ' + existingTitle);
+								} else if (msg.toLowerCase().indexOf('cantdelete') !== -1) {
+									cbs.failure(existingTitle + ' lives on an external repository and cannot be replaced here.');
+								} else {
+									cbs.failure('Replace failed: ' + msg);
+								}
+							});
+						});
+					} else {
+						runSharedUpload();
+					}
 					
 				}
 			}
