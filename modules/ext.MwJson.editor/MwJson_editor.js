@@ -1128,15 +1128,16 @@ mwjson.editor = class {
 				+ '<p>Delete and replace?</p>';
 		}
 		return new Promise(function (resolve) {
-			OO.ui.getWindowManager().openWindow('message', {
+			OO.ui.confirm(new OO.ui.HtmlSnippet(bodyHtml), {
 				title: 'Delete file?',
-				message: new OO.ui.HtmlSnippet(bodyHtml),
 				actions: [
-					{ action: 'cancel', label: 'Cancel', flags: ['safe', 'close'] },
-					{ action: 'delete', label: 'Delete', flags: ['primary', 'destructive'] }
+					{ action: 'reject', label: 'Cancel', flags: ['safe', 'close'] },
+					{ action: 'accept', label: 'Delete', flags: ['primary', 'destructive'] }
 				]
-			}).closed.then(function (data) {
-				resolve(!!(data && data.action === 'delete'));
+			}).then(function (confirmed) {
+				resolve(!!confirmed);
+			}, function () {
+				resolve(false);
 			});
 		});
 	}
@@ -1659,6 +1660,15 @@ mwjson.editor = class {
 								target = target.replace(/\.[^.]+$/, '.' + upload_file_extension);
 								if (mwjson_editor && mwjson_editor.config && mwjson_editor.config.target_namespace) {
 									mwjson_editor.config.target = mwjson_editor.config.target_namespace + ':' + target;
+								}
+								// Cross-extension replace means the file identity changed; the previous
+								// label is stale. Overwrite with the new file's original name regardless
+								// of whether the label was empty. Safe no-op when the schema has no
+								// root.label.0.text editor (e.g. generic upload fields outside WikiFile).
+								const labelEditor = jseditor.jsoneditor.editors && jseditor.jsoneditor.editors["root.label.0.text"];
+								if (labelEditor) {
+									labelEditor.setValue(label);
+									labelEditor.change();
 								}
 								runSharedUpload();
 							};
