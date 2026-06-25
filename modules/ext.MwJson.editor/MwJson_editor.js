@@ -1183,25 +1183,33 @@ mwjson.editor = class {
 		// can freeze the editor when triggered from inside it.
 		return new Promise(function (resolve) {
 			let settled = false;
+			let modal;
 			const settle = function (v) {
 				if (settled) return;
 				settled = true;
+				try { if (modal && typeof modal.hide === 'function') modal.hide(); } catch (e) { /* ignore */ }
 				resolve(v);
 			};
 			const modalId = 'mwjson-confirm-file-delete';
-			const modal = mwjson.editor.createModal({
+			modal = mwjson.editor.createModal({
 				id: modalId,
 				title: 'Delete file?',
 				body: bodyHtml,
 				size: 'md',
 				class: 'modal-warning',
 				buttons: [
-					{ label: 'Cancel', class: 'btn btn-secondary', closing: true, onclick: function () { settle(false); } },
-					{ label: 'Delete', class: 'btn btn-danger', closing: true, onclick: function () { settle(true); } }
+					// Do not set closing:true so Bootstrap does not race the
+					// onclick handler with its data-bs-dismiss dispatch.
+					// settle() drives modal.hide() explicitly.
+					{ label: 'Cancel', class: 'btn btn-secondary', onclick: function () { settle(false); } },
+					{ label: 'Delete', class: 'btn btn-danger', onclick: function () { settle(true); } }
 				]
 			});
 			const el = document.getElementById(modalId);
 			if (el) {
+				// Backstop: if the user dismisses the modal via Esc or backdrop
+				// (createModal's defaults disable both, but defensive anyway),
+				// treat as cancel.
 				el.addEventListener('hidden.bs.modal', function () { settle(false); });
 			}
 			modal.show();
