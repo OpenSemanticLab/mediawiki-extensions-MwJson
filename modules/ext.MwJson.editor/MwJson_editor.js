@@ -1093,6 +1093,54 @@ mwjson.editor = class {
 		});
 	}
 
+	/**
+	 * Show a confirm dialog before deleting a file. Resolves true if the
+	 * user confirmed, false if cancelled. Silent path: when usage.total
+	 * is 0 and no error, resolves true immediately without opening a dialog.
+	 *
+	 * @param {string} fileTitle - e.g. "File:Foo.png"
+	 * @param {{total:number|undefined, sample:Array, hasMore:boolean, error:Error|null}} usage
+	 *   - the result from mwjson.api.getFileUsage().
+	 * @returns {Promise<boolean>}
+	 */
+	static confirmFileDelete(fileTitle, usage) {
+		if (usage.error == null && usage.total === 0) {
+			return Promise.resolve(true);
+		}
+		const scriptPath = mw.config.get('wgScriptPath') || '/w';
+		const whatLinksHere = scriptPath + '/index.php?title=Special:WhatLinksHere/' + encodeURIComponent(fileTitle);
+		let bodyHtml;
+		if (usage.error) {
+			bodyHtml = '<p><strong>' + mw.html.escape(fileTitle) + '</strong></p>'
+				+ '<p>Could not verify file usage (' + mw.html.escape(usage.error.message || 'unknown error') + '). Delete anyway?</p>';
+		} else {
+			const countLabel = usage.total + (usage.hasMore ? '+' : '');
+			let listHtml = '';
+			if (usage.sample && usage.sample.length) {
+				listHtml = '<ul>' + usage.sample.map(function (r) {
+					return '<li>' + mw.html.escape(r.title) + '</li>';
+				}).join('') + '</ul>';
+			}
+			bodyHtml = '<p><strong>' + mw.html.escape(fileTitle) + '</strong> is used on '
+				+ countLabel + ' other page(s):</p>'
+				+ listHtml
+				+ '<p><a href="' + whatLinksHere + '" target="_blank" rel="noopener">See all backlinks</a></p>'
+				+ '<p>Delete and replace?</p>';
+		}
+		return new Promise(function (resolve) {
+			OO.ui.getWindowManager().openWindow('message', {
+				title: 'Delete file?',
+				message: new OO.ui.HtmlSnippet(bodyHtml),
+				actions: [
+					{ action: 'cancel', label: 'Cancel', flags: ['safe', 'close'] },
+					{ action: 'delete', label: 'Delete', flags: ['primary', 'destructive'] }
+				]
+			}).closed.then(function (data) {
+				resolve(!!(data && data.action === 'delete'));
+			});
+		});
+	}
+
 	static init() {
 
 		const mw_modules = [
