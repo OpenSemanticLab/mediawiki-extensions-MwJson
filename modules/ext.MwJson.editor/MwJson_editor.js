@@ -1253,7 +1253,10 @@ mwjson.editor = class {
 				super.build();
 				if (this.options.allow_delete === false) return;
 				if (!this.browseButton || !this.browseButton.parentNode) return; // hidden_input or unusual theme
-				this.deleteButton = this.theme.getButton ? this.theme.getButton('Delete', 'delete', 'Delete file') : this.getButton('Delete', 'delete', 'Delete file');
+				// Use the editor's inherited getButton so iconlib resolves the 'delete' string
+				// to an actual icon element before the theme appends it - calling theme.getButton
+				// directly with a string icon crashes appendChild.
+				this.deleteButton = this.getButton('Delete', 'delete', 'Delete file');
 				this.deleteButton.classList.add('mwjson-upload-delete');
 				this.deleteButton.style.marginLeft = '0.5em';
 				const self = this;
