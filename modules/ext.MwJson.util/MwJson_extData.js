@@ -79,6 +79,14 @@ mwjson.extData = class {
                     mwjson.extData.mapObjectMap(options.body, data_source.request_object_map, jsondata, 'jsonpath');
                     options.body = JSON.stringify(options.body);
                     options.method = 'POST';
+                    // Opt-in CSRF token for endpoints that enforce it on write
+                    // methods (e.g. ApiGateway with csrfRequired=true). Without it
+                    // the POST is rejected with 403 apigateway-error-badtoken.
+                    // Set "csrf": true on the data_source_map to enable.
+                    if (data_source.csrf) {
+                        var csrfToken = mw.user.tokens.get('csrfToken');
+                        url += (url.indexOf('?') >= 0 ? '&' : '?') + 'token=' + encodeURIComponent(csrfToken);
+                    }
                 }
                 
                 const fetch_promise = new Promise(resolve => {
@@ -208,11 +216,11 @@ mwjson.extData = class {
 
                 //create a copy here since we add addition properties
 
-                jsondata['_user_input'] = input; 
-                jsondata['_user_input_lowercase'] = input.toLowerCase(); 
-                jsondata['_user_input_normalized'] = mwjson.util.normalizeString(input); 
-                jsondata['_user_input_normalized_tokenized'] = mwjson.util.normalizeAndTokenizeString(input); 
-                //jsondata['_user_lang'] = jseditor_editor.jsoneditor.options.user_language; 
+                jsondata['_user_input'] = input;
+                jsondata['_user_input_lowercase'] = input.toLowerCase();
+                jsondata['_user_input_normalized'] = mwjson.util.normalizeString(input);
+                jsondata['_user_input_normalized_tokenized'] = mwjson.util.normalizeAndTokenizeString(input);
+                //jsondata['_user_lang'] = jseditor_editor.jsoneditor.options.user_language;
                 var template = Handlebars.compile(query);
                 query = template(jsondata);
 
