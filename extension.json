@@ -1,10 +1,11 @@
 {
     "manifest_version":2,
     "name":"MwJson",
-    "version":"0.53.4",
+    "version":"0.54.0",
     "author":[
         "[https://github.com/simontaurus Simon Stier]",
-        "[https://github.com/ademolaomosanya Ademola Omosanya]"
+        "[https://github.com/ademolaomosanya Ademola Omosanya]",
+		"[https://github.com/lukasgold Lukas Gold]"
     ],
     "url":"https://github.com/simontaurus/mediawiki-extensions-MwJson",
     "descriptionmsg":"mw-json-desc",
