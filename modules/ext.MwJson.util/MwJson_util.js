@@ -205,6 +205,42 @@ mwjson.util = class {
 		return output;
 	}
 
+	/**
+	 * Recursively strip empty leaves from a value. Drops properties/array
+	 * elements whose value is '', null, undefined, [], or {}. Also drops
+	 * containers that become empty after their children were stripped.
+	 * Preserves false, 0, and non-empty strings/arrays/objects.
+	 *
+	 * Used by mwjson.editor._onsubmit when config.remove_empty_properties_on_submit
+	 * is true so saved jsondata is not littered with empty leaves left behind
+	 * by unfilled defaultProperties or cleared optional fields.
+	 */
+	static removeEmpty(value) {
+		function isEmpty(v) {
+			if (v === undefined || v === null || v === '') return true;
+			if (Array.isArray(v) && v.length === 0) return true;
+			if (v !== null && typeof v === 'object' && v.constructor === Object && Object.keys(v).length === 0) return true;
+			return false;
+		}
+		if (Array.isArray(value)) {
+			var arr = [];
+			for (var i = 0; i < value.length; i++) {
+				var cleaned = mwjson.util.removeEmpty(value[i]);
+				if (!isEmpty(cleaned)) arr.push(cleaned);
+			}
+			return arr;
+		}
+		if (value !== null && typeof value === 'object' && value.constructor === Object) {
+			var out = {};
+			for (var key of Object.keys(value)) {
+				var cleaned = mwjson.util.removeEmpty(value[key]);
+				if (!isEmpty(cleaned)) out[key] = cleaned;
+			}
+			return out;
+		}
+		return value;
+	}
+
 
 	// detect edited, new and deleted entities
 	// if a uuid is present in both array_before and array_after, the page is edited
