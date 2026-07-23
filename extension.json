@@ -260,6 +260,10 @@
 			"value": "always",
 			"description": "Forbid ('never'), conditional if set in schema option ('option') or always ('always') allow the user to save data failing schema validation."
 		},
+        "MwJsonRemoveEmptyOnSubmit": {
+			"value": true,
+			"description": "When true, mwjson.editor recursively strips empty values ('', null, undefined, [], {}) from jsondata before saving so unfilled defaultProperties and cleared optional fields do not persist. Set to false to keep the raw form value."
+		},
         "MwJsonAiCompletionApiUrl": {
 			"value": null,
 			"description": "REST-API endpoint accepting {\"promt\": \"...\", \"jsonschema\": \"\"} and returning a valide schema instance."

@@ -18,6 +18,7 @@ class MwJson {
 	public static function onResourceLoaderGetConfigVars( array &$vars, $skin, Config $config ): void {
 		$vars['wgMwJsonAllowSubmitInvalide'] = $config->get( 'MwJsonAllowSubmitInvalide' );
 		$vars['wgMwJsonAiCompletionApiUrl'] = $config->get( 'MwJsonAiCompletionApiUrl' );
+		$vars['wgMwJsonRemoveEmptyOnSubmit'] = $config->get( 'MwJsonRemoveEmptyOnSubmit' );
 	}
 
 	public static function onOutputPageParserOutput($out, $parserOutput) {

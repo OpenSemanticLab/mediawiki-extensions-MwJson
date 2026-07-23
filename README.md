@@ -48,6 +48,7 @@ MwJson is a MediaWiki extension that enables you to:
    ```php
    $wgMwJsonAllowSubmitInvalide = 'always'; // Allow saving invalid data
    $wgMwJsonAiCompletionApiUrl = null; // Set AI completion API
+   $wgMwJsonRemoveEmptyOnSubmit = true; // Deep-strip empty properties from jsondata before save (default: true)
    $wgMwJsonOrderSlotRenderResults = false; // Order of sections
    $wgMwJsonWrapSlotRenderResults = false; // Wrap sections in divs
    ```
