@@ -184,7 +184,14 @@ mwjson.editor = class {
 				}
 
 				this.flags["initial-data-load"] = true;
-				this.jsoneditor.setValue(this.config.data);
+				// Overlay caller-supplied data on top of the schema-driven initial
+				// state so schema `default:` values and `defaultProperties` are
+				// preserved for keys not explicitly provided. Top-level merge only:
+				// each top-level key from config.data replaces the schema default
+				// wholesale (arrays and nested objects are not deep-merged).
+				this.jsoneditor.setValue(
+					Object.assign({}, this.jsoneditor.getValue(), this.config.data)
+				);
 				if (this.config.copy) {
 					this.applyCopyIgnoreOption(this.jsoneditor.root);
 					this.config.data = this.jsoneditor.getValue();
