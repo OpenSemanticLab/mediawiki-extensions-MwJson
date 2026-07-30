@@ -15,9 +15,33 @@ local support = {}
 --- both are referenced at load time.
 ---
 --- @param slots table|nil  pageTitle -> { slotName = text }, backing mw.slots.slotContent
-function support.installStubs( slots )
+--- Module: names that resolve to a real file in docs/legacy-lua rather than to
+--- the permissive dummy. Set by installStubs when a snapshot dir is given.
+--- @type table|nil
+local moduleFiles = nil
+local moduleCache = {}
+
+function support.installStubs( slots, snapshotDir )
+	if snapshotDir then
+		moduleFiles = {
+			['Module:Lustache'] = snapshotDir .. '/Lustache.lua',
+			['Module:Lustache/Context'] = snapshotDir .. '/Lustache_Context.lua',
+			['Module:Lustache/Renderer'] = snapshotDir .. '/Lustache_Renderer.lua',
+			['Module:Lustache/Scanner'] = snapshotDir .. '/Lustache_Scanner.lua',
+		}
+	end
+
 	local realRequire = require
 	require = function( name )
+		if moduleFiles and moduleFiles[name] then
+			-- require() memoises; Lustache's renderer is a singleton and the
+			-- modules require each other, so loading twice would give two
+			-- renderers with separate partial tables.
+			if moduleCache[name] == nil then
+				moduleCache[name] = dofile( moduleFiles[name] )
+			end
+			return moduleCache[name]
+		end
 		if name:match( '^Module:' ) then
 			return setmetatable( {}, { __index = function() return function() end end } )
 		end
