@@ -54,6 +54,14 @@ class RenderParity extends Maintenance {
 		$this->addOption( 'namespaces', 'Comma-separated namespace ids to restrict the corpus.', false, true );
 		$this->addOption( 'limit', 'Only process the first N pages of the corpus.', false, true );
 		$this->addOption( 'report', 'Write a human-readable report to this file.', false, true );
+		$this->addOption(
+			'renderer',
+			'Set $wgMwJsonRenderer for this run ("lua" or "php"). With the Module:Entity shim '
+				. 'deployed this is what actually selects the implementation, and it keeps the '
+				. 'entry point identical on both sides, which the --implementation option does not.',
+			false,
+			true
+		);
 		$this->addOption( 'timings', 'Also record per-page wall time (excluded from diffs).' );
 		$this->requireExtension( 'MwJson' );
 	}
@@ -67,6 +75,14 @@ class RenderParity extends Maintenance {
 
 		$implementation = $this->getOption( 'implementation' )
 			?? ( in_array( $label, [ 'lua', 'php' ], true ) ? $label : 'lua' );
+		$renderer = $this->getOption( 'renderer' );
+		if ( $renderer !== null ) {
+			// Set before anything parses. The config is read through
+			// GlobalVarConfig, so the global is the switch.
+			$GLOBALS['wgMwJsonRenderer'] = $renderer;
+			$this->output( "wgMwJsonRenderer: $renderer\n" );
+		}
+
 		$recorder = ParityRecorder::newFromGlobalState( $implementation );
 		$this->output( "Entry point: $implementation\n" );
 		$modes = $this->parseList( $this->getOption( 'modes' ) ) ?: self::DEFAULT_MODES;
