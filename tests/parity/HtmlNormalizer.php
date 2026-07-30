@@ -20,6 +20,15 @@ class HtmlNormalizer {
 		// counters depend on parse order within the request.
 		$html = preg_replace( '/\x7f?\'?"?`?UNIQ--[^\x7f]*?QINU`?"?\'?\x7f?/', '<!--UNIQ-->', $html );
 
+		// Section edit links inside a category's header or footer template are
+		// attributed to whatever supplied the wikitext. The Lua expands them in
+		// a Scribunto frame, so they point at Module:Entity; the port points
+		// them at the category that actually holds the template, which is where
+		// a reader would need to go and which still exists after the module is
+		// deleted. Deliberate divergence, so the target is normalised away
+		// while the presence and index of the marker are still compared.
+		$html = preg_replace( '/<mw:editsection page="[^"]*"/', '<mw:editsection page="X"', $html );
+
 		// SMW #info tooltips and TreeAndMenu nodes number their ids per parse.
 		$html = preg_replace( '/\bid="(smw_[a-z]+|tooltip|dtree|treeandmenu)[-_]?\d+"/i', 'id="$1-N"', $html );
 		$html = preg_replace( '/\bdata-(mw-)?id="\d+"/', 'data-id="N"', $html );
