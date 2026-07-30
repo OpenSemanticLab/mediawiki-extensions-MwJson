@@ -53,6 +53,16 @@ trait LuaFixtureTrait {
 		$list = [];
 		$map = [];
 		foreach ( $value as $key => $item ) {
+			// Assigning nil to a Lua table key removes it, so the language
+			// cannot represent a null-valued member and the fixture never
+			// contains one. Dropping them on the PHP side makes "absent" and
+			// "null" compare equal, which is the actual relationship between
+			// the two representations. It stays a strict comparison: a key the
+			// Lua does hold a value for still fails against a PHP null,
+			// because dropping the null leaves the key missing.
+			if ( $item === null ) {
+				continue;
+			}
 			if ( is_int( $key ) ) {
 				$list[$key] = self::canonicalize( $item );
 			} else {

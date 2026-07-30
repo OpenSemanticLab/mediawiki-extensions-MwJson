@@ -161,11 +161,19 @@ function support.encode( v )
 		local value = v[k]
 		if value == nil then value = v[tonumber( k )] end
 
-		local outKey = k
-		local n = tonumber( k )
-		if n ~= nil and v[n] ~= nil then outKey = tostring( n - 1 ) end
+		if k == 'unit_index' and type( value ) == 'number' then
+			-- An index into a list rather than an ordinary number, so it gets
+			-- the same 1-based to 0-based translation as numeric keys do. Set
+			-- by p.processQuantityValue, which writes its working back into the
+			-- value object it was handed.
+			parts[#parts + 1] = '"unit_index":' .. string.format( '%.14g', value - 1 )
+		else
+			local outKey = k
+			local n = tonumber( k )
+			if n ~= nil and v[n] ~= nil then outKey = tostring( n - 1 ) end
 
-		parts[#parts + 1] = '"' .. escape( outKey ) .. '":' .. support.encode( value )
+			parts[#parts + 1] = '"' .. escape( outKey ) .. '":' .. support.encode( value )
+		end
 	end
 	return '{' .. table.concat( parts, ',' ) .. '}'
 end
