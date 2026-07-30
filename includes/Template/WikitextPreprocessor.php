@@ -26,8 +26,16 @@ interface WikitextPreprocessor {
 	 * the wikitext can refer to {{{key}}}.
 	 *
 	 * @param array<string,string> $args
+	 * @param string|null $contextTitle Title to attribute the expansion to.
+	 *   MediaWiki uses it to decide whether a heading came from the page itself
+	 *   or from something transcluded into it, and therefore where its section
+	 *   edit link points. Null means the current page.
 	 */
-	public function preprocessWithArgs( string $wikitext, array $args ): string;
+	public function preprocessWithArgs(
+		string $wikitext,
+		array $args,
+		?string $contextTitle = null
+	): string;
 
 	/**
 	 * Lua: frame:expandTemplate{ title = $title, args = $args }.

@@ -117,7 +117,11 @@ class LuaRenderFixtureTest extends TestCase {
 				return "PRE[$wikitext]";
 			}
 
-			public function preprocessWithArgs( string $wikitext, array $args ): string {
+			public function preprocessWithArgs(
+					string $wikitext,
+					array $args,
+					?string $contextTitle = null
+				): string {
 				return "CHILD[$wikitext]";
 			}
 

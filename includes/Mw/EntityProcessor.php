@@ -36,6 +36,9 @@ class EntityProcessor {
 	/** Opts a template that contains an info box back into the generated one. */
 	private const INFOBOX_OVERRIDE = '@renderInfoBox';
 
+	/** The subject's own schema, which is the page itself rather than a category. */
+	private const OWN_SCHEMA_KEY = '_';
+
 	private SchemaWalker $walker;
 	private JsonRefExpander $expander;
 	private EmbeddedTemplateExpander $templates;
@@ -199,7 +202,9 @@ class EntityProcessor {
 			}
 
 			if ( $template !== null ) {
-				$wikitext .= $this->renderTemplate( $template, $renderData, $details, $labelFallback );
+				$wikitext .= $this->renderTemplate(
+					$template, $renderData, $details, $labelFallback, $category
+				);
 			}
 		}
 
@@ -269,7 +274,8 @@ class EntityProcessor {
 		string $template,
 		array $renderData,
 		?string $details,
-		?string $labelFallback
+		?string $labelFallback,
+		?string $sourceTitle = null
 	): string {
 		// Wiki template arguments are strings, so structured values are
 		// dropped rather than stringified.
@@ -294,9 +300,15 @@ class EntityProcessor {
 			$template = "\n" . $template;
 		}
 
+		// The source category is passed as the frame title so that a heading in
+		// its template is attributed to it: MediaWiki then emits an edit link
+		// pointing at the category that actually holds the wikitext. The Lua
+		// attributes them to Module:Entity instead, which sends the reader to a
+		// Lua module, and which has nowhere to point once the module is gone.
 		return $this->wikitext->preprocessWithArgs(
 			$template,
-			array_map( static fn ( $v ) => $v === null ? '' : (string)$v, $args )
+			array_map( static fn ( $v ) => $v === null ? '' : (string)$v, $args ),
+			$sourceTitle === self::OWN_SCHEMA_KEY ? null : $sourceTitle
 		);
 	}
 
@@ -331,12 +343,22 @@ class EntityProcessor {
 		// @language, so the first label and description are copied out flat.
 		$labelKey = $this->keys->legacy( 'label' );
 		$textKey = $this->keys->legacy( 'text' );
-		$jsonld['schema:name'] = JsonUtil::defaultArgPath(
+
+		// Assigned only when there is something to assign. Lua cannot store a
+		// nil-valued key, so an entity with no description simply has no
+		// schema:description member, where PHP would happily emit a null one.
+		$schemaName = JsonUtil::defaultArgPath(
 			$jsonld, [ $labelKey, 0, $textKey ], $jsonld['name'] ?? null
 		);
-		$jsonld['schema:description'] = JsonUtil::defaultArgPath(
+		if ( $schemaName !== null ) {
+			$jsonld['schema:name'] = $schemaName;
+		}
+		$schemaDescription = JsonUtil::defaultArgPath(
 			$jsonld, [ $this->keys->legacy( 'description' ), 0, $textKey ]
 		);
+		if ( $schemaDescription !== null ) {
+			$jsonld['schema:description'] = $schemaDescription;
+		}
 
 		foreach ( $jsonld as $key => $value ) {
 			if ( !is_string( $value ) ) {
