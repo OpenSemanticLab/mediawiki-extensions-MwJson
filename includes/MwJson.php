@@ -168,6 +168,7 @@ class MwJson {
 				//$div->innerHTML = '';
 				$div->appendChild($newFragment);
 			}
+
 		}
 
 		// Unwrap temporary root element
