@@ -123,12 +123,21 @@ correctly (flat term resolution, IRI expansion, remote contexts) and keep our
 own layer above it. Do not describe this as "OO-LD via a standard processor";
 it is a standard processor plus a documented 1.1 shim.
 
-For the OO-LD phase that leaves three options, none of them free: implement the
-1.1 subset OO-LD actually needs on top of a 1.0 processor, which is roughly
-where the current code already sits; contribute 1.1 support upstream to
-`sweetrdf/json-ld`, which is the only actively released one; or accept that
-scoped contexts are resolved by OSL's own rules rather than by a conforming
-processor, and say so in the OO-LD documentation.
+**Decision for the OO-LD phase:** implement the 1.1 subset OO-LD actually needs
+on top of a 1.0 processor, rather than contributing 1.1 support upstream or
+declaring the gap and moving on.
+
+Practically that means `ContextBuilder` grows the pieces OO-LD depends on, and
+only those: property-scoped contexts (`$ref` inside a `type: object` property),
+type-scoped contexts (for `oneOf`/`anyOf` keyword conflicts), array-valued
+`@context` resolved most-recently-defined-wins, and `@propagate: false` to stop
+a scoped context leaking past its node. `ml/json-ld` keeps doing flat term
+resolution, IRI expansion and remote-context loading underneath.
+
+Two things follow. The shim boundary has to stay explicit, so that the day a
+1.1 processor appears the scoped-context layer can be deleted rather than
+untangled. And OSL should not claim JSON-LD 1.1 conformance on the strength of
+it: the subset is chosen to serve OO-LD, not to pass the 1.1 test suite.
 
 ## JSON Schema
 
