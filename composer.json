@@ -1,0 +1,48 @@
+{
+	"name": "open-semantic-lab/mw-json",
+	"type": "mediawiki-extension",
+	"description": "Storing and editing of structured data based on MultiContentRevisions, json, json-schema and json-ld.",
+	"keywords": [ "json", "json-schema", "json-ld", "semantic mediawiki" ],
+	"homepage": "https://github.com/OpenSemanticLab/mediawiki-extensions-MwJson",
+	"license": "AGPL-3.0-or-later",
+	"require": {
+		"php": ">=8.1",
+		"ext-json": "*",
+		"zordius/lightncandy": "^1.2",
+		"ml/json-ld": "^1.2"
+	},
+	"_comment_require": [
+		"All of the above are already present in MediaWiki core's vendor/ on a stock",
+		"OSL stack (lightncandy via core, ml/json-ld via SemanticMediaWiki), so no",
+		"deployment step is needed for them. Any dependency NOT already in core's",
+		"vendor/ must additionally be registered in the wiki's composer.local.json",
+		"merge-plugin include list. That is how extensions/WSSlots, ExternalData etc.",
+		"get theirs. See the JSON Schema note in docs/library-choices.md."
+	],
+	"require-dev": {
+		"phpunit/phpunit": "^9.6",
+		"mediawiki/mediawiki-codesniffer": "^43.0",
+		"php-parallel-lint/php-parallel-lint": "^1.3"
+	},
+	"autoload": {
+		"psr-4": {
+			"MediaWiki\\Extension\\MwJson\\": "includes/",
+			"MediaWiki\\Extension\\MwJson\\OOLD\\": "includes/OO-LD/"
+		}
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"MediaWiki\\Extension\\MwJson\\Tests\\": "tests/phpunit/"
+		}
+	},
+	"scripts": {
+		"test": [
+			"parallel-lint . --exclude vendor --exclude node_modules --exclude modules",
+			"@phpunit:unit"
+		],
+		"phpunit:unit": "phpunit --testsuite unit"
+	},
+	"config": {
+		"prepend-autoloader": false
+	}
+}

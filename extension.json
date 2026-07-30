@@ -247,6 +247,10 @@
         "MwJson":"includes/MwJson.php",
 		"SpecialSlotResolver": "special/SlotResolver.php"
     },
+    "AutoloadNamespaces":{
+        "MediaWiki\\Extension\\MwJson\\": "includes/",
+        "MediaWiki\\Extension\\MwJson\\OOLD\\": "includes/OO-LD/"
+    },
     "Hooks":{
         "BeforePageDisplay":"MwJson::onBeforePageDisplay",
         "OutputPageParserOutput": "MwJson::onOutputPageParserOutput",
@@ -256,6 +260,10 @@
 		"SlotResolver": "SpecialSlotResolver"
     },
     "config": {
+        "MwJsonRenderer": {
+			"value": "lua",
+			"description": "Which implementation renders the header/footer pipeline: 'lua' (legacy Module:MwJson, the default during the migration) or 'php' (the in-extension OO-LD pipeline). Module:Entity dispatches on this via mw.ext.mwjson.enabled(), so it is a live rollback switch: no page edits required to flip back."
+		},
         "MwJsonAllowSubmitInvalide": {
 			"value": "always",
 			"description": "Forbid ('never'), conditional if set in schema option ('option') or always ('always') allow the user to save data failing schema validation."
