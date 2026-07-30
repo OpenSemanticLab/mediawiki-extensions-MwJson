@@ -98,14 +98,23 @@ processing: term to IRI expansion, `@type: "@id"`, `@reverse`, `@container`,
 `@vocab`, and remote-context loading via a pluggable `DocumentLoaderInterface`
 (which lets us serve wiki-hosted contexts without HTTP).
 
-**It implements JSON-LD 1.0 only.** Its keyword table (`Processor.php:35-36`) is
-the 1.0 set: there is no `@version`, `@protected`, `@propagate` or `@nest`, and
-therefore **no property-scoped or type-scoped contexts**.
+**There is no JSON-LD 1.1 processor for PHP.** Checked, rather than assumed, by
+installing every candidate on Packagist and reading its keyword table:
 
-That matters because OO-LD leans on 1.1 scoped contexts: it requires
-`"@version": 1.1`, mirrors `$ref` inside `type: object` properties as
-*property-scoped* contexts, and resolves `oneOf`/`anyOf` keyword conflicts with
-type-scoped contexts. There is no maintained JSON-LD 1.1 processor for PHP.
+| Library | Version | Status | Keywords |
+|---|---|---|---|
+| `ml/json-ld` | 1.2.1 (2022) | vendored via SMW | 1.0 set (`Processor.php:35-36`) |
+| `sweetrdf/json-ld` | 1.4.3 (2026-05) | fork of the above; the author states it is "maintained but not developed any further" | identical 1.0 set |
+| `digitalbazaar/json-ld` | 0.4.8 (2023) | the reference implementation author's PHP port | 1.0 set (`_isKeyword()` ends at `@vocab`) |
+
+None of the three contains `@protected`, `@propagate`, `@version`, `@nest`,
+`processingMode` or `json-ld-1.1` anywhere in its source. Note digitalbazaar's
+*JavaScript* library is fully 1.1; the PHP port was never brought forward.
+
+So none of them supports **property-scoped or type-scoped contexts**, which is
+what OO-LD leans on: it requires `"@version": 1.1`, mirrors `$ref` inside
+`type: object` properties as property-scoped contexts, and resolves
+`oneOf`/`anyOf` keyword conflicts with type-scoped contexts.
 
 **Consequence:** `ContextBuilder` stays bespoke for the scoped-context
 assembly, which is what `Module:MwJson`'s `buildContext` already hand-rolls by
@@ -113,6 +122,13 @@ assembly, which is what `Module:MwJson`'s `buildContext` already hand-rolls by
 correctly (flat term resolution, IRI expansion, remote contexts) and keep our
 own layer above it. Do not describe this as "OO-LD via a standard processor";
 it is a standard processor plus a documented 1.1 shim.
+
+For the OO-LD phase that leaves three options, none of them free: implement the
+1.1 subset OO-LD actually needs on top of a 1.0 processor, which is roughly
+where the current code already sits; contribute 1.1 support upstream to
+`sweetrdf/json-ld`, which is the only actively released one; or accept that
+scoped contexts are resolved by OSL's own rules rather than by a conforming
+processor, and say so in the OO-LD documentation.
 
 ## JSON Schema
 
