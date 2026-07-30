@@ -171,6 +171,18 @@ local treeCases = {
 	{ 'list of objects', treeSchema,
 		{ parts = { { label = 'One', qty = 1 }, { label = 'Two', qty = 2 } } }, false },
 	{ 'nested object', treeSchema, { nested = { inner = 'value' } }, false },
+	-- A nested property whose key matches a top-level one that has
+	-- definitions recorded. p.renderJson drops property_definitions on the way
+	-- down, so the nested tooltip must carry no "Definition:" line.
+	{ 'nested key colliding with a defined top-level key', {
+		properties = { nested = { type = 'object', title = 'Nested',
+			properties = { name = { type = 'string', title = 'Inner name' } } } },
+	}, { nested = { name = 'inner value' } }, false },
+	{ 'list items colliding with a defined top-level key', {
+		properties = { parts = { type = 'array', title = 'Parts',
+			items = { type = 'object', properties = {
+				name = { type = 'string', title = 'Inner name' } } } } },
+	}, { parts = { { name = 'one' }, { name = 'two' } } }, false },
 	{ 'semicolon separated titles', treeSchema, { name = 'Item:A;Item:B' }, false },
 	{ 'semicolon in prose is not split', treeSchema, { name = 'one; two' }, false },
 	{ 'booleans and numbers', treeSchema, { name = true, created = 42 }, false },

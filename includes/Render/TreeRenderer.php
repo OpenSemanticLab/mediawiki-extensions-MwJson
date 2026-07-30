@@ -108,7 +108,12 @@ class TreeRenderer {
 		}
 
 		return $this->renderLiteral( $key, '', $propertySchema, $propertyDefinitions, $level )
-			. $this->render( $value, $propertySchema, $propertyDefinitions, $level + 1, $displayEmpty );
+			// Definitions are deliberately not passed down. p.renderJson()
+			// omits property_definitions from its recursive calls, so a nested
+			// property never gets a "Definition:" tooltip even when its name
+			// matches a top-level one that has definitions recorded. Passing
+			// them down would add tooltips the Lua does not render.
+			. $this->render( $value, $propertySchema, [], $level + 1, $displayEmpty );
 	}
 
 	/**
@@ -152,7 +157,8 @@ class TreeRenderer {
 				$propertyDefinitions,
 				$level + 1
 			);
-			$result .= $this->render( $item, $itemSchema, $propertyDefinitions, $level + 2, $displayEmpty );
+			// As above: nested levels get no definitions.
+			$result .= $this->render( $item, $itemSchema, [], $level + 2, $displayEmpty );
 		}
 
 		return $result;

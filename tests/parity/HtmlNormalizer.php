@@ -29,6 +29,15 @@ class HtmlNormalizer {
 		// while the presence and index of the marker are still compared.
 		$html = preg_replace( '/<mw:editsection page="[^"]*"/', '<mw:editsection page="X"', $html );
 
+		// The "T-" prefix marks a heading as transcluded rather than native.
+		// The Lua expands every category template in a Scribunto frame titled
+		// after the module, so every such heading is transcluded. The port
+		// attributes them to the category holding the template, which for a
+		// Category page rendering its own template is the page itself, and so
+		// counts as native. Only the prefix is normalised; the index is kept,
+		// so a heading appearing or disappearing still fails.
+		$html = preg_replace( '/(<mw:editsection [^>]*section=")T-/', '$1', $html );
+
 		// SMW #info tooltips and TreeAndMenu nodes number their ids per parse.
 		$html = preg_replace( '/\bid="(smw_[a-z]+|tooltip|dtree|treeandmenu)[-_]?\d+"/i', 'id="$1-N"', $html );
 		$html = preg_replace( '/\bdata-(mw-)?id="\d+"/', 'data-id="N"', $html );
