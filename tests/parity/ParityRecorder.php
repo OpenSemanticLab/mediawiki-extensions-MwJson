@@ -29,8 +29,19 @@ use SMW\SemanticData;
  */
 class ParityRecorder {
 
-	/** Wikitext entry point per mode; must stay identical across runs. */
-	private const ENTRY_POINT = '{{#invoke:Entity|%s}}';
+	/**
+	 * Wikitext entry points, one per implementation.
+	 *
+	 * The Lua baseline goes through Module:Entity, as every page does today.
+	 * The PHP side goes through the parser function rather than a rewritten
+	 * Module:Entity, so the comparison needs no wiki content to change: both
+	 * are parsed the same way, in the same page context, and reduced by the
+	 * same normaliser.
+	 */
+	private const ENTRY_POINTS = [
+		'lua' => '{{#invoke:Entity|%s}}',
+		'php' => '{{#mwjson:%s}}',
+	];
 
 	/** Page whose transclusions define the corpus. */
 	private const CORPUS_ANCHOR = 'Module:MwJson';
@@ -38,18 +49,25 @@ class ParityRecorder {
 	private Parser $parser;
 	private BacklinkCacheFactory $backlinkCacheFactory;
 	private HtmlNormalizer $htmlNormalizer;
+	private string $implementation;
 
 	public function __construct(
 		Parser $parser,
 		BacklinkCacheFactory $backlinkCacheFactory,
-		HtmlNormalizer $htmlNormalizer
+		HtmlNormalizer $htmlNormalizer,
+		string $implementation = 'lua'
 	) {
 		$this->parser = $parser;
 		$this->backlinkCacheFactory = $backlinkCacheFactory;
 		$this->htmlNormalizer = $htmlNormalizer;
+
+		if ( !isset( self::ENTRY_POINTS[$implementation] ) ) {
+			throw new \InvalidArgumentException( "Unknown implementation '$implementation'" );
+		}
+		$this->implementation = $implementation;
 	}
 
-	public static function newFromGlobalState(): self {
+	public static function newFromGlobalState( string $implementation = 'lua' ): self {
 		$services = MediaWikiServices::getInstance();
 		return new self(
 			// Deliberately the shared Parser, not ParserFactory::create().
@@ -61,7 +79,8 @@ class ParityRecorder {
 			// The PHP port will hit the same constraint wherever it calls #tree.
 			$services->getParser(),
 			$services->getBacklinkCacheFactory(),
-			new HtmlNormalizer()
+			new HtmlNormalizer(),
+			$implementation
 		);
 	}
 
@@ -124,7 +143,7 @@ class ParityRecorder {
 			);
 
 			$output = $this->parser->parse(
-				sprintf( self::ENTRY_POINT, $mode ),
+				sprintf( self::ENTRY_POINTS[$this->implementation], $mode ),
 				$title,
 				$options
 			);

@@ -28,6 +28,12 @@ class StubWikitextPreprocessor implements WikitextPreprocessor {
 		return "TPL[$title|" . $this->showArgs( $args ) . ']';
 	}
 
+
+	/** @inheritDoc */
+	public function callParserFunction( string $name, array $args ): string {
+		return "FN[$name|" . implode( ',', $args ) . ']';
+	}
+
 	/**
 	 * Sorted, because the Lua stub sorts too: pairs() has no defined order, so
 	 * an unsorted rendering would not be reproducible.

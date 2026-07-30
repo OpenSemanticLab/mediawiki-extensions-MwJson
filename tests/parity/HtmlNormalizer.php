@@ -14,6 +14,8 @@ namespace MediaWiki\Extension\MwJson\Tests\Parity;
 class HtmlNormalizer {
 
 	public function normalize( string $html ): string {
+		$html = $this->canonicaliseJsonLd( $html );
+
 		// Strip marker sequences (\x7f'"`UNIQ--item-1a--QINU`"'\x7f) whose
 		// counters depend on parse order within the request.
 		$html = preg_replace( '/\x7f?\'?"?`?UNIQ--[^\x7f]*?QINU`?"?\'?\x7f?/', '<!--UNIQ-->', $html );
@@ -33,5 +35,54 @@ class HtmlNormalizer {
 		$html = preg_replace( '/\s+/', ' ', $html );
 
 		return trim( $html );
+	}
+
+	/**
+	 * Sort the keys of the embedded JSON-LD payload.
+	 *
+	 * The hidden `data-jsonld` div is a serialised map, and Lua's
+	 * mw.text.jsonEncode walks the table with pairs(), whose order is
+	 * undefined, while PHP's json_encode uses insertion order. The two sides
+	 * therefore emit the same object with its members in different sequences.
+	 *
+	 * Key order carries no meaning in JSON-LD, so this compares the payloads as
+	 * objects rather than as strings. A genuine difference in what the payload
+	 * contains still fails.
+	 */
+	private function canonicaliseJsonLd( string $html ): string {
+		return preg_replace_callback(
+			'/data-jsonld=(["\'])(.*?)\1/s',
+			static function ( array $m ): string {
+				$json = html_entity_decode( $m[2], ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+				$decoded = json_decode( $json, true );
+				if ( !is_array( $decoded ) ) {
+					return $m[0];
+				}
+
+				$sort = static function ( &$value ) use ( &$sort ): void {
+					if ( !is_array( $value ) ) {
+						return;
+					}
+					foreach ( $value as &$child ) {
+						$sort( $child );
+					}
+					unset( $child );
+					// Lists keep their order, which is meaningful; only the
+					// member order of objects is arbitrary.
+					if ( !array_is_list( $value ) ) {
+						ksort( $value, SORT_STRING );
+					}
+				};
+				$sort( $decoded );
+
+				$encoded = json_encode(
+					$decoded,
+					JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+				);
+
+				return 'data-jsonld="' . htmlspecialchars( (string)$encoded, ENT_QUOTES ) . '"';
+			},
+			$html
+		) ?? $html;
 	}
 }

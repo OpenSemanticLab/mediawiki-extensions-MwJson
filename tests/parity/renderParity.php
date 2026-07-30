@@ -41,6 +41,13 @@ class RenderParity extends Maintenance {
 			'Record or compare rendered output + SMW data for the OSL header/footer pipeline.'
 		);
 		$this->addOption( 'label', 'Name for this run, e.g. "lua" or "php".', true, true );
+		$this->addOption(
+			'implementation',
+			'Entry point to render through: "lua" ({{#invoke:Entity}}) or "php" ({{#mwjson:}}). '
+				. 'Defaults to the label when that is one of the two.',
+			false,
+			true
+		);
 		$this->addOption( 'compare', 'Diff against a previously recorded label.', false, true );
 		$this->addOption( 'modes', 'Comma-separated modes (default: header,footer).', false, true );
 		$this->addOption( 'pages', 'Comma-separated titles instead of the full corpus.', false, true );
@@ -58,7 +65,10 @@ class RenderParity extends Maintenance {
 			$this->fatalError( "Cannot create $outputDir" );
 		}
 
-		$recorder = ParityRecorder::newFromGlobalState();
+		$implementation = $this->getOption( 'implementation' )
+			?? ( in_array( $label, [ 'lua', 'php' ], true ) ? $label : 'lua' );
+		$recorder = ParityRecorder::newFromGlobalState( $implementation );
+		$this->output( "Entry point: $implementation\n" );
 		$modes = $this->parseList( $this->getOption( 'modes' ) ) ?: self::DEFAULT_MODES;
 		$titles = $this->resolveTitles( $recorder );
 
@@ -110,7 +120,7 @@ class RenderParity extends Maintenance {
 		$baseline = json_decode( file_get_contents( $baselineFile ), true );
 
 		$diffs = $this->diff( $baseline, $records );
-		$this->reportDiffs( $compare, $label, $diffs );
+		$this->reportDiffs( $compare, $label, $diffs, count( $records ), count( $baseline ) );
 
 		if ( $diffs ) {
 			$this->fatalError( sprintf( '%d record(s) differ. Parity not reached.', count( $diffs ) ) );
@@ -123,7 +133,10 @@ class RenderParity extends Maintenance {
 	 */
 	private function diff( array $baseline, array $current ): array {
 		$diffs = [];
-		foreach ( array_unique( array_merge( array_keys( $baseline ), array_keys( $current ) ) ) as $key ) {
+		// Only what this run actually rendered. A subset run against the full
+		// baseline would otherwise report every page it did not touch as a
+		// difference; reportDiffs() states the coverage instead.
+		foreach ( array_keys( $current ) as $key ) {
 			$a = $baseline[$key] ?? null;
 			$b = $current[$key] ?? null;
 			if ( $a === null || $b === null ) {
@@ -143,7 +156,13 @@ class RenderParity extends Maintenance {
 		return $diffs;
 	}
 
-	private function reportDiffs( string $baselineLabel, string $label, array $diffs ): void {
+	private function reportDiffs(
+		string $baselineLabel,
+		string $label,
+		array $diffs,
+		int $compared = 0,
+		int $baselineSize = 0
+	): void {
 		$lines = [ sprintf( '=== %s vs %s ===', $baselineLabel, $label ), '' ];
 		if ( !$diffs ) {
 			$lines[] = 'No differences.';
@@ -151,6 +170,10 @@ class RenderParity extends Maintenance {
 		foreach ( $diffs as $key => $delta ) {
 			$lines[] = sprintf( '%-70s %s', $key, implode( ', ', array_keys( $delta ) ) );
 		}
+		$lines[] = sprintf(
+			'Compared %d of %d baseline record(s); %d differ.',
+			$compared, $baselineSize, count( $diffs )
+		);
 		$text = implode( "\n", $lines ) . "\n";
 
 		$this->output( $text );

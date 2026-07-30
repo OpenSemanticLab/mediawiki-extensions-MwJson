@@ -35,4 +35,14 @@ interface WikitextPreprocessor {
 	 * @param array<string,string> $args
 	 */
 	public function expandTemplate( string $title, array $args ): string;
+
+	/**
+	 * Lua: frame:callParserFunction( $name, $args ).
+	 *
+	 * Used for `#tree`, which wraps the rendered bullet list, and `filepath`,
+	 * which resolves File: values for the embedded JSON-LD.
+	 *
+	 * @param array<int|string,string> $args
+	 */
+	public function callParserFunction( string $name, array $args ): string;
 }

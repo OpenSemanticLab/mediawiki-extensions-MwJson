@@ -121,6 +121,10 @@ class LuaRenderFixtureTest extends TestCase {
 				return "CHILD[$wikitext]";
 			}
 
+			public function callParserFunction( string $name, array $args ): string {
+				return "FN[$name|" . implode( ',', $args ) . ']';
+			}
+
 			public function expandTemplate( string $title, array $args ): string {
 				ksort( $args, SORT_STRING );
 				$parts = [];
