@@ -66,7 +66,7 @@ class PipelineFactory {
 		return new EntityProcessor(
 			$this->newSchemaResolver( $loader, $slots, $dependencies, $title ),
 			new JsonRefExpander( $loader, $this->merge ),
-			new EmbeddedTemplateExpander( new MustacheRenderer(), $wikitext, $this->keys ),
+			new EmbeddedTemplateExpander( $this->newMustacheRenderer(), $wikitext, $this->keys ),
 			new SemanticPropertyMapper(
 				$this->keys,
 				$this->merge,
@@ -105,6 +105,29 @@ class PipelineFactory {
 			return;
 		}
 		CoreParserFunctions::displaytitle( $parser, $displayTitle );
+	}
+
+	/**
+	 * A renderer whose compiled templates outlive the request.
+	 *
+	 * Uses $wgCacheDirectory when the wiki has one, since that is the directory
+	 * an operator already expects to hold generated code and to clear. Falls
+	 * back to the system temp directory, and to no cache at all if neither is
+	 * writable, in which case rendering still works and only pays more.
+	 */
+	private function newMustacheRenderer(): MustacheRenderer {
+		$configured = MediaWikiServices::getInstance()->getMainConfig()->get( 'CacheDirectory' );
+		$base = is_string( $configured ) && $configured !== '' ? $configured : sys_get_temp_dir();
+		$directory = $base . '/mwjson-mustache';
+
+		if ( !is_dir( $directory ) && !@mkdir( $directory, 0777, true ) && !is_dir( $directory ) ) {
+			return new MustacheRenderer();
+		}
+		if ( !is_writable( $directory ) ) {
+			return new MustacheRenderer();
+		}
+
+		return new MustacheRenderer( MustacheRenderer::ESCAPE_SLASH, $directory );
 	}
 
 	private function newSlotSource( ?SlotDependencies $dependencies = null ): WsSlotSource {
