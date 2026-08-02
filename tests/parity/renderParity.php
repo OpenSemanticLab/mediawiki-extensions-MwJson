@@ -62,6 +62,13 @@ class RenderParity extends Maintenance {
 			false,
 			true
 		);
+		$this->addOption(
+			'bypass',
+			'Set $wgMwJsonBypassLegacyTemplates for this run ("1" or "0"). The bypass is meant '
+				. 'to be invisible, so the useful run is a php-vs-php diff with it on and off.',
+			false,
+			true
+		);
 		$this->addOption( 'timings', 'Also record per-page wall time (excluded from diffs).' );
 		$this->requireExtension( 'MwJson' );
 	}
@@ -81,6 +88,12 @@ class RenderParity extends Maintenance {
 			// GlobalVarConfig, so the global is the switch.
 			$GLOBALS['wgMwJsonRenderer'] = $renderer;
 			$this->output( "wgMwJsonRenderer: $renderer\n" );
+		}
+
+		$bypass = $this->getOption( 'bypass' );
+		if ( $bypass !== null ) {
+			$GLOBALS['wgMwJsonBypassLegacyTemplates'] = (bool)(int)$bypass;
+			$this->output( 'wgMwJsonBypassLegacyTemplates: ' . ( $bypass ? 'true' : 'false' ) . "\n" );
 		}
 
 		$recorder = ParityRecorder::newFromGlobalState( $implementation );

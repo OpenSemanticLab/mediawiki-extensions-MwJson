@@ -25,6 +25,13 @@ namespace MediaWiki\Extension\MwJson\Template;
  * Only once every instance is on the port can the templates come out of the
  * schemas, and at that point this class can go too.
  *
+ * Recognising a template is not the same as replacing it. Of the two classes
+ * here only the language one is currently rendered natively; see
+ * EmbeddedTemplateExpander::renderNatively() for why the link one is recognised
+ * but still run. The link class stays because it marks what a schema may drop
+ * once every instance is on the port, which is what makes this report-driven
+ * rather than guesswork.
+ *
  * ## On matching
  *
  * Recognition has to be conservative. Ignoring a template that is *not* a plain
@@ -54,11 +61,17 @@ class LegacyTemplateBypass {
 	 * Matches the shape OSL uses throughout: delimiters switched so the wikitext
 	 * `#switch` can wrap a mustache section, one `#ifeq` picking `#default` for
 	 * English, and the section's `text` as the case body.
+	 *
+	 * `lead`, `gap` and `suffix` capture the literal text outside the `#switch`.
+	 * The delimiter-change tag itself produces no output, but it is not
+	 * standalone on its line, so the whitespace around it is literal and does
+	 * reach the page. The replacement has to emit it too, or every bypassed value
+	 * loses a character relative to the template it stands in for.
 	 */
 	private const LANGUAGE_PATTERN =
-		'/^\s*\{\{=<%\s*%>=\}\}\s*\{\{#switch:\s*\{\{USERLANGUAGECODE\}\}\s*'
+		'/^(?P<lead>\s*)\{\{=<%\s*%>=\}\}(?P<gap>\s*)\{\{#switch:\s*\{\{USERLANGUAGECODE\}\}\s*'
 		. '<%#(?P<key>[\w.]+)%>\s*\|\s*\{\{#ifeq:\s*<%lang%>\s*\|\s*en\s*\|\s*#default\s*\|\s*<%lang%>\}\}\s*'
-		. '=\s*<%text%>\s*<%\/(?P=key)%>\s*\}\}\s*$/';
+		. '=\s*<%text%>\s*<%\/(?P=key)%>\s*\}\}(?P<suffix>\s*)$/';
 
 	/**
 	 * A section iterating a list of references and emitting `Viewer/Link` for
@@ -84,6 +97,17 @@ class LegacyTemplateBypass {
 	 *   recognises, so it is refused.
 	 */
 	public function classify( array $template, string $key ): ?string {
+		$match = $this->match( $template, $key );
+		return $match === null ? null : $match['class'];
+	}
+
+	/**
+	 * As classify(), but also reporting the literal text the template emits
+	 * around the part being replaced, so a caller can reproduce it exactly.
+	 *
+	 * @return array{class:string,prefix:string,suffix:string}|null
+	 */
+	public function match( array $template, string $key ): ?array {
 		$value = $template['value'] ?? null;
 		if ( !is_string( $value ) || $value === '' ) {
 			return null;
@@ -101,12 +125,16 @@ class LegacyTemplateBypass {
 		}
 
 		if ( preg_match( self::LANGUAGE_PATTERN, $value, $m ) && $m['key'] === $key ) {
-			return self::CLASS_LANGUAGE;
+			return [
+				'class' => self::CLASS_LANGUAGE,
+				'prefix' => $m['lead'] . $m['gap'],
+				'suffix' => $m['suffix'],
+			];
 		}
 
 		foreach ( self::LINK_PATTERNS as $pattern ) {
 			if ( preg_match( $pattern, $value, $m ) && $m['key'] === $key ) {
-				return self::CLASS_LINK;
+				return [ 'class' => self::CLASS_LINK, 'prefix' => '', 'suffix' => '' ];
 			}
 		}
 

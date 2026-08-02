@@ -60,6 +60,9 @@ class MustacheRenderer {
 
 	private BoundedMustacheEngine $engine;
 
+	/** @var array<string,string> */
+	private array $escapeTable;
+
 	/**
 	 * @param bool $escapeSlash See ESCAPE_SLASH.
 	 * @param string|null $cacheDirectory Where to keep compiled templates. Null
@@ -70,6 +73,7 @@ class MustacheRenderer {
 		?string $cacheDirectory = null
 	) {
 		$table = $escapeSlash ? self::ESCAPE + self::SLASH : self::ESCAPE;
+		$this->escapeTable = $table;
 
 		$options = [
 			'escape' => static function ( $value ) use ( $table ) {
@@ -119,6 +123,18 @@ class MustacheRenderer {
 			// both lets the caller keep the rest of the page rendering.
 			throw new MustacheCompileException( $e->getMessage(), $template );
 		}
+	}
+
+	/**
+	 * Escape a value exactly as an interpolation in a template would.
+	 *
+	 * Exposed so that LegacyTemplateBypass can produce a value byte-identical to
+	 * the one the template it replaces would have produced. Keeping the table in
+	 * one place is the point: an escaping change has to reach both paths, or the
+	 * bypass silently starts diverging from the template it stands in for.
+	 */
+	public function escape( string $value ): string {
+		return strtr( $value, $this->escapeTable );
 	}
 
 	/**

@@ -190,6 +190,25 @@ Recorded here because the parity harness reports them as differences and a
 reader needs to know which are deliberate. Counts are from the full 3370-page
 run of 6740 records.
 
+### `@context`, 890 records: term definitions resolve in JSON-LD order
+
+The largest of these, and the one the other three partly follow from. A term
+defined more than once along a category's inheritance chain now resolves to the
+most recently defined definition, which is what JSON-LD specifies for an
+array-valued `@context` and what OO-LD restates for a chain of `allOf` refs.
+
+The Lua resolved it the other way, and not by design. Merging a map-shaped
+`@context` with a list-shaped one files the list's parts under integer keys, and
+Lua's `pairs()` walks a table's array part before its hash part, so the *base*
+category's definition won by accident of table layout. The port follows the
+spec, so the *derived* one wins, which is also what an inheritance chain is
+expressing.
+
+`_URI` below is one visible consequence. The change is correct per spec, but it
+alters stored data on 890 records, so it wants sign-off before a flip rather
+than after, along with a check that no vocabulary was authored to depend on the
+Lua's ordering.
+
 ### `_CONV`, 524 records: the slash fix
 
 Quantity values reach SMW's unit-conversion property with real units instead of

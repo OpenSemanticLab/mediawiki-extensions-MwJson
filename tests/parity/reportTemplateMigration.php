@@ -140,10 +140,10 @@ class ReportTemplateMigration extends Maintenance {
 			$replaceable, count( $found )
 		) );
 
-		// What the port would actually absorb without any schema change. The
-		// gap against the classes above is the point of interest: those are
-		// templates that are replaceable in principle but whose exact shape the
-		// recogniser refuses, so they keep being rendered until a schema moves.
+		// What the port absorbs without any schema change. The gap against the
+		// classes above is the point of interest: those are templates that are
+		// replaceable in principle but whose exact shape the recogniser refuses,
+		// so they keep being rendered until a schema moves.
 		$bypass = new LegacyTemplateBypass();
 		$absorbed = [];
 		$missed = [];
@@ -159,10 +159,18 @@ class ReportTemplateMigration extends Maintenance {
 			}
 		}
 
+		// Only the language class is rendered natively. A link expands the
+		// Viewer/Link wiki template, which the port does not reimplement, so
+		// bypassing it would still cost a parser call.
 		$this->output( sprintf(
-			"\nLegacyTemplateBypass would absorb %d with no schema change: %s\n",
+			"\nLegacyTemplateBypass recognises %d template(s) with no schema change: %s\n",
 			array_sum( $absorbed ),
 			json_encode( $absorbed )
+		) );
+		$this->output( sprintf(
+			"Of those, %d are rendered natively (class '%s'); the rest still run.\n",
+			$absorbed[LegacyTemplateBypass::CLASS_LANGUAGE] ?? 0,
+			LegacyTemplateBypass::CLASS_LANGUAGE
 		) );
 		if ( $missed ) {
 			$this->output( sprintf(

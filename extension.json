@@ -266,6 +266,10 @@
             "value": "lua",
             "description": "Which implementation renders the header/footer pipeline: 'lua' (legacy Module:MwJson, the default during the migration) or 'php' (the in-extension OO-LD pipeline). Module:Entity dispatches on this via mw.ext.mwjson.enabled(), so it is a live rollback switch: no page edits required to flip back."
         },
+        "MwJsonBypassLegacyTemplates": {
+            "value": false,
+            "description": "When true, the PHP pipeline renders the values behind recognised legacy eval_templates itself instead of running them. Those templates exist because Scribunto could not resolve the reader's language; the pipeline can, so running them is redundant work on every page. Output is unchanged. Off by default so the recogniser can be verified against a wiki's own schemas before it takes effect."
+        },
         "MwJsonAllowSubmitInvalide": {
             "value": "always",
             "description": "Forbid ('never'), conditional if set in schema option ('option') or always ('always') allow the user to save data failing schema validation."

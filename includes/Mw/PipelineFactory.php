@@ -19,6 +19,7 @@ use MediaWiki\Extension\MwJson\Render\MultilangValue;
 use MediaWiki\Extension\MwJson\Render\PropertyTypeResolver;
 use MediaWiki\Extension\MwJson\Render\TreeRenderer;
 use MediaWiki\Extension\MwJson\Template\EmbeddedTemplateExpander;
+use MediaWiki\Extension\MwJson\Template\LegacyTemplateBypass;
 use MediaWiki\Extension\MwJson\Template\MustacheRenderer;
 use MediaWiki\MediaWikiServices;
 use Parser;
@@ -66,7 +67,14 @@ class PipelineFactory {
 		return new EntityProcessor(
 			$this->newSchemaResolver( $loader, $slots, $dependencies, $title ),
 			new JsonRefExpander( $loader, $this->merge ),
-			new EmbeddedTemplateExpander( $this->newMustacheRenderer(), $wikitext, $this->keys ),
+			new EmbeddedTemplateExpander(
+				$this->newMustacheRenderer(),
+				$wikitext,
+				$this->keys,
+				null,
+				$this->bypassLegacyTemplates() ? new LegacyTemplateBypass() : null,
+				$multilang
+			),
 			new SemanticPropertyMapper(
 				$this->keys,
 				$this->merge,
@@ -128,6 +136,11 @@ class PipelineFactory {
 		}
 
 		return new MustacheRenderer( MustacheRenderer::ESCAPE_SLASH, $directory );
+	}
+
+	private function bypassLegacyTemplates(): bool {
+		return (bool)MediaWikiServices::getInstance()->getMainConfig()
+			->get( 'MwJsonBypassLegacyTemplates' );
 	}
 
 	private function newSlotSource( ?SlotDependencies $dependencies = null ): WsSlotSource {

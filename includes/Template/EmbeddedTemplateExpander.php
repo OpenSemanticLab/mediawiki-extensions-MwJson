@@ -4,6 +4,7 @@ namespace MediaWiki\Extension\MwJson\Template;
 
 use MediaWiki\Extension\MwJson\OOLD\JsonUtil;
 use MediaWiki\Extension\MwJson\OOLD\SchemaKeys;
+use MediaWiki\Extension\MwJson\Render\MultilangValue;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
@@ -28,17 +29,31 @@ class EmbeddedTemplateExpander {
 	private WikitextPreprocessor $wikitext;
 	private SchemaKeys $keys;
 	private LoggerInterface $logger;
+	private ?LegacyTemplateBypass $bypass;
+	private ?MultilangValue $multilang;
 
+	/**
+	 * @param LegacyTemplateBypass|null $bypass Enables native rendering of the
+	 *   legacy templates it recognises. Null leaves every template rendered as
+	 *   written, which is the behaviour to fall back to if a schema turns up
+	 *   whose template matches the shape but not the intent.
+	 * @param MultilangValue|null $multilang Required for the bypass, since
+	 *   resolving a language is the whole of what the bypassed template did.
+	 */
 	public function __construct(
 		MustacheRenderer $mustache,
 		WikitextPreprocessor $wikitext,
 		?SchemaKeys $keys = null,
-		?LoggerInterface $logger = null
+		?LoggerInterface $logger = null,
+		?LegacyTemplateBypass $bypass = null,
+		?MultilangValue $multilang = null
 	) {
 		$this->mustache = $mustache;
 		$this->wikitext = $wikitext;
 		$this->keys = $keys ?? new SchemaKeys();
 		$this->logger = $logger ?? new NullLogger();
+		$this->bypass = $multilang === null ? null : $bypass;
+		$this->multilang = $multilang;
 	}
 
 	/**
@@ -84,8 +99,12 @@ class EmbeddedTemplateExpander {
 			if ( $this->isMustache( $evalTemplate ) ) {
 				// The whole value goes to the template, arrays included, so a
 				// template can iterate with a section.
-				$view = ( $evalTemplate['root_key'] ?? null ) === false ? $value : [ $key => $value ];
-				$jsondata[$key] = $this->renderMustache( $evalTemplate, $view );
+				$rootKeyed = ( $evalTemplate['root_key'] ?? null ) !== false;
+				$native = $rootKeyed
+					? $this->renderNatively( $evalTemplate, (string)$key, $value )
+					: null;
+				$jsondata[$key] = $native
+					?? $this->renderMustache( $evalTemplate, $rootKeyed ? [ $key => $value ] : $value );
 				continue;
 			}
 
@@ -270,6 +289,73 @@ class EmbeddedTemplateExpander {
 	}
 
 	/**
+	 * Produce a recognised legacy template's output without running it.
+	 *
+	 * Only the language class is handled. The link class is recognised but not
+	 * bypassed: its output is an expansion of the `Viewer/Link` wiki template,
+	 * which the port does not reimplement, so producing it still costs a parser
+	 * call and only the mustache render would be saved. The language class, by
+	 * contrast, is a `#switch` the pipeline can answer outright, and it sits on
+	 * `label` and `description`, so it runs on essentially every page.
+	 *
+	 * @param mixed $value
+	 * @return string|null Null when the template has to be rendered as written.
+	 */
+	private function renderNatively( array $template, string $key, $value ): ?string {
+		if ( $this->bypass === null || $this->multilang === null ) {
+			return null;
+		}
+		if ( !is_array( $value ) || !JsonUtil::hasFirstElement( $value ) ) {
+			return null;
+		}
+
+		$match = $this->bypass->match( $template, $key );
+		if ( $match === null || $match['class'] !== LegacyTemplateBypass::CLASS_LANGUAGE ) {
+			return null;
+		}
+
+		// The template interpolates the text, so it is escaped; and #switch trims
+		// the case value it selects. Both have to happen here for the result to
+		// be the same bytes.
+		//
+		// One known divergence: where a value repeats a language, #switch takes
+		// the first case and MultilangValue takes the last. Repeated languages
+		// are malformed data rather than a supported shape, and no page in the
+		// corpus has one.
+		$text = $this->multilang->render( [], [ $key => $value ], $key, '' );
+		$rendered = $match['prefix'] . trim( $this->mustache->escape( $text ) ) . $match['suffix'];
+
+		return $this->preprocessIfNeeded( $rendered );
+	}
+
+	/**
+	 * Run the preprocessor only over text that can actually contain something
+	 * for it to expand.
+	 *
+	 * The preprocessor handles templates and arguments (`{{`, `{{{`), the
+	 * language converter (`-{`) and comments and extension tags (`<`). Text
+	 * holding none of those constructs comes back unchanged, so the round-trip
+	 * into the parser is pure overhead. Wiki markup like `''` or `[[` is handled
+	 * later, by the parser proper, and is unaffected either way.
+	 *
+	 * The test is on any of `{}<>` rather than only the characters that open a
+	 * construct. Being able to say "this string contains no brace and no angle
+	 * bracket at all" is a much easier claim to check than "no construct starts
+	 * here", and it costs nothing: the templates this is meant to catch resolve
+	 * to a plain label or to the empty string.
+	 *
+	 * Worth guarding because most `mustache-wikitext` templates on the wiki
+	 * produce exactly that: a language switch resolves to a label, a link
+	 * section over an empty list produces nothing at all.
+	 */
+	private function preprocessIfNeeded( string $wikitext ): string {
+		if ( strcspn( $wikitext, '{}<>' ) === strlen( $wikitext ) ) {
+			return $wikitext;
+		}
+		return $this->wikitext->preprocess( $wikitext );
+	}
+
+	/**
 	 * @param mixed $view
 	 */
 	private function renderMustache( array $template, $view ): string {
@@ -291,7 +377,7 @@ class EmbeddedTemplateExpander {
 		}
 
 		if ( ( $template['type'] ?? null ) === self::TYPE_MUSTACHE_WIKITEXT ) {
-			return $this->wikitext->preprocess( $rendered );
+			return $this->preprocessIfNeeded( $rendered );
 		}
 		return $rendered;
 	}
