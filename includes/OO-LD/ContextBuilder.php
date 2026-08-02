@@ -69,6 +69,20 @@ class ContextBuilder {
 			return $result;
 		}
 
+		// Document order, so a later definition of a term overrides an earlier
+		// one. That is what JSON-LD specifies for an array-valued @context
+		// (most-recently-defined wins), and what OO-LD restates for a chain of
+		// allOf refs: the parts appear in chain order and a schema may append
+		// its own object last precisely in order to override.
+		//
+		// Worth stating because it is a deliberate divergence from the Lua on
+		// 874 pages. Merging a map-shaped @context with a list-shaped one
+		// appends the list's parts under integer keys, so a term can be defined
+		// both at the top level (from the base category) and inside an appended
+		// part (from a more derived one). Lua's pairs() walks a table's array
+		// part before its hash part, so there the *base* definition wins by
+		// accident of table layout. Following the spec means the derived one
+		// wins, which is also what the inheritance chain is expressing.
 		foreach ( $context as $term => $definition ) {
 			if ( is_int( $term ) && is_string( $definition ) ) {
 				// A remote context IRI. Skipped, see the class comment.

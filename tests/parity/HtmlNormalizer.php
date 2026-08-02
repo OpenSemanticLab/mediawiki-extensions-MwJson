@@ -40,6 +40,10 @@ class HtmlNormalizer {
 
 		// SMW #info tooltips and TreeAndMenu nodes number their ids per parse.
 		$html = preg_replace( '/\bid="(smw_[a-z]+|tooltip|dtree|treeandmenu)[-_]?\d+"/i', 'id="$1-N"', $html );
+
+		// SMW's result-format containers get an id derived from a per-parse
+		// counter, so two runs of the same page never agree on it.
+		$html = preg_replace( '/\bid="smw-[0-9a-f]{8,}"/', 'id="smw-N"', $html );
 		$html = preg_replace( '/\bdata-(mw-)?id="\d+"/', 'data-id="N"', $html );
 
 		// MediaWiki's per-parse section edit links / heading anchors carry an
@@ -68,8 +72,11 @@ class HtmlNormalizer {
 	 * contains still fails.
 	 */
 	private function canonicaliseJsonLd( string $html ): string {
+		// The attribute turns up in three forms depending on whether the div
+		// survived as markup or was escaped into text: raw double or single
+		// quotes, or an HTML-escaped single quote.
 		return preg_replace_callback(
-			'/data-jsonld=(["\'])(.*?)\1/s',
+			'/data-jsonld=(["\']|&#0?39;)(.*?)\1/s',
 			static function ( array $m ): string {
 				$json = html_entity_decode( $m[2], ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 				$decoded = json_decode( $json, true );
