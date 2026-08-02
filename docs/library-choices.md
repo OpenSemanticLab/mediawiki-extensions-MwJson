@@ -183,3 +183,33 @@ For the Overlay `target` expressions in the slot-patch feature. Already in
 `vendor/` via WSSlots, and the engine behind its `#slotdata`, so patches and
 `#slotdata` will agree on what a path means. Confirm it covers the RFC 9535
 subset actually used (notably filter expressions) before committing.
+
+## Appendix: intended divergences in stored SMW data
+
+Recorded here because the parity harness reports them as differences and a
+reader needs to know which are deliberate. Counts are from the full 3370-page
+run of 6740 records.
+
+### `_CONV`, 524 records: the slash fix
+
+Quantity values reach SMW's unit-conversion property with real units instead of
+entity-mangled fragments. See the escaping decision above.
+
+    lua  ["0.001 W&#x2F;g", "1 Gy&#x2F;s", "3600.0 Sv&#x2F;h", ...]
+    php  ["0.001 W/g",      "1 Gy/s",      "3600.0 Sv/h",      ...]
+
+### `_SKEY`, 597 records: the sort key is the display title
+
+The Lua leaves the raw page name in place *alongside* the display title, so a
+category listing sorts entries by their OSW id rather than by their label:
+
+    lua  ["OSW25c96b9c68ed4220a7c6432f4074f1d0", "prop ref test"]
+    php  ["prop ref test"]
+
+The port stores only the display title, which is the correct behaviour.
+
+Note this depends on ordering. SMW derives a subject's sort key from the
+display title while processing the `#set`, so the display title has to be
+applied *before* the properties are written. Doing it the other way round
+silently falls back to the page name, which is what the port did until the
+ordering was corrected in both entry points.

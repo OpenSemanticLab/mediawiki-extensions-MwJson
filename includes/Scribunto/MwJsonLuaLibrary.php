@@ -94,15 +94,17 @@ class MwJsonLuaLibrary extends LibraryBase {
 		);
 
 		// The processor computes without writing; the writes happen here, in
-		// the order the Lua performed them: subobjects, then page properties,
-		// then the display title.
+		// the order the Lua performed them. That order matters: the display
+		// title goes first, because SMW derives a subject's sort key from it
+		// during the #set and would otherwise fall back to the page name.
+		$factory->setDisplayTitle( $parser, $result->displayTitle );
+
 		if ( $result->mapping !== null ) {
 			$errors = $factory->newSmwWriter( $parser )->write( $result->mapping );
 			if ( $errors !== [] ) {
 				return [ $result->wikitext . implode( ' ', $errors ) ];
 			}
 		}
-		$factory->setDisplayTitle( $parser, $result->displayTitle );
 
 		return [ $result->wikitext ];
 	}

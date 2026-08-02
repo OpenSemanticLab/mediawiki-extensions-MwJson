@@ -77,8 +77,12 @@ class MwJsonParserFunction {
 		);
 
 		// The processor computes without writing; the writes happen here, in
-		// the order the Lua performed them: subobjects, page properties, then
-		// the display title.
+		// the order the Lua performed them. That order matters: the display
+		// title goes first, because SMW derives a subject's sort key from it
+		// during the #set and would otherwise fall back to the page name, so a
+		// category listing would sort by raw OSW id rather than by label.
+		$factory->setDisplayTitle( $parser, $result->displayTitle );
+
 		$wikitext = $result->wikitext;
 		if ( $result->mapping !== null ) {
 			$errors = $factory->newSmwWriter( $parser )->write( $result->mapping );
@@ -86,7 +90,6 @@ class MwJsonParserFunction {
 				$wikitext .= ' ' . $error;
 			}
 		}
-		$factory->setDisplayTitle( $parser, $result->displayTitle );
 
 		return $wikitext;
 	}
