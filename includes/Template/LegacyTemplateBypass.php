@@ -25,6 +25,16 @@ namespace MediaWiki\Extension\MwJson\Template;
  * Only once every instance is on the port can the templates come out of the
  * schemas, and at that point this class can go too.
  *
+ * ## What this is not
+ *
+ * It is not a performance measure. Skipping the templates was expected to be
+ * one, and it is not: alternating runs over 250 pages put it at 1 to 2 per
+ * cent, which is less than the drift between consecutive runs. The compiled
+ * template cache had already taken the cost it was aimed at. What it does buy
+ * is correctness, since the `#switch` wrapper mangles any value containing
+ * `}}`, and a migration path, since a schema cannot drop a template until every
+ * instance can render without it.
+ *
  * Recognising a template is not the same as replacing it. Of the two classes
  * here only the language one is currently rendered natively; see
  * EmbeddedTemplateExpander::renderNatively() for why the link one is recognised
