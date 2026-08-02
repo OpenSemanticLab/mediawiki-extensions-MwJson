@@ -47,6 +47,10 @@ SIGNATURES = [
     ("smw value warning", re.compile(
         r'Property &quot;|Property "[^"]+" \(as page type\)|contains invalid characters|has been classified')),
     ("smw generated id", re.compile(r'id="smw-[0-9a-f]+"|smw-[0-9a-f]{12,}')),
+    # Intended: @context parts are applied in JSON-LD document order, so a
+    # derived category's definition wins where Lua's pairs() let the base one.
+    ("jsonld context ordering", re.compile(
+        r'ontology_match|&quot;@id&quot;|"@id"|@context')),
     ("smw query id", re.compile(r"_QUERY[0-9a-f]{8}|smw-query|Has_query")),
     ("subobject id", re.compile(r"#_ML[0-9a-f]{6}|#_QUERY|#[0-9]+##")),
     ("ask result", re.compile(r"smw-format|smwtable|queryresult|smw-ask")),
