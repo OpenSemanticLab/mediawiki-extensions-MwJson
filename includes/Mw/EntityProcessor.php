@@ -7,7 +7,7 @@ use MediaWiki\Extension\MwJson\OOLD\JsonRefExpander;
 use MediaWiki\Extension\MwJson\OOLD\LabelHelper;
 use MediaWiki\Extension\MwJson\OOLD\ProcessResult;
 use MediaWiki\Extension\MwJson\OOLD\SchemaKeys;
-use MediaWiki\Extension\MwJson\OOLD\SchemaWalker;
+use MediaWiki\Extension\MwJson\OOLD\SchemaResolver;
 use MediaWiki\Extension\MwJson\OOLD\SchemaWalkResult;
 use MediaWiki\Extension\MwJson\OOLD\SemanticPropertyMapper;
 use MediaWiki\Extension\MwJson\OOLD\Slots;
@@ -39,7 +39,7 @@ class EntityProcessor {
 	/** The subject's own schema, which is the page itself rather than a category. */
 	private const OWN_SCHEMA_KEY = '_';
 
-	private SchemaWalker $walker;
+	private SchemaResolver $walker;
 	private JsonRefExpander $expander;
 	private EmbeddedTemplateExpander $templates;
 	private SemanticPropertyMapper $mapper;
@@ -51,7 +51,7 @@ class EntityProcessor {
 	private SchemaKeys $keys;
 
 	public function __construct(
-		SchemaWalker $walker,
+		SchemaResolver $walker,
 		JsonRefExpander $expander,
 		EmbeddedTemplateExpander $templates,
 		SemanticPropertyMapper $mapper,

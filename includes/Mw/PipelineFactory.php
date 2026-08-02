@@ -9,6 +9,7 @@ use MediaWiki\Extension\MwJson\OOLD\LabelHelper;
 use MediaWiki\Extension\MwJson\OOLD\LegacyLuaMergeStrategy;
 use MediaWiki\Extension\MwJson\OOLD\MergeStrategy;
 use MediaWiki\Extension\MwJson\OOLD\SchemaKeys;
+use MediaWiki\Extension\MwJson\OOLD\SchemaResolver;
 use MediaWiki\Extension\MwJson\OOLD\SchemaWalker;
 use MediaWiki\Extension\MwJson\OOLD\SemanticPropertyMapper;
 use MediaWiki\Extension\MwJson\Render\DateFormatter;
@@ -48,7 +49,11 @@ class PipelineFactory {
 	 */
 	public function newEntityProcessor( Parser $parser, PPFrame $frame ): EntityProcessor {
 		$wikitext = new ParserPreprocessor( $parser, $frame );
-		$slots = $this->newSlotSource();
+
+		// The collector has to sit under the slot source, so that every read the
+		// walk performs is recorded and can be revalidated on a later request.
+		$dependencies = new SlotDependencies();
+		$slots = $this->newSlotSource( $dependencies );
 		$loader = new SlotJsonLoader( $slots, $this->merge );
 
 		$multilang = new MultilangValue( $this->resolveUserLanguage( $parser ) );
@@ -56,8 +61,10 @@ class PipelineFactory {
 		$dates = new DateFormatter();
 		$links = new LinkHelper( $wikitext );
 
+		$title = $parser->getTitle();
+
 		return new EntityProcessor(
-			new SchemaWalker( $loader, $slots, $this->merge ),
+			$this->newSchemaResolver( $loader, $slots, $dependencies, $title ),
 			new JsonRefExpander( $loader, $this->merge ),
 			new EmbeddedTemplateExpander( new MustacheRenderer(), $wikitext, $this->keys ),
 			new SemanticPropertyMapper(
@@ -100,9 +107,43 @@ class PipelineFactory {
 		CoreParserFunctions::displaytitle( $parser, $displayTitle );
 	}
 
-	private function newSlotSource(): WsSlotSource {
+	private function newSlotSource( ?SlotDependencies $dependencies = null ): WsSlotSource {
 		$services = MediaWikiServices::getInstance();
-		return new WsSlotSource( $services->getTitleFactory(), $services->getWikiPageFactory() );
+		return new WsSlotSource(
+			$services->getTitleFactory(),
+			$services->getWikiPageFactory(),
+			$dependencies
+		);
+	}
+
+	/**
+	 * The walker, wrapped in the cross-request cache.
+	 *
+	 * Resolving a chain re-reads every slot and re-merges every ancestor on
+	 * every render, and the answer is a pure function of the revisions it read,
+	 * so it is worth storing. Falls back to the bare walker when there is no
+	 * title to key on, which happens in some maintenance contexts.
+	 */
+	private function newSchemaResolver(
+		SlotJsonLoader $loader,
+		WsSlotSource $slots,
+		SlotDependencies $dependencies,
+		?\MediaWiki\Title\Title $title
+	): SchemaResolver {
+		$walker = new SchemaWalker( $loader, $slots, $this->merge );
+
+		if ( $title === null ) {
+			return $walker;
+		}
+
+		$services = MediaWikiServices::getInstance();
+		$cache = new ResolvedSchemaCache(
+			$services->getMainWANObjectCache(),
+			$services->getTitleFactory(),
+			$services->getLinkBatchFactory()
+		);
+
+		return new CachingSchemaWalker( $walker, $cache, $dependencies, $title->getPrefixedText() );
 	}
 
 	/**

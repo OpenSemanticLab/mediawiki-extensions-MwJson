@@ -14,7 +14,7 @@ namespace MediaWiki\Extension\MwJson\OOLD;
  *
  * @see docs/legacy-lua/MwJson.lua
  */
-class SchemaWalker {
+class SchemaWalker implements SchemaResolver {
 
 	/**
 	 * Key under which the subject page's own schema is filed.
