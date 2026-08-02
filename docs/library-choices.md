@@ -198,6 +198,22 @@ entity-mangled fragments. See the escaping decision above.
     lua  ["0.001 W&#x2F;g", "1 Gy&#x2F;s", "3600.0 Sv&#x2F;h", ...]
     php  ["0.001 W/g",      "1 Gy/s",      "3600.0 Sv/h",      ...]
 
+### `_URI`, 81 records: a close match is no longer asserted as equivalent
+
+`_URI` is SMW's Equivalent URI. Both implementations agree on
+`HasCloseOntologyMatch` and `HasExactOntologyMatch`; they differ only in what
+also reaches `_URI`:
+
+    lua  ["http://dbpedia.org/resource/Molar_volume", "http://qudt.org/vocab/quantitykind/MolarVolume"]
+    php  ["http://qudt.org/vocab/quantitykind/MolarVolume"]
+
+The base vocabulary maps `close_ontology_match*` to `Property:Equivalent_URI`,
+while a more derived one remaps it to `Property:HasCloseOntologyMatch`. Under
+JSON-LD ordering the derived definition wins, so a close match no longer lands
+in Equivalent URI. That is the correct reading: `skos:closeMatch` explicitly
+does not assert equivalence, so the Lua was emitting an RDF claim the data does
+not support.
+
 ### `_SKEY`, 597 records: the sort key is the display title
 
 The Lua leaves the raw page name in place *alongside* the display title, so a
