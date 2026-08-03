@@ -305,12 +305,19 @@ class EmbeddedTemplateExpander {
 		if ( $this->bypass === null || $this->multilang === null ) {
 			return null;
 		}
-		if ( !is_array( $value ) || !JsonUtil::hasFirstElement( $value ) ) {
+
+		$match = $this->bypass->match( $template, $key );
+		if ( $match === null ) {
 			return null;
 		}
 
-		$match = $this->bypass->match( $template, $key );
-		if ( $match === null || $match['class'] !== LegacyTemplateBypass::CLASS_LANGUAGE ) {
+		if ( $match['class'] === LegacyTemplateBypass::CLASS_LINK_URL ) {
+			return $this->renderUrlLinks( $match, $value );
+		}
+		if ( $match['class'] !== LegacyTemplateBypass::CLASS_LANGUAGE ) {
+			return null;
+		}
+		if ( !is_array( $value ) || !JsonUtil::hasFirstElement( $value ) ) {
 			return null;
 		}
 
@@ -326,6 +333,58 @@ class EmbeddedTemplateExpander {
 		$rendered = $match['prefix'] . trim( $this->mustache->escape( $text ) ) . $match['suffix'];
 
 		return $this->preprocessIfNeeded( $rendered );
+	}
+
+	/**
+	 * Stand in for a section that renders each URL through `Viewer/Link`.
+	 *
+	 * The module's url branch has no query in it: with no explicit label it uses
+	 * the URL as its own label and returns `[url url]`. So the whole template
+	 * amounts to wrapping each item, and the pipeline can emit the result the
+	 * parser would have produced.
+	 *
+	 * Each URL still goes through preprocessIfNeeded, because the template
+	 * interpolated it into wikitext that was then preprocessed, so a URL holding
+	 * `{{...}}` was expanded. The literals around it are generated here and
+	 * contain nothing to expand, so they are assembled afterwards and the
+	 * assembled string never sees the parser.
+	 *
+	 * @param array{prefix:string,suffix:string,itemPrefix:string,itemSuffix:string} $match
+	 * @param mixed $value
+	 * @return string|null Null when the value is not a shape this can reproduce.
+	 */
+	private function renderUrlLinks( array $match, $value ): ?string {
+		// Mustache section semantics: a list iterates, a non-empty scalar
+		// renders once against itself, anything falsy renders nothing.
+		if ( is_array( $value ) ) {
+			if ( $value !== [] && !JsonUtil::hasFirstElement( $value ) ) {
+				return null;
+			}
+			$items = JsonUtil::listPart( $value );
+		} elseif ( is_string( $value ) && $value !== '' ) {
+			$items = [ $value ];
+		} elseif ( $value === null || $value === false || $value === '' ) {
+			$items = [];
+		} else {
+			return null;
+		}
+
+		$result = $match['prefix'];
+		foreach ( $items as $item ) {
+			if ( !is_string( $item ) ) {
+				// A number or an object would reach the template as something
+				// other than a URL, and reproducing that is not worth guessing.
+				return null;
+			}
+			// MediaWiki trims a named template argument, so the module saw the
+			// URL without the whitespace the template put around it.
+			$url = trim( $this->preprocessIfNeeded( $item ) );
+			$result .= $match['itemPrefix']
+				. ( $url === '' ? '' : '[' . $url . ' ' . $url . ']' )
+				. $match['itemSuffix'];
+		}
+
+		return $result . $match['suffix'];
 	}
 
 	/**

@@ -151,6 +151,100 @@ class LegacyTemplateBypassRenderingTest extends TestCase {
 		);
 	}
 
+	/** Category:Entity, properties.rdf_type.eval_template[0]. */
+	private const RDF_TYPE_TEMPLATE = '{{#rdf_type}} {{=<% %>=}} {{Viewer/Link |url= <%={{ }}=%> '
+		. '{{{.}}} {{=<% %>=}} }} <br><%={{ }}=%>{{/rdf_type}}';
+
+	private const URL_SCHEMA = [
+		'properties' => [
+			'rdf_type' => [
+				'eval_template' => [
+					[
+						'type' => 'mustache-wikitext',
+						'mode' => 'render',
+						'value' => self::RDF_TYPE_TEMPLATE,
+					],
+				],
+			],
+		],
+	];
+
+	/**
+	 * Module:Viewer/Link's url branch uses the URL as its own label, so each
+	 * item becomes `[url url]`. The two leading spaces and the trailing ` <br>`
+	 * are literal text the delimiter-switching leaves behind, once per item.
+	 */
+	public function testRendersUrlListsAsExternalLinks(): void {
+		$data = [ 'rdf_type' => [ 'http://schema.org/Thing', 'http://qudt.org/Q' ] ];
+
+		$this->assertSame(
+			[ 'rdf_type' =>
+				'  [http://schema.org/Thing http://schema.org/Thing] <br>'
+				. '  [http://qudt.org/Q http://qudt.org/Q] <br>' ],
+			$this->expandWith( self::URL_SCHEMA, $data )
+		);
+	}
+
+	public function testEmptyUrlListRendersNothing(): void {
+		$this->assertSame(
+			[ 'rdf_type' => '' ],
+			$this->expandWith( self::URL_SCHEMA, [ 'rdf_type' => [] ] )
+		);
+	}
+
+	/**
+	 * A bare string is a truthy section, so mustache renders it once against
+	 * itself rather than iterating its characters.
+	 */
+	public function testBareUrlRendersOnce(): void {
+		$this->assertSame(
+			[ 'rdf_type' => '  [http://x/y http://x/y] <br>' ],
+			$this->expandWith( self::URL_SCHEMA, [ 'rdf_type' => 'http://x/y' ] )
+		);
+	}
+
+	/**
+	 * The module emits nothing at all for an empty url, but the literal text
+	 * around the call is still there.
+	 */
+	public function testEmptyUrlKeepsTheSurroundingLiterals(): void {
+		$this->assertSame(
+			[ 'rdf_type' => '   <br>' ],
+			$this->expandWith( self::URL_SCHEMA, [ 'rdf_type' => [ '' ] ] )
+		);
+	}
+
+	/**
+	 * Anything that is not a string would have reached the wiki template as
+	 * something other than a URL, so the template runs rather than being
+	 * guessed at.
+	 */
+	public function testRefusesNonStringItems(): void {
+		$data = [ 'rdf_type' => [ [ 'a' => 1 ] ] ];
+
+		// Refusing means the template runs, so the result has to be whatever it
+		// would have been with the bypass switched off entirely.
+		$withoutBypass = ( new EmbeddedTemplateExpander(
+			new MustacheRenderer(),
+			new StubWikitextPreprocessor()
+		) )->expand( $data, self::URL_SCHEMA, 'render' );
+
+		$this->assertSame( $withoutBypass, $this->expandWith( self::URL_SCHEMA, $data ) );
+	}
+
+	private function expandWith( array $schema, array $data ): array {
+		$expander = new EmbeddedTemplateExpander(
+			new MustacheRenderer(),
+			new StubWikitextPreprocessor(),
+			null,
+			null,
+			new LegacyTemplateBypass(),
+			new MultilangValue( 'en' )
+		);
+
+		return $expander->expand( $data, $schema, 'render' );
+	}
+
 	private function expand( array $data, string $language ): array {
 		$expander = new EmbeddedTemplateExpander(
 			new MustacheRenderer(),

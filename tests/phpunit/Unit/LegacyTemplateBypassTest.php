@@ -56,8 +56,10 @@ class LegacyTemplateBypassTest extends TestCase {
 			. '<br><%={{ }}=%>{{/rdf_type}}'
 		);
 
+		// Its own class: the url branch of Module:Viewer/Link takes no label
+		// query, so unlike the page form the pipeline can stand in for it.
 		$this->assertSame(
-			LegacyTemplateBypass::CLASS_LINK,
+			LegacyTemplateBypass::CLASS_LINK_URL,
 			$this->bypass->classify( $template, 'rdf_type' )
 		);
 	}

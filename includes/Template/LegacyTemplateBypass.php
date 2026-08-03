@@ -56,8 +56,23 @@ class LegacyTemplateBypass {
 	/** A multilang value flattened for the reader's language. */
 	public const CLASS_LANGUAGE = 'language';
 
-	/** A reference rendered as a link. */
+	/**
+	 * A reference rendered as a link to a wiki page.
+	 *
+	 * Recognised but not replaced here. `Module:Viewer/Link` runs an SMW query
+	 * per link to find the target's label in the reader's language, so standing
+	 * in for it means reproducing that query and its fallback chain.
+	 */
 	public const CLASS_LINK = 'link';
+
+	/**
+	 * A list of URLs rendered as external links.
+	 *
+	 * The same wiki template, but its url branch, which takes no query and no
+	 * label lookup: `Module:Viewer/Link` defaults the label to the URL itself
+	 * and emits `[url url]`. That is string building, so the pipeline can do it.
+	 */
+	public const CLASS_LINK_URL = 'link-url';
 
 	/**
 	 * Features that mean the template is doing something beyond the shape being
@@ -84,18 +99,33 @@ class LegacyTemplateBypass {
 		. '=\s*<%text%>\s*<%\/(?P=key)%>\s*\}\}(?P<suffix>\s*)$/';
 
 	/**
-	 * A section iterating a list of references and emitting `Viewer/Link` for
-	 * each, in either the page or the url form.
+	 * A section iterating a list of page references, emitting `Viewer/Link` for
+	 * each. Recognised only; see CLASS_LINK.
+	 *
+	 *     {{=<% %>=}} <%#type%> {{Viewer/Link |page=<%.%> }} <br><%/type%>
 	 */
-	private const LINK_PATTERNS = [
-		// {{=<% %>=}} <%#type%> {{Viewer/Link |page=<%.%> }} <br><%/type%>
+	private const LINK_PAGE_PATTERN =
 		'/^\s*\{\{=<%\s*%>=\}\}\s*<%#(?P<key>[\w.]+)%>\s*\{\{Viewer\/Link\s*\|\s*page\s*=\s*<%\.%>\s*\}\}\s*'
-		. '(?:<br\s*\/?>)?\s*<%\/(?P=key)%>\s*$/',
-		// {{#rdf_type}} {{=<% %>=}} {{Viewer/Link |url= <%={{ }}=%> {{{.}}} ... }}
-		'/^\s*\{\{#(?P<key>[\w.]+)\}\}\s*\{\{=<%\s*%>=\}\}\s*\{\{Viewer\/Link\s*\|\s*url\s*=\s*'
-		. '<%=\{\{\s*\}\}=%>\s*\{\{\{\.\}\}\}\s*\{\{=<%\s*%>=\}\}\s*\}\}\s*'
-		. '(?:<br\s*\/?>)?\s*<%=\{\{\s*\}\}=%>\{\{\/(?P=key)\}\}\s*$/',
-	];
+		. '(?:<br\s*\/?>)?\s*<%\/(?P=key)%>\s*$/';
+
+	/**
+	 * The same section over a list of URLs.
+	 *
+	 *     {{#rdf_type}} {{=<% %>=}} {{Viewer/Link |url= <%={{ }}=%> {{{.}}} {{=<% %>=}} }} <br><%={{ }}=%>{{/rdf_type}}
+	 *
+	 * The delimiters switch twice so that the mustache interpolation can sit
+	 * inside a wikitext template call. What survives as literal output is the
+	 * whitespace between the tags, and it is captured here in the two positions
+	 * it can occupy: `a1` and `a2` run before the `Viewer/Link` call and repeat
+	 * per item, `b` follows it and carries the `<br>` separator.
+	 *
+	 * Note `{{{.}}}` is a triple stache, so the URL is interpolated unescaped.
+	 */
+	private const LINK_URL_PATTERN =
+		'/^(?P<prefix>\s*)\{\{#(?P<key>[\w.]+)\}\}(?P<a1>\s*)\{\{=<%\s*%>=\}\}(?P<a2>\s*)'
+		. '\{\{Viewer\/Link\s*\|\s*url\s*=\s*<%=\{\{\s*\}\}=%>\s*\{\{\{\.\}\}\}\s*'
+		. '\{\{=<%\s*%>=\}\}\s*\}\}(?P<b>[^<]*(?:<br\s*\/?>)?\s*)'
+		. '<%=\{\{\s*\}\}=%>\{\{\/(?P=key)\}\}(?P<suffix>\s*)$/';
 
 	/**
 	 * Which native rendering this template duplicates, or null if it has to be
@@ -115,7 +145,11 @@ class LegacyTemplateBypass {
 	 * As classify(), but also reporting the literal text the template emits
 	 * around the part being replaced, so a caller can reproduce it exactly.
 	 *
-	 * @return array{class:string,prefix:string,suffix:string}|null
+	 * `prefix` and `suffix` are emitted once. `itemPrefix` and `itemSuffix`
+	 * surround each iteration of a section, and are empty for a class that does
+	 * not iterate.
+	 *
+	 * @return array{class:string,prefix:string,suffix:string,itemPrefix:string,itemSuffix:string}|null
 	 */
 	public function match( array $template, string $key ): ?array {
 		$value = $template['value'] ?? null;
@@ -135,19 +169,42 @@ class LegacyTemplateBypass {
 		}
 
 		if ( preg_match( self::LANGUAGE_PATTERN, $value, $m ) && $m['key'] === $key ) {
-			return [
-				'class' => self::CLASS_LANGUAGE,
-				'prefix' => $m['lead'] . $m['gap'],
-				'suffix' => $m['suffix'],
-			];
+			return self::result( self::CLASS_LANGUAGE, $m['lead'] . $m['gap'], $m['suffix'] );
 		}
 
-		foreach ( self::LINK_PATTERNS as $pattern ) {
-			if ( preg_match( $pattern, $value, $m ) && $m['key'] === $key ) {
-				return [ 'class' => self::CLASS_LINK, 'prefix' => '', 'suffix' => '' ];
-			}
+		if ( preg_match( self::LINK_URL_PATTERN, $value, $m ) && $m['key'] === $key ) {
+			return self::result(
+				self::CLASS_LINK_URL,
+				$m['prefix'],
+				$m['suffix'],
+				$m['a1'] . $m['a2'],
+				$m['b']
+			);
+		}
+
+		if ( preg_match( self::LINK_PAGE_PATTERN, $value, $m ) && $m['key'] === $key ) {
+			return self::result( self::CLASS_LINK );
 		}
 
 		return null;
+	}
+
+	/**
+	 * @return array{class:string,prefix:string,suffix:string,itemPrefix:string,itemSuffix:string}
+	 */
+	private static function result(
+		string $class,
+		string $prefix = '',
+		string $suffix = '',
+		string $itemPrefix = '',
+		string $itemSuffix = ''
+	): array {
+		return [
+			'class' => $class,
+			'prefix' => $prefix,
+			'suffix' => $suffix,
+			'itemPrefix' => $itemPrefix,
+			'itemSuffix' => $itemSuffix,
+		];
 	}
 }
