@@ -36,11 +36,21 @@ class CountLinkQueries extends Maintenance {
 	private $walker;
 	private $merge;
 
+	/** Which recognised class to count; see the --class option. */
+	private $wanted;
+
 	public function __construct() {
 		parent::__construct();
 		$this->addDescription( 'Report how many per-link SMW label queries each page costs.' );
 		$this->addOption( 'limit', 'Only look at the first N pages.', false, true );
 		$this->addOption( 'top', 'How many worst offenders to list (default 15).', false, true );
+		$this->addOption(
+			'class',
+			'Which recognised template class to count: "link" (page form, one SMW label '
+				. 'query each) or "link-url" (url form, no query). Default "link".',
+			false,
+			true
+		);
 		$this->requireExtension( 'MwJson' );
 	}
 
@@ -59,6 +69,7 @@ class CountLinkQueries extends Maintenance {
 		);
 		$bypass = new LegacyTemplateBypass();
 		$keys = new SchemaKeys();
+		$this->wanted = $this->getOption( 'class' ) ?? LegacyTemplateBypass::CLASS_LINK;
 
 		$counts = [];
 		$pages = $this->corpus();
@@ -108,7 +119,8 @@ class CountLinkQueries extends Maintenance {
 				if ( !is_array( $template ) ) {
 					continue;
 				}
-				if ( $bypass->classify( $template, (string)$key ) !== LegacyTemplateBypass::CLASS_LINK ) {
+				$class = $bypass->classify( $template, (string)$key );
+				if ( $class !== $this->wanted ) {
 					continue;
 				}
 				// One query per item in the list, or one for a bare value.
