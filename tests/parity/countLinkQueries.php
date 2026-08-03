@@ -115,9 +115,16 @@ class CountLinkQueries extends Maintenance {
 				$templates = $templates === [] ? [] : [ $templates ];
 			}
 
+			$rendered = false;
 			foreach ( $templates as $template ) {
 				if ( !is_array( $template ) ) {
 					continue;
+				}
+				if ( isset( $template['value'] ) && is_string( $template['value'] ) ) {
+					// The property renders through a template, so the tree sees
+					// a string that already holds a link rather than a bare
+					// title, and LinkHelper leaves it alone.
+					$rendered = true;
 				}
 				$class = $bypass->classify( $template, (string)$key );
 				if ( $class !== $this->wanted ) {
@@ -125,6 +132,10 @@ class CountLinkQueries extends Maintenance {
 				}
 				// One query per item in the list, or one for a bare value.
 				$total += is_array( $value ) ? count( $value ) : 1;
+			}
+
+			if ( $this->wanted === 'tree' && !$rendered ) {
+				$total += $this->countBareTitles( $value );
 			}
 
 			// Nested objects carry their own link properties.
@@ -145,6 +156,32 @@ class CountLinkQueries extends Maintenance {
 			}
 		}
 
+		return $total;
+	}
+
+	/**
+	 * Values the tree renderer will hand to LinkHelper, which expands
+	 * Viewer/Link for each one, so each is a further label query.
+	 *
+	 * Mirrors LinkHelper::wrapLinkIfNamespaced: an ASCII-namespaced title, in
+	 * one of the four namespaces OSL links, that is not already a link.
+	 *
+	 * @param mixed $value
+	 */
+	private function countBareTitles( $value ): int {
+		if ( is_string( $value ) ) {
+			return strpos( $value, '[[' ) === false
+				&& preg_match( '/^(Category|Item|File|Property):.+$/', $value )
+				? 1 : 0;
+		}
+		if ( !is_array( $value ) || !JsonUtil::hasFirstElement( $value ) ) {
+			return 0;
+		}
+
+		$total = 0;
+		foreach ( $value as $item ) {
+			$total += $this->countBareTitles( $item );
+		}
 		return $total;
 	}
 
