@@ -69,6 +69,13 @@ class RenderParity extends Maintenance {
 			false,
 			true
 		);
+		$this->addOption(
+			'labels',
+			'Set $wgMwJsonResolveLinkLabels for this run ("1" or "0"). Resolves link labels '
+				. 'from the store instead of expanding Viewer/Link once per link.',
+			false,
+			true
+		);
 		$this->addOption( 'timings', 'Also record per-page wall time (excluded from diffs).' );
 		$this->requireExtension( 'MwJson' );
 	}
@@ -88,6 +95,12 @@ class RenderParity extends Maintenance {
 			// GlobalVarConfig, so the global is the switch.
 			$GLOBALS['wgMwJsonRenderer'] = $renderer;
 			$this->output( "wgMwJsonRenderer: $renderer\n" );
+		}
+
+		$labels = $this->getOption( 'labels' );
+		if ( $labels !== null ) {
+			$GLOBALS['wgMwJsonResolveLinkLabels'] = (bool)(int)$labels;
+			$this->output( 'wgMwJsonResolveLinkLabels: ' . ( $labels ? 'true' : 'false' ) . "\n" );
 		}
 
 		$bypass = $this->getOption( 'bypass' );

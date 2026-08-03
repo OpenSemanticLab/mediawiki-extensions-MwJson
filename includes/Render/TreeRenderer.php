@@ -57,6 +57,13 @@ class TreeRenderer {
 		$schema = is_array( $jsonschema ) ? $jsonschema : null;
 		$result = '';
 
+		if ( $level === 0 ) {
+			// Every linkable value on the page in one go, before any of them is
+			// resolved. Without this the resolver pays a title lookup per link,
+			// and the heaviest page in the corpus carries 1848 of them.
+			$this->links->prefetch( $this->collectScalars( $jsondata ) );
+		}
+
 		foreach ( $this->sortKeys( $jsondata, $schema ) as $key ) {
 			$value = $jsondata[$key];
 			$propertySchema = $schema['properties'][$key] ?? null;
@@ -416,6 +423,28 @@ class TreeRenderer {
 		// Lua's truthiness test lets 0 through, and so must this: an explicit
 		// propertyOrder of 0 is a real position, not an absent one.
 		return is_int( $order ) || is_float( $order ) ? $order : self::UNORDERED;
+	}
+
+	/**
+	 * Every scalar anywhere in the data, so the caller can decide which are
+	 * linkable. Deliberately not filtered here: knowing what counts as a title
+	 * is LinkHelper's business, not the tree's.
+	 *
+	 * @param mixed $value
+	 * @return array<int,mixed>
+	 */
+	private function collectScalars( $value ): array {
+		if ( !is_array( $value ) ) {
+			return [ $value ];
+		}
+
+		$found = [];
+		foreach ( $value as $item ) {
+			foreach ( $this->collectScalars( $item ) as $scalar ) {
+				$found[] = $scalar;
+			}
+		}
+		return $found;
 	}
 
 	/**

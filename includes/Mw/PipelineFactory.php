@@ -60,7 +60,7 @@ class PipelineFactory {
 		$multilang = new MultilangValue( $this->resolveUserLanguage( $parser ) );
 		$types = new PropertyTypeResolver();
 		$dates = new DateFormatter();
-		$links = new LinkHelper( $wikitext );
+		$links = new LinkHelper( $wikitext, $this->newLinkLabelResolver( $parser ) );
 
 		$title = $parser->getTitle();
 
@@ -136,6 +136,33 @@ class PipelineFactory {
 		}
 
 		return new MustacheRenderer( MustacheRenderer::ESCAPE_SLASH, $directory );
+	}
+
+	/**
+	 * The label resolver, or null to keep expanding the wiki template.
+	 *
+	 * Needs the parser for two things: the reader identity the permission check
+	 * is made against, and the ParserOutput, since a label that depends on who
+	 * is reading must not be stored in the parser cache.
+	 */
+	private function newLinkLabelResolver( Parser $parser ): ?SmwLinkLabelResolver {
+		$services = MediaWikiServices::getInstance();
+		if ( !$services->getMainConfig()->get( 'MwJsonResolveLinkLabels' ) ) {
+			return null;
+		}
+		if ( !class_exists( \SMW\StoreFactory::class ) ) {
+			return null;
+		}
+
+		return new SmwLinkLabelResolver(
+			\SMW\StoreFactory::getStore(),
+			$services->getTitleFactory(),
+			$services->getPermissionManager(),
+			$services->getLinkBatchFactory(),
+			$parser->getOptions()->getUserIdentity(),
+			$parser->getOutput(),
+			$this->resolveUserLanguage( $parser )
+		);
 	}
 
 	private function bypassLegacyTemplates(): bool {
