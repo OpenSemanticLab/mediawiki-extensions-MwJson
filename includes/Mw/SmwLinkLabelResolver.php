@@ -10,27 +10,38 @@ use MediaWiki\User\UserIdentity;
 use ParserOutput;
 use SMW\DIProperty;
 use SMW\DIWikiPage;
+use SMW\RequestOptions;
 use SMW\Store;
 use SMWDIContainer;
 
 /**
- * Resolves link labels by reading the store, replacing one SMW query per link.
+ * Resolves link labels by reading the store in bulk, replacing one SMW query
+ * per link.
  *
- * ## Why this is not a query
+ * ## Why not the query, and why not plain store reads either
  *
  * Module:Viewer/Link runs `mw.smw.ask` per link purely to find the target's
- * label. On this stack the query engine is a SPARQLStore, so each of those is
- * an HTTP round trip to the triple store: measured at ~99 ms in isolation and
- * ~19 ms marginal inside a warm page render, against **0.86 ms** for the
- * equivalent `getSemanticData` read, which the SPARQLStore delegates to its SQL
- * base store. The tree renders a mean of 5 links per page and 1848 on the worst
- * one, which is why that page takes 35 seconds.
+ * label. The tree renders a mean of 5 links per page and 1848 on the worst one,
+ * which is why that page takes 35 seconds to render.
+ *
+ * Measured per link, cold, over 300 distinct subjects:
+ *
+ *     Viewer/Link (one query each)       ~19 ms
+ *     Store::getSemanticData             16.02 ms
+ *     Store::getPropertyValues, targeted  9.37 ms
+ *     PrefetchCache, batched              0.61 ms
+ *
+ * So the win is not in avoiding the query engine, which is worth about a
+ * factor of two. It is in asking for every subject at once: SMW's PrefetchCache
+ * loads one property for a whole list of subjects in a single pass, and the
+ * per-subject reads afterwards are cache hits. That is what makes this worth
+ * doing rather than a lateral move.
  *
  * Dropping the query layer also drops its limits. `$smwgQMaxSize` prunes a
  * query's condition tree in SMW_Query::applyRestrictions(), so a batched
  * disjunction would have to be chunked to a size the wiki configures and this
  * extension does not control: 50 on this stack, 12 on a stock install, with
- * silent truncation past it. A store read has no such cap.
+ * silent truncation past it. Prefetching has no such cap.
  *
  * ## How access is preserved
  *
@@ -39,6 +50,8 @@ use SMWDIContainer;
  * getUserPermissionsErrors hook calls that same predicate. So checking
  * PermissionManager::userCan( 'read', ... ) reaches the identical decision by
  * the standard route, and honours any other extension restricting read as well.
+ * A target the reader may not see yields no label, which renders as the plain
+ * link, exactly as the module does when its query comes back empty.
  *
  * Two parts of that filter are not covered by `userCan` and are handled here
  * explicitly rather than inherited:
@@ -53,11 +66,15 @@ use SMWDIContainer;
  */
 class SmwLinkLabelResolver implements LinkLabelResolver {
 
-	/** SemanticACL's markers. Presence with a non-public value means the
-	 * rendering depends on who is reading it. */
+	/** SemanticACL's markers. A non-public value means the rendering depends
+	 * on who is reading it. */
 	private const ACL_PROPERTIES = [ '___VISIBLE', '___EDITABLE' ];
 
-	/** Monolingual text record members, as stored for a `_mlt_rec` property. */
+	private const LABEL = 'HasLabel';
+	private const DISPLAY_TITLE = '_DTITLE';
+	private const NAME = 'HasName';
+
+	/** Monolingual record members, stored on an `_ML<hash>` subobject. */
 	private const TEXT = '_TEXT';
 	private const LANGUAGE_CODE = '_LCODE';
 
@@ -69,8 +86,25 @@ class SmwLinkLabelResolver implements LinkLabelResolver {
 	private ParserOutput $parserOutput;
 	private string $language;
 
-	/** @var array<string,string|null> Prefixed title => resolved label. */
+	/** SMW's batched property loader, or null when this store has none. */
+	private $prefetch;
+
+	private RequestOptions $requestOptions;
+
+	/** @var array<string,string|null> Title => label, including nulls. */
 	private array $cache = [];
+
+	/**
+	 * Subjects the batch actually loaded.
+	 *
+	 * PrefetchCache::isCached() answers per property, not per subject, so a
+	 * subject that missed the batch would read as having no values at all
+	 * rather than falling through to the store. Tracking who was in the batch
+	 * is what keeps a miss a miss.
+	 *
+	 * @var array<string,true>
+	 */
+	private array $prefetched = [];
 
 	public function __construct(
 		Store $store,
@@ -88,30 +122,88 @@ class SmwLinkLabelResolver implements LinkLabelResolver {
 		$this->user = $user;
 		$this->parserOutput = $parserOutput;
 		$this->language = $language;
+		$this->requestOptions = new RequestOptions();
+
+		try {
+			$this->prefetch = $store->service( 'PrefetchCache' );
+		} catch ( \Throwable $e ) {
+			// Not every store offers one. Without it each read stands alone,
+			// which is correct but an order of magnitude slower.
+			$this->prefetch = null;
+		}
 	}
 
 	/**
 	 * @inheritDoc
 	 */
 	public function prefetch( array $titles ): void {
-		$batch = $this->linkBatchFactory->newLinkBatch();
-		$seen = [];
-
+		$subjects = [];
 		foreach ( $titles as $text ) {
-			$page = $this->pageOf( $text );
-			if ( $page === null || isset( $seen[$page] ) ) {
-				continue;
-			}
-			$seen[$page] = true;
-			$title = $this->titleFactory->newFromText( $page );
+			$title = $this->titleOf( $text );
 			if ( $title !== null ) {
-				$batch->addObj( $title );
+				$subjects[$title->getPrefixedText()] = $title;
 			}
 		}
+		if ( $subjects === [] ) {
+			return;
+		}
 
-		// Fills the title cache, so the existence and permission checks below
-		// do not each hit the database.
+		// One round of title lookups rather than one per link, so the
+		// existence and permission checks below do not each hit the database.
+		$batch = $this->linkBatchFactory->newLinkBatch();
+		foreach ( $subjects as $title ) {
+			$batch->addObj( $title );
+		}
 		$batch->execute();
+
+		if ( $this->prefetch === null ) {
+			return;
+		}
+
+		$pages = [];
+		foreach ( $subjects as $title ) {
+			if ( $title->exists() && $title->getNamespace() !== NS_FILE ) {
+				$pages[] = DIWikiPage::newFromTitle( $title );
+			}
+		}
+		if ( $pages === [] ) {
+			return;
+		}
+
+		foreach ( $pages as $page ) {
+			$this->prefetched[$page->getHash()] = true;
+		}
+
+		foreach ( [ self::LABEL, self::DISPLAY_TITLE, self::NAME ] as $property ) {
+			$this->prefetch->prefetch( $pages, new DIProperty( $property ), $this->requestOptions );
+		}
+		foreach ( self::ACL_PROPERTIES as $property ) {
+			$this->prefetch->prefetch( $pages, new DIProperty( $property ), $this->requestOptions );
+		}
+
+		// A monolingual label is not stored inline: the subject holds a pointer
+		// to an `_ML<hash>` subobject and the text lives there. So the pointers
+		// have to be collected before their contents can be prefetched too,
+		// which is the second pass.
+		$records = [];
+		foreach ( $pages as $page ) {
+			foreach ( $this->valuesOf( $page, self::LABEL ) as $value ) {
+				if ( $value instanceof DIWikiPage ) {
+					$records[] = $value;
+				}
+			}
+		}
+		if ( $records === [] ) {
+			return;
+		}
+
+		foreach ( $records as $record ) {
+			$this->prefetched[$record->getHash()] = true;
+		}
+
+		foreach ( [ self::TEXT, self::LANGUAGE_CODE ] as $property ) {
+			$this->prefetch->prefetch( $records, new DIProperty( $property ), $this->requestOptions );
+		}
 	}
 
 	/**
@@ -125,12 +217,7 @@ class SmwLinkLabelResolver implements LinkLabelResolver {
 	}
 
 	private function resolve( string $text ): ?string {
-		$page = $this->pageOf( $text );
-		if ( $page === null ) {
-			return null;
-		}
-
-		$title = $this->titleFactory->newFromText( $page );
+		$title = $this->titleOf( $text );
 		if ( $title === null || !$title->exists() ) {
 			return null;
 		}
@@ -142,8 +229,7 @@ class SmwLinkLabelResolver implements LinkLabelResolver {
 		}
 
 		if ( !$this->permissions->userCan( 'read', $this->user, $title ) ) {
-			// The reader may not see the target, so no label, which renders as
-			// the plain link. Output now depends on who is asking.
+			// Output now depends on who is asking, so it must not be cached.
 			$this->parserOutput->updateCacheExpiry( 0 );
 			return null;
 		}
@@ -156,24 +242,23 @@ class SmwLinkLabelResolver implements LinkLabelResolver {
 			);
 		}
 
-		$data = $this->store->getSemanticData( $subject );
-		$this->noteAclDependency( $data );
+		$this->noteAclDependency( $subject );
 
 		$localized = null;
 		$english = null;
 		$any = null;
 
-		foreach ( $data->getPropertyValues( new DIProperty( 'HasLabel' ) ) as $value ) {
-			[ $text2, $language ] = $this->unpackMonolingual( $value );
-			if ( $text2 === null ) {
+		foreach ( $this->valuesOf( $subject, self::LABEL ) as $value ) {
+			[ $label, $language ] = $this->unpackMonolingual( $value );
+			if ( $label === null ) {
 				continue;
 			}
-			$any ??= $text2;
+			$any ??= $label;
 			if ( $language === $this->language ) {
-				$localized ??= $text2;
+				$localized ??= $label;
 			}
 			if ( $language === 'en' ) {
-				$english ??= $text2;
+				$english ??= $label;
 			}
 		}
 
@@ -182,23 +267,18 @@ class SmwLinkLabelResolver implements LinkLabelResolver {
 		return $localized
 			?? $english
 			?? $any
-			?? $this->firstText( $data, '_DTITLE' )
-			?? $this->firstText( $data, 'HasName' );
+			?? $this->firstText( $subject, self::DISPLAY_TITLE )
+			?? $this->firstText( $subject, self::NAME );
 	}
 
 	/**
 	 * SemanticACL disables caching for a page carrying a non-public visibility
 	 * marker, because whether its data shows depends on the reader. This
 	 * resolver reads that same data, so it owes the same.
-	 *
-	 * @param \SMW\SemanticData $data
 	 */
-	private function noteAclDependency( $data ): void {
-		foreach ( $data->getProperties() as $property ) {
-			if ( !in_array( $property->getKey(), self::ACL_PROPERTIES, true ) ) {
-				continue;
-			}
-			foreach ( $data->getPropertyValues( $property ) as $value ) {
+	private function noteAclDependency( DIWikiPage $subject ): void {
+		foreach ( self::ACL_PROPERTIES as $property ) {
+			foreach ( $this->valuesOf( $subject, $property ) as $value ) {
 				if ( $value->getSerialization() !== 'public' ) {
 					$this->parserOutput->updateCacheExpiry( 0 );
 					return;
@@ -208,10 +288,26 @@ class SmwLinkLabelResolver implements LinkLabelResolver {
 	}
 
 	/**
-	 * @param \SMW\SemanticData $data
+	 * Values of one property, from the batch when there is one.
+	 *
+	 * @return array<int,mixed>
 	 */
-	private function firstText( $data, string $property ): ?string {
-		foreach ( $data->getPropertyValues( new DIProperty( $property ) ) as $value ) {
+	private function valuesOf( DIWikiPage $subject, string $property ): array {
+		$diProperty = new DIProperty( $property );
+
+		if (
+			$this->prefetch !== null
+			&& isset( $this->prefetched[$subject->getHash()] )
+			&& $this->prefetch->isCached( $diProperty )
+		) {
+			return $this->prefetch->getPropertyValues( $subject, $diProperty, $this->requestOptions );
+		}
+
+		return $this->store->getPropertyValues( $subject, $diProperty );
+	}
+
+	private function firstText( DIWikiPage $subject, string $property ): ?string {
+		foreach ( $this->valuesOf( $subject, $property ) as $value ) {
 			$text = $value->getSerialization();
 			if ( is_string( $text ) && $text !== '' ) {
 				return $text;
@@ -223,10 +319,9 @@ class SmwLinkLabelResolver implements LinkLabelResolver {
 	/**
 	 * Unpack a `_mlt_rec` value into its text and language code.
 	 *
-	 * A monolingual record is not stored inline. The parent holds a pointer to
-	 * a subobject named `_ML<hash>`, and the text and language live there, so a
-	 * value arrives as a DIWikiPage that has to be dereferenced. It can also
-	 * arrive already materialised as a container, which is why both are handled.
+	 * The value normally arrives as a DIWikiPage pointing at the subobject
+	 * holding the record, and is dereferenced. It can also arrive already
+	 * materialised as a container, which is why both are handled.
 	 *
 	 * @param mixed $value
 	 * @return array{0:?string,1:?string}
@@ -234,29 +329,35 @@ class SmwLinkLabelResolver implements LinkLabelResolver {
 	private function unpackMonolingual( $value ): array {
 		if ( $value instanceof SMWDIContainer ) {
 			$data = $value->getSemanticData();
+			$text = $this->firstOf( $data->getPropertyValues( new DIProperty( self::TEXT ) ) );
+			$language = $this->firstOf( $data->getPropertyValues( new DIProperty( self::LANGUAGE_CODE ) ) );
 		} elseif ( $value instanceof DIWikiPage ) {
-			$data = $this->store->getSemanticData( $value );
+			$text = $this->firstOf( $this->valuesOf( $value, self::TEXT ) );
+			$language = $this->firstOf( $this->valuesOf( $value, self::LANGUAGE_CODE ) );
 		} else {
 			return [ null, null ];
 		}
 
-		$text = null;
-		$language = null;
-
-		foreach ( $data->getPropertyValues( new DIProperty( self::TEXT ) ) as $value ) {
-			$text ??= $value->getSerialization();
-		}
-		foreach ( $data->getPropertyValues( new DIProperty( self::LANGUAGE_CODE ) ) as $value ) {
-			$language ??= $value->getSerialization();
-		}
-
-		return [ is_string( $text ) && $text !== '' ? $text : null, $language ];
+		return [ $text !== '' ? $text : null, $language ];
 	}
 
-	/** The page part of a `Page#subobject` reference. */
-	private function pageOf( string $text ): ?string {
+	/**
+	 * @param array<int,mixed> $values
+	 */
+	private function firstOf( array $values ): ?string {
+		foreach ( $values as $value ) {
+			$text = $value->getSerialization();
+			if ( is_string( $text ) ) {
+				return $text;
+			}
+		}
+		return null;
+	}
+
+	/** The title behind a `Page#subobject` reference, or null. */
+	private function titleOf( string $text ): ?\MediaWiki\Title\Title {
 		$page = trim( explode( '#', $text, 2 )[0] );
-		return $page === '' ? null : $page;
+		return $page === '' ? null : $this->titleFactory->newFromText( $page );
 	}
 
 	/** The subobject part, or null when there is none. */
