@@ -92,7 +92,10 @@ class LinkHelper {
 			return $value;
 		}
 
-		if ( $this->labels === null ) {
+		// A resolver that cannot vouch for this target is not the same as one
+		// reporting no label: the first has to fall back to the template, the
+		// second renders a plain link, which is correct.
+		if ( $this->labels === null || !$this->labels->handles( $value ) ) {
 			return $this->wikitext->expandTemplate( self::VIEWER_TEMPLATE, [ 'page' => $value ] );
 		}
 

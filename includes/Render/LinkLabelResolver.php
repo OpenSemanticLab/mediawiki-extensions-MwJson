@@ -29,6 +29,16 @@ interface LinkLabelResolver {
 	public function prefetch( array $titles ): void;
 
 	/**
+	 * Whether this resolver can answer for a target at all.
+	 *
+	 * Distinct from label() returning null, which means "no label exists" and
+	 * legitimately renders as a plain link. A target this returns false for has
+	 * not been assessed, so the caller must fall back rather than treat it as
+	 * unlabelled.
+	 */
+	public function handles( string $title ): bool;
+
+	/**
 	 * @param string $title Prefixed title, optionally with a `#subobject`.
 	 * @return string|null Null when there is no label, or when the reader may
 	 *   not see the target.

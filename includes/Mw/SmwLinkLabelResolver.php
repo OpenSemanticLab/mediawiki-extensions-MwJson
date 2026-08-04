@@ -209,6 +209,18 @@ class SmwLinkLabelResolver implements LinkLabelResolver {
 	/**
 	 * @inheritDoc
 	 */
+	public function handles( string $title ): bool {
+		$resolved = $this->titleOf( $title );
+
+		// See the class comment: SemanticACL applies a private category check to
+		// files that userCan() does not cover, so those are left to the wiki
+		// template rather than answered here with a label this cannot vouch for.
+		return $resolved !== null && $resolved->getNamespace() !== NS_FILE;
+	}
+
+	/**
+	 * @inheritDoc
+	 */
 	public function label( string $title ): ?string {
 		if ( array_key_exists( $title, $this->cache ) ) {
 			return $this->cache[$title];
@@ -219,12 +231,6 @@ class SmwLinkLabelResolver implements LinkLabelResolver {
 	private function resolve( string $text ): ?string {
 		$title = $this->titleOf( $text );
 		if ( $title === null || !$title->exists() ) {
-			return null;
-		}
-
-		// See the class comment: the ACL filter does more than a read check for
-		// files, and reproducing a private method is worse than not claiming to.
-		if ( $title->getNamespace() === NS_FILE ) {
 			return null;
 		}
 
