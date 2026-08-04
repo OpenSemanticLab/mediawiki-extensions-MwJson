@@ -446,9 +446,15 @@ function p.processJsondata(args)
 	
 	-- label / description language fallback: substitute the en (or first available)
 	-- text when the eval_template #switch rendered empty for the user language.
-	-- _label_fallback is reused below for the scalar template args.
+	-- _label_fallback / _description_display are reused below for the scalar template args.
 	local _label_fallback = p.applyMultilangFallback(jsondata, jsonld[p.keys.label], p.keys.label)
-	p.applyMultilangFallback(jsondata, jsonld[p.keys.description], p.keys.description)
+	local _description_fallback = p.applyMultilangFallback(jsondata, jsonld[p.keys.description], p.keys.description)
+	-- The description render eval_template has no #switch #default (and may be
+	-- dropped in generated schemas), so the rendered header value can be empty or
+	-- still be the raw multilang array. Resolve it directly from the original data
+	-- for the subtitle: user language, then en, then first available.
+	local _description_display = p.renderMultilangValue({jsondata=jsonld, key=p.keys.description})
+	if (_description_display == nil or _description_display == "") then _description_display = _description_fallback end
 
 	local renderMode = "tree"
 	if jsondata.__render_mode__ == "tree" then renderMode = "tree" end
@@ -503,6 +509,9 @@ function p.processJsondata(args)
 			if (_lbl == nil or (type(_lbl) == "string" and _lbl:match("^%s*$"))) and _label_fallback ~= nil then
 				stripped_jsondata[p.keys.label] = _label_fallback
 			end
+			if (_description_display ~= nil and _description_display ~= "") then
+				stripped_jsondata[p.keys.description] = _description_display
+			end
 			stripped_jsondata["_details"] = _details
 			local child = frame:newChild{args=stripped_jsondata}
 			if ( template:sub(1, #"=") == "=" ) then template = "\n" .. template end -- add line break if template starts with heading (otherwise not rendered by mw parser)
@@ -547,7 +556,9 @@ function p.processJsondata(args)
 		end
 		--wikitext = mw.dumpObject(smw_res.properties) .. wikitext
 	end
-	wikitext = wikitext .. "\n" .. p.setCategories({categories=set_categories_in_wikitext, sortkey=display_label}).wikitext
+	-- category links render invisibly; appending them without a newline avoids a
+	-- stray empty paragraph (<p><br/></p>) at the end of the header slot output
+	wikitext = wikitext .. p.setCategories({categories=set_categories_in_wikitext, sortkey=display_label}).wikitext
 	
 	if (debug) then mw.logObject(res) end
 	return {wikitext=wikitext, debug_msg=msg}

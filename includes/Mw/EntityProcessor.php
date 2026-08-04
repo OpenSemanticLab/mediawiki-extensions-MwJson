@@ -138,14 +138,28 @@ class EntityProcessor {
 		[ $renderData, $labelFallback ] = $this->multilang->applyFallback(
 			$renderData, $jsondata[$labelKey] ?? null, $labelKey
 		);
-		[ $renderData, ] = $this->multilang->applyFallback(
+		$descriptionKey = $this->keys->legacy( 'description' );
+		[ $renderData, $descriptionFallback ] = $this->multilang->applyFallback(
 			$renderData,
-			$jsondata[$this->keys->legacy( 'description' )] ?? null,
-			$this->keys->legacy( 'description' )
+			$jsondata[$descriptionKey] ?? null,
+			$descriptionKey
 		);
 
+		// The description's render eval_template has no #switch #default, and
+		// generated schemas may drop it altogether, so the rendered value can
+		// come out empty or still be the raw multilang list. Resolve it from
+		// the original data instead: reader's language, then English, then
+		// whatever the fallback found.
+		$descriptionDisplay = $this->multilang->render(
+			[], $jsondata, $descriptionKey, ''
+		);
+		if ( $descriptionDisplay === '' ) {
+			$descriptionDisplay = $descriptionFallback;
+		}
+
 		$wikitext .= $this->renderChain(
-			$walk, $schema, $renderData, $definitions, $mapping, $mode, $labelFallback
+			$walk, $schema, $renderData, $definitions, $mapping, $mode,
+			$labelFallback, $descriptionDisplay
 		);
 
 		$displayTitle = null;
@@ -155,7 +169,10 @@ class EntityProcessor {
 			);
 		}
 
-		$wikitext .= "\n" . $this->renderCategories( $storeData, $mapping, $namespaceText );
+		// No newline before them: category links render invisibly, so a
+		// preceding newline closes the last paragraph and leaves a stray
+		// <p><br/></p> at the end of the header slot.
+		$wikitext .= $this->renderCategories( $storeData, $mapping, $namespaceText );
 
 		return new ProcessResult( $wikitext, $mapping, $displayTitle );
 	}
@@ -174,7 +191,8 @@ class EntityProcessor {
 		array $definitions,
 		$mapping,
 		string $mode,
-		?string $labelFallback
+		?string $labelFallback,
+		?string $descriptionDisplay = null
 	): string {
 		$renderMode = ( $renderData['__render_mode__'] ?? null ) === 'table' ? 'table' : 'tree';
 		$context = $mapping !== null ? $mapping->context : [];
@@ -203,7 +221,7 @@ class EntityProcessor {
 
 			if ( $template !== null ) {
 				$wikitext .= $this->renderTemplate(
-					$template, $renderData, $details, $labelFallback, $category
+					$template, $renderData, $details, $labelFallback, $descriptionDisplay, $category
 				);
 			}
 		}
@@ -275,6 +293,7 @@ class EntityProcessor {
 		array $renderData,
 		?string $details,
 		?string $labelFallback,
+		?string $descriptionDisplay = null,
 		?string $sourceTitle = null
 	): string {
 		// Wiki template arguments are strings, so structured values are
@@ -290,6 +309,10 @@ class EntityProcessor {
 		$label = $args[$labelKey] ?? null;
 		if ( ( $label === null || ( is_string( $label ) && trim( $label ) === '' ) ) && $labelFallback !== null ) {
 			$args[$labelKey] = $labelFallback;
+		}
+
+		if ( $descriptionDisplay !== null && $descriptionDisplay !== '' ) {
+			$args[$this->keys->legacy( 'description' )] = $descriptionDisplay;
 		}
 
 		$args['_details'] = $details;
