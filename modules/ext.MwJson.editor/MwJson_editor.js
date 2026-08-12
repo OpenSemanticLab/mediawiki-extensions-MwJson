@@ -32,18 +32,39 @@ mwjson.editor = class {
 		// https://json-schema.org/understanding-json-schema/reference/string#dates-and-times
 		// https://flatpickr.js.org/formatting/
 		// https://www.mediawiki.org/wiki/Manual:$wgDefaultUserOptions
+		//month name first, 12 hour clock => January 15, 2011 4:12 PM
+		let mdyFormat = {"date": "F d, Y", "time": "G:i K", "datetime-local": "F d, Y G:i K"};
+		//day first, dot separated, 24 hour clock => 15.01.2011 16:12
+		let dmyDotFormat = {"date": "d.m.Y", "time": "H:i", "datetime-local": "d.m.Y H:i"};
 		let langDatetimeFormats = {
-			"en": {"date": "F d, Y", "time": "G:i K", "datetime-local": "F d, Y G:i K"},
-			"de": {"date": "d.m.Y", "time": "H:i", "datetime-local": "d.m.Y H:i"},
+			"en": mdyFormat,
+			//languages conventionally written day first, dot separated, on a 24 hour clock.
+			//Regional variants (de-at, de-ch, de-formal, ...) resolve through their base code
+			//below, so only base codes are listed here.
+			"de": dmyDotFormat, "bg": dmyDotFormat, "bs": dmyDotFormat, "cs": dmyDotFormat,
+			"da": dmyDotFormat, "et": dmyDotFormat, "fi": dmyDotFormat, "hr": dmyDotFormat,
+			"is": dmyDotFormat, "lv": dmyDotFormat, "nb": dmyDotFormat, "nn": dmyDotFormat,
+			"no": dmyDotFormat, "pl": dmyDotFormat, "ro": dmyDotFormat, "ru": dmyDotFormat,
+			"sk": dmyDotFormat, "sl": dmyDotFormat, "sr": dmyDotFormat, "tr": dmyDotFormat,
+			"uk": dmyDotFormat,
 		};
+		let userLang = "" + (config.lang ? config.lang : defaultConfig.lang);
+		//variants such as de-at, de-ch or de-formal share the format of their base language
+		let baseLang = userLang.split("-")[0].toLowerCase();
 		let datetimeFormats = {
-			"default": langDatetimeFormats[config.lang ? config.lang : defaultConfig.lang],//No preference
-			"mdy": {"date": "F d, Y", "time": "G:i K", "datetime-local": "F d, Y G:i K"}, //16:12, January 15, 2011
-			"dmy": {"date": "d.m.Y", "time": "H:i", "datetime-local": "d.m.Y H:i"}, //16:12, 15 January 2011
-			"ymd": {"date": "Y/m/d", "time": "H:i", "datetime-local": "Y/m/d H:i"}, //16:12, 2011 January 15
-			"ISO 8601": {"date": "Y-m-d", "time": "H:i", "datetime-local": "Z"}, //2011-01-15T16:12:34
+			//No preference: follow the user language, falling back to the base language and
+			//finally to "en" for any language we have no explicit format for
+			"default": langDatetimeFormats[userLang] || langDatetimeFormats[baseLang] || langDatetimeFormats["en"],
+			//examples below show what the format actually renders, not the MediaWiki
+			//preference label it is mapped from
+			"mdy": mdyFormat, //January 15, 2011 4:12 PM
+			"dmy": dmyDotFormat, //15.01.2011 16:12
+			"ymd": {"date": "Y/m/d", "time": "H:i", "datetime-local": "Y/m/d H:i"}, //2011/01/15 16:12
+			"ISO 8601": {"date": "Y-m-d", "time": "H:i", "datetime-local": "Z"}, //2011-01-15, 2011-01-15T16:12:34.000Z
 		};
-		defaultConfig.format = datetimeFormats[mw.user.options.get("date")];
+		//the available date preferences depend on the content language, so a wiki can
+		//offer keys we have no format for. Fall back to the language default.
+		defaultConfig.format = datetimeFormats[mw.user.options.get("date")] || datetimeFormats["default"];
 		this.config = mwjson.util.mergeDeep(defaultConfig, config);
 		this.flags = {
 			'initial-data-load': false, // true while initial applying config.data => Used for copy-feature
