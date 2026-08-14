@@ -116,6 +116,18 @@ mwjson.editor = class {
 			})
 			.catch((err) => {
 				console.error(err);
+				// The popup is created before the schema is bundled, so a schema that
+				// cannot be resolved (e.g. a category missing from the chain while the
+				// abort policy is set) would otherwise leave an empty editor open once
+				// the message has been dismissed.
+				if (this.config.popup) {
+					const element = document.getElementById(this.config.id);
+					const modalElement = element ? (element.classList.contains('modal') ? element : element.closest('.modal')) : null;
+					if (modalElement && window.bootstrap) {
+						const instance = bootstrap.Modal.getInstance(modalElement) || bootstrap.Modal.getOrCreateInstance(modalElement);
+						if (instance) instance.hide();
+					}
+				}
 			});
 		console.log("constructor done");
 	}
@@ -631,6 +643,11 @@ mwjson.editor = class {
 
 	// remove properties named in options.copy_ignore but keep empty values for required and defaultProperties
 	applyCopyIgnoreOption(editor) {
+		// The recursion below walks editor.editors, whose entries are not guaranteed to be
+		// initialised editors: a category missing from the chain resolves to an empty
+		// schema, so JSON Editor builds placeholders without getValue() and copying threw
+		// "editor.getValue is not a function". Skip anything that is not a real editor.
+		if (!editor || typeof editor.getValue !== 'function') return;
 		let ignored_properties = [];
 		if (editor.schema?.options?.copy_ignore) ignored_properties = ignored_properties.concat(editor.schema?.options?.copy_ignore);
 		if (editor.parent?.schema?.options?.array_copy_ignore) ignored_properties = ignored_properties.concat(editor.parent?.schema?.options?.array_copy_ignore);

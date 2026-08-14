@@ -24,6 +24,8 @@ mwjson.schema = class {
         this._jsonschema = jsonschema;
         this._context = {};
         this.subschemas_uuids = [];
+        // refs that could not be resolved while bundling, reported once afterwards
+        this.unresolved_refs = { missing: [], empty: [] };
         this.data_source_maps = [];
         this.required_reverse_property_values = {};
         this.default_reverse_property_values = {};
@@ -89,25 +91,22 @@ mwjson.schema = class {
                 // the bundle resolvable, so one bad reference cannot make the editor
                 // impossible to open - which is exactly the state a schema is left in
                 // when generation dropped a reference.
+                // Only record here; the collected refs are reported once after bundling, so
+                // a chain with many gaps does not produce one dialog per reference.
                 const unresolved = (kind) => {
-                    const setting = kind === 'missing-page'
-                        ? (mw.config.get('wgMwJsonMissingSchemaPage') || 'warn')
-                        : (mw.config.get('wgMwJsonEmptySchemaSlot') || 'ignore');
-                    const text = mw.message(
-                        kind === 'missing-page' ? 'mwjson-schema-missing-page' : 'mwjson-schema-empty-slot',
-                        title || url
-                    ).text();
-                    if (setting === 'abort') throw new Error(text);
-                    if (setting === 'warn') {
-                        console.warn(text);
-                        mw.notify(text, { title: mw.message('mwjson-schema-resolver-title').text(), type: 'warn', autoHide: false });
-                    }
+                    const name = title || url;
+                    const bucket = kind === 'missing-page' ? this.unresolved_refs.missing : this.unresolved_refs.empty;
+                    if (!bucket.includes(name)) bucket.push(name);
                     return "{}";
                 };
+                // Whether a page is absent or merely carries no schema is known only inside
+                // the cache, which skips missing pages entirely: the caller just sees no
+                // value. Ask the cache rather than guessing from the empty result.
                 const classify = (value) => {
-                    if (value === undefined || value === null) return unresolved('missing-page');
+                    const known_missing = this.cache && this.cache.missing_pages && title && this.cache.missing_pages.has(title);
+                    if (value === undefined || value === null) return unresolved(known_missing ? 'missing-page' : 'empty-slot');
                     const trimmed = ('' + value).trim();
-                    if (trimmed === "" || trimmed === "{}") return unresolved('empty-slot');
+                    if (trimmed === "" || trimmed === "{}") return unresolved(known_missing ? 'missing-page' : 'empty-slot');
                     return value;
                 };
 
@@ -185,12 +184,53 @@ mwjson.schema = class {
         return res;
     }
 
+    // Report refs that could not be resolved, once per bundle rather than once per ref.
+    // Missing pages and pages without a schema have separate policies
+    // ($wgMwJsonMissingSchemaPage, default warn; $wgMwJsonEmptySchemaSlot, default ignore),
+    // each of ignore, warn or abort. Returns {abort, message} when the caller must stop.
+    // Uses the same modal as schema validation errors so a broken chain is as visible as
+    // invalid data, falling back to mw.notify when the editor module is not loaded.
+    reportUnresolvedRefs() {
+        const cases = [
+            { names: this.unresolved_refs.missing, setting: mw.config.get('wgMwJsonMissingSchemaPage') || 'warn', msg: 'mwjson-schema-missing-page' },
+            { names: this.unresolved_refs.empty, setting: mw.config.get('wgMwJsonEmptySchemaSlot') || 'ignore', msg: 'mwjson-schema-empty-slot' }
+        ];
+        const lines = [];
+        let abort = false;
+        for (const c of cases) {
+            if (!c.names.length || c.setting === 'ignore') continue;
+            lines.push(mw.message(c.msg, c.names.join(", ")).text());
+            if (c.setting === 'abort') abort = true;
+        }
+        if (!lines.length) return null;
+        const message = lines.join("\n");
+        console.warn(message);
+        const title = mw.message('mwjson-schema-resolver-title').text();
+        if (mwjson.editor && typeof mwjson.editor.createModal === 'function') {
+            // createModal only builds the dialog, showing it is up to the caller
+            const modal = mwjson.editor.createModal({
+                id: 'mwjson-schema-unresolved-' + mwjson.util.getShortUid(),
+                title: title,
+                body: lines.map(l => '<p>' + mw.html.escape(l) + '</p>').join(''),
+                size: 'md',
+                class: abort ? 'modal-danger' : 'modal-warning',
+                buttons: [{ label: 'OK', class: 'btn btn-secondary', closing: true }]
+            });
+            if (modal && typeof modal.show === 'function') modal.show();
+        } else {
+            mw.notify(message, { title: title, type: 'warn', autoHide: false });
+        }
+        return { abort: abort, message: message };
+    }
+
     bundle() {
         //const deferred = $.Deferred();
         this.log("start bundle");
         const promise = new Promise((resolve, reject) => {
 
             if (this.getSchema()) {
+                // refs the vendored parser swallowed on a previous bundle are not ours
+                if (typeof window !== 'undefined' && window.mwjson) window.mwjson._unresolved_schema_refs = [];
                 $RefParser.bundle(this.getSchema(), {resolve: {wiki: this.resolver}}, (error, schema) => {
                     if (error) {
                         console.error(error);
@@ -203,7 +243,15 @@ mwjson.schema = class {
                         //Fallback: Fetch i18n from title* and description*, see https://github.com/json-schema-org/json-schema-vocabularies/issues/10
                         this.setSchema(schema);
                         this.log("finish bundle");
-                        resolve();
+                        const swallowed = (typeof window !== 'undefined' && window.mwjson && window.mwjson._unresolved_schema_refs) || [];
+                        for (const href of swallowed) {
+                            const match = this.title_regex.exec(href);
+                            const name = (match && match.groups && match.groups.title) ? match.groups.title : href;
+                            if (!this.unresolved_refs.missing.includes(name)) this.unresolved_refs.missing.push(name);
+                        }
+                        const report = this.reportUnresolvedRefs();
+                        if (report && report.abort) reject(new Error(report.message));
+                        else resolve();
                     }
                 });
             }
