@@ -304,6 +304,14 @@ mwjson.editor = class {
 						).bind(subeditor);
 						subeditor.setValue = (function(value, initial, fromTemplate, label) {
 								//console.log("Editor-Set ", this.key, ": ", value )
+								// this.input is a DOM element: assigning undefined or null to
+								// .value coerces it to the literal string "undefined" / "null",
+								// which the user then sees in the field and which gets stored
+								// when the field is submitted. Sanitising on the way in also
+								// clears values already stored by earlier versions, so an
+								// affected field empties on load instead of being written back.
+								value = mwjson.util.emptyIfUndefinedString(value);
+								label = mwjson.util.emptyIfUndefinedString(label);
 								this.value = value;
 								this.input.value = label;
 								this.input.value_id = value;
@@ -1641,7 +1649,14 @@ mwjson.editor = class {
 					jseditor_editor.input.value_id = result_value;
 					jseditor_editor.onChange(true);*/
 					jseditor_editor.unhandled_input = false; // mark finalized user input
-					mwjson.util.setJsonEditorAutocompleteField(jseditor_editor, result_value, result.printouts.label[0]);
+					// printouts.label is empty whenever the page carries no label, so [0] is
+					// undefined. Fall back to what the suggestion list already displays
+					// instead of handing an undefined label to the input.
+					var result_label = result.printouts?.label?.[0];
+					if (result_label === undefined || result_label === null || result_label === "") {
+						result_label = (result.displaytitle && result.displaytitle !== "") ? result.displaytitle : result.fulltext;
+					}
+					mwjson.util.setJsonEditorAutocompleteField(jseditor_editor, result_value, result_label);
 					//jseditor_editor.input.value_label = result.printouts.label[0];
 					
 					if (jseditor_editor.schema?.options?.autocomplete?.field_maps) {

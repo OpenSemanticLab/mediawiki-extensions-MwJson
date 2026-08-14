@@ -900,6 +900,20 @@ mwjson.util = class {
 		return result;
 	}
 
+	/**
+	 * Normalise a value that a failed lookup stringified into a DOM input.
+	 * Assigning undefined or null to HTMLInputElement.value yields the literal
+	 * strings "undefined" / "null", which then look like real content and get
+	 * persisted. Map those, and the real undefined/null, onto "".
+	 * Only exact matches are treated as empty, so text that merely contains the
+	 * word is left alone.
+	 */
+	static emptyIfUndefinedString(value) {
+		if (value === undefined || value === null) return "";
+		if (value === "undefined" || value === "null") return "";
+		return value;
+	}
+
 	static setJsonEditorAutocompleteField(editor, value_id, value_label) {
 		//console.log("Set value of ", editor.key,  " to value: ", value_id, " with label: ", value_label)
 		editor.setValue(value_id, false, false, value_label);
