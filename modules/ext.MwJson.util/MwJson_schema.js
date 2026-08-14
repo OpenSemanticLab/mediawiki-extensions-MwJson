@@ -81,26 +81,54 @@ mwjson.schema = class {
                     title = match.groups.title;
 
                 }
+                // A $ref target can fail in two ways that deserve different treatment:
+                // the page does not exist at all (usually a broken reference, e.g. a
+                // category dropped from the chain), or the page exists but carries no
+                // schema (routine, e.g. a Property without a jsonschema slot). Each has
+                // its own policy: ignore, warn or abort. Returning an empty schema keeps
+                // the bundle resolvable, so one bad reference cannot make the editor
+                // impossible to open - which is exactly the state a schema is left in
+                // when generation dropped a reference.
+                const unresolved = (kind) => {
+                    const setting = kind === 'missing-page'
+                        ? (mw.config.get('wgMwJsonMissingSchemaPage') || 'warn')
+                        : (mw.config.get('wgMwJsonEmptySchemaSlot') || 'ignore');
+                    const text = mw.message(
+                        kind === 'missing-page' ? 'mwjson-schema-missing-page' : 'mwjson-schema-empty-slot',
+                        title || url
+                    ).text();
+                    if (setting === 'abort') throw new Error(text);
+                    if (setting === 'warn') {
+                        console.warn(text);
+                        mw.notify(text, { title: mw.message('mwjson-schema-resolver-title').text(), type: 'warn', autoHide: false });
+                    }
+                    return "{}";
+                };
+                const classify = (value) => {
+                    if (value === undefined || value === null) return unresolved('missing-page');
+                    const trimmed = ('' + value).trim();
+                    if (trimmed === "" || trimmed === "{}") return unresolved('empty-slot');
+                    return value;
+                };
+
                 if (this.config.use_cache && title) {
                     //console.log("Fetch from cache: ", match.groups.title);
-                    return this.cache.get(title).then((item) => item.value ? item.value : "{}");
+                    // catch before then, so an 'abort' policy is not swallowed here
+                    return this.cache.get(title)
+                        .catch((err) => {
+                            console.warn("MwJson schema resolver: cache lookup failed for " + title, err);
+                            return null;
+                        })
+                        .then((item) => classify(item ? item.value : null));
                 }
                 return fetch(url)
-                    .then(response => {
-                        if (!response.ok) {
-                            // Return empty schema for missing $ref targets (e.g. Property without jsonschema slot)
-                            console.warn("MwJson schema resolver: HTTP " + response.status + " for " + url + ", returning empty schema");
-                            return "{}";
-                        }
-                        return response.text();
-                    })
-                    .then(text => {
-                        if (!text || text === "") text = "{}"; // fallback to empty schema
-                        return text;
-                    })
                     .catch(err => {
-                        console.warn("MwJson schema resolver: fetch failed for " + url + ", returning empty schema", err);
-                        return "{}";
+                        console.warn("MwJson schema resolver: fetch failed for " + url, err);
+                        return null;
+                    })
+                    .then(response => {
+                        if (!response || !response.ok) return unresolved('missing-page');
+                        return response.text().then(text => classify(text));
                     });
             }
         };

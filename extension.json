@@ -61,7 +61,12 @@
             "dependencies": [
                 "ext.mwjson"
             ],
-            "position":"bottom"
+            "position":"bottom",
+            "messages": [
+                "mwjson-schema-resolver-title",
+                "mwjson-schema-missing-page",
+                "mwjson-schema-empty-slot"
+            ]
         },
         "ext.mwjson.api":{
             "localBasePath":"modules/ext.MwJson.api",
@@ -263,6 +268,14 @@
         "MwJsonRemoveEmptyOnSubmit": {
 			"value": true,
 			"description": "When true, mwjson.editor recursively strips empty values ('', null, undefined, [], {}) from jsondata before saving so unfilled defaultProperties and cleared optional fields do not persist. Set to false to keep the raw form value."
+		},
+        "MwJsonMissingSchemaPage": {
+			"value": "warn",
+			"description": "How the schema resolver reacts when a $ref target page does not exist at all, e.g. a category missing from the inheritance chain. One of 'ignore', 'warn' or 'abort'. An empty schema is substituted unless 'abort' is set, so a single broken reference cannot make the editor impossible to open."
+		},
+        "MwJsonEmptySchemaSlot": {
+			"value": "ignore",
+			"description": "How the schema resolver reacts when a $ref target page exists but carries no schema, e.g. a Property without a jsonschema slot. One of 'ignore', 'warn' or 'abort'. This is routine, hence 'ignore' by default."
 		},
         "MwJsonAiCompletionApiUrl": {
 			"value": null,

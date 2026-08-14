@@ -19,6 +19,8 @@ class MwJson {
 		$vars['wgMwJsonAllowSubmitInvalide'] = $config->get( 'MwJsonAllowSubmitInvalide' );
 		$vars['wgMwJsonAiCompletionApiUrl'] = $config->get( 'MwJsonAiCompletionApiUrl' );
 		$vars['wgMwJsonRemoveEmptyOnSubmit'] = $config->get( 'MwJsonRemoveEmptyOnSubmit' );
+		$vars['wgMwJsonMissingSchemaPage'] = $config->get( 'MwJsonMissingSchemaPage' );
+		$vars['wgMwJsonEmptySchemaSlot'] = $config->get( 'MwJsonEmptySchemaSlot' );
 	}
 
 	public static function onOutputPageParserOutput($out, $parserOutput) {
