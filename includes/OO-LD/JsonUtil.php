@@ -87,6 +87,17 @@ class JsonUtil {
 	}
 
 	/**
+	 * Lua: p.joinPath( parent, key ).
+	 *
+	 * Joins a JSON path segment to its parent, so a node knows where it sits in
+	 * the document: "characteristics" plus "2" gives "characteristics.2". Used
+	 * as a subobject id for nodes that carry no uuid of their own.
+	 */
+	public static function joinPath( ?string $parent, string $key ): string {
+		return self::nilOrEmpty( $parent ) ? $key : $parent . '.' . $key;
+	}
+
+	/**
 	 * Lua: p.splitString( inputstr, sep ) via `string.gmatch( s, "([^sep]+)" )`.
 	 *
 	 * $separators is a *set of characters*, not a delimiter string, because the Lua

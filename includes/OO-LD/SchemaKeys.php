@@ -60,6 +60,27 @@ class SchemaKeys {
 	public const CATEGORY_PSEUDO_PROPERTY = 'Category';
 
 	/**
+	 * The JSON-LD property a slot must map to in order to count as a
+	 * characteristic, which is what makes it addressable by its schema key.
+	 *
+	 * Keys mapped to anything else (statements, label, meta) are not addressed
+	 * individually, so that a property is not minted for every object-valued
+	 * key on every schema.
+	 */
+	public const CHARACTERISTIC_PROPERTY = 'Property:HasCharacteristic';
+
+	/**
+	 * Prefix for the property linking a parent to one characteristic slot's
+	 * subobject, so `l1` becomes `HasCharacteristic_l1`.
+	 *
+	 * The prefix keeps these in a namespace only written here, so they always
+	 * hold page values, namely the subobject reference. A bare schema key would
+	 * be a global property that another schema may use for a string, and SMW
+	 * would then report a type error. Neither form needs a property page.
+	 */
+	public const SLOT_PROPERTY_PREFIX = 'HasCharacteristic_';
+
+	/**
 	 * UI annotations. OO-LD gives these a portable vocabulary; the legacy
 	 * schemas keep them under `options` or at the property root.
 	 *

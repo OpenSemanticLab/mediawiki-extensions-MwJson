@@ -28,6 +28,7 @@ class SemanticPropertyMapper {
 	private QuantityValueMapper $quantities;
 	private StatementMapper $statements;
 	private LabelHelper $labels;
+	private ItemsSchemaResolver $items;
 
 	public function __construct(
 		?SchemaKeys $keys = null,
@@ -35,7 +36,8 @@ class SemanticPropertyMapper {
 		?ContextBuilder $contextBuilder = null,
 		?QuantityValueMapper $quantities = null,
 		?StatementMapper $statements = null,
-		?LabelHelper $labels = null
+		?LabelHelper $labels = null,
+		?ItemsSchemaResolver $items = null
 	) {
 		$this->keys = $keys ?? new SchemaKeys();
 		$this->merge = $merge ?? new LegacyLuaMergeStrategy();
@@ -43,6 +45,7 @@ class SemanticPropertyMapper {
 		$this->quantities = $quantities ?? new QuantityValueMapper( $this->keys );
 		$this->statements = $statements ?? new StatementMapper();
 		$this->labels = $labels ?? new LabelHelper( $this->keys );
+		$this->items = $items ?? new ItemsSchemaResolver( $this->keys );
 	}
 
 	/**
@@ -67,6 +70,8 @@ class SemanticPropertyMapper {
 	 * @param array<string,mixed> $properties Seeded with reverse properties when
 	 *   descending into a subobject.
 	 * @param array<int,array{id:?string,properties:array}> &$subobjects
+	 * @param string|null $path This node's JSON path within the root object,
+	 *   e.g. "l1" or "characteristics.2".
 	 */
 	private function walk(
 		array $jsondata,
@@ -76,16 +81,28 @@ class SemanticPropertyMapper {
 		array $properties,
 		string $subjectTitle,
 		bool $root,
-		array &$subobjects
+		array &$subobjects,
+		?string $path = null
 	): SemanticMapping {
 		$subjectId = $subjectTitle;
 		$subobjectId = null;
-		if ( !$root && isset( $jsondata['uuid'] ) ) {
-			// A stable id derived from the uuid, so re-saving a page updates a
-			// subobject rather than orphaning it.
-			$subobjectId = 'OSW' . str_replace( '-', '', (string)$jsondata['uuid'] );
-			$subjectId .= '#' . $subobjectId;
+		if ( !$root ) {
+			// The uuid stays the primary source so existing subobject ids keep
+			// their identity across saves. The JSON path addresses nodes that
+			// have no uuid, which is how a quantity value becomes referenceable.
+			if ( isset( $jsondata['uuid'] ) ) {
+				$subobjectId = 'OSW' . str_replace( '-', '', (string)$jsondata['uuid'] );
+			} else {
+				$subobjectId = $path;
+			}
+			if ( $subobjectId !== null ) {
+				$subjectId .= '#' . $subobjectId;
+			}
 		}
+
+		// The quantity property of this node itself, written into the subobject
+		// rather than onto its parent.
+		[ $properties, $jsondata ] = $this->quantities->apply( $properties, $jsondata, $subschema );
 
 		$definitions = [];
 		$schemaProperties = $subschema['properties']
@@ -101,6 +118,13 @@ class SemanticPropertyMapper {
 			$reverseProperties = [];
 			$mappingFound = false;
 
+			// A slot holding a characteristic is addressed by its own schema
+			// key, so that several slots of the same type stay apart: l and d,
+			// or minimal_ and maximal_dimensions. True for a declared quantity,
+			// and below for anything mapped to the characteristic property.
+			$characteristicSlot = is_array( $schemaProperties[$key] ?? null )
+				&& isset( $schemaProperties[$key][$this->keys->legacy( 'smwQuantityProperty' )] );
+
 			foreach ( $targets as $target ) {
 				// Only wiki-local properties are stored. A term mapped to an
 				// external IRI is still valid JSON-LD, it just has no SMW
@@ -110,6 +134,12 @@ class SemanticPropertyMapper {
 				}
 				$mappingFound = true;
 				$name = str_replace( SchemaKeys::PROPERTY_NS_PREFIX . ':', '', $target['id'] );
+
+				// A slot mapped to the characteristic property is addressed by
+				// its schema key too, not only a declared quantity.
+				if ( !$target['reverse'] && $target['id'] === SchemaKeys::CHARACTERISTIC_PROPERTY ) {
+					$characteristicSlot = true;
+				}
 
 				if ( $target['reverse'] ) {
 					// Stored on the far end: the subobject points back at us.
@@ -129,6 +159,10 @@ class SemanticPropertyMapper {
 				];
 			}
 
+			if ( $characteristicSlot ) {
+				$propertyNames[] = SchemaKeys::SLOT_PROPERTY_PREFIX . $key;
+			}
+
 			foreach ( $propertyNames as $name ) {
 				$properties[$name] ??= [];
 			}
@@ -142,7 +176,9 @@ class SemanticPropertyMapper {
 				continue;
 			}
 
-			if ( $mappingFound ) {
+			// A characteristic slot descends even with no JSON-LD mapping, so
+			// that the subobject reference is still recorded against it.
+			if ( $mappingFound || $characteristicSlot ) {
 				// A nested context declared under this term applies from here
 				// down. The Lua pulls it up into the shared context rather than
 				// scoping it, so it stays in force for the rest of the walk.
@@ -159,7 +195,8 @@ class SemanticPropertyMapper {
 					$reverseProperties,
 					$subjectTitle,
 					$properties,
-					$subobjects
+					$subobjects,
+					JsonUtil::joinPath( $path, (string)$key )
 				);
 
 				foreach ( $propertyNames as $name ) {
@@ -210,7 +247,8 @@ class SemanticPropertyMapper {
 		array $reverseProperties,
 		string $subjectTitle,
 		array &$properties,
-		array &$subobjects
+		array &$subobjects,
+		?string $path = null
 	): array {
 		if ( !is_array( $subschema ) ) {
 			$subschema = [];
@@ -219,12 +257,12 @@ class SemanticPropertyMapper {
 		if ( JsonUtil::isMap( $value ) ) {
 			return $this->descendInto(
 				$value, $schema, $subschema, $context, $reverseProperties,
-				$subjectTitle, $properties, $subobjects
+				$subjectTitle, $properties, $subobjects, $path
 			);
 		}
 
 		$values = [];
-		foreach ( $value as $item ) {
+		foreach ( $value as $index => $item ) {
 			if ( !is_array( $item ) ) {
 				// A list of plain strings maps straight through. The Lua
 				// assigns the whole list here rather than appending, so a mixed
@@ -234,7 +272,10 @@ class SemanticPropertyMapper {
 			}
 			foreach ( $this->descendInto(
 				$item, $schema, $subschema, $context, $reverseProperties,
-				$subjectTitle, $properties, $subobjects
+				$subjectTitle, $properties, $subobjects,
+				// Lua's ipairs counts from one, and these indices end up in
+				// subobject ids, so they have to keep counting from one here.
+				JsonUtil::joinPath( $path, (string)( (int)$index + 1 ) )
 			) as $reference ) {
 				$values[] = $reference;
 			}
@@ -255,11 +296,12 @@ class SemanticPropertyMapper {
 		array $reverseProperties,
 		string $subjectTitle,
 		array &$properties,
-		array &$subobjects
+		array &$subobjects,
+		?string $path = null
 	): array {
 		$child = $this->walk(
 			$node, $schema, $subschema, $context, $reverseProperties,
-			$subjectTitle, false, $subobjects
+			$subjectTitle, false, $subobjects, $path
 		);
 
 		// A statement subobject additionally writes its predicate straight onto
@@ -310,7 +352,11 @@ class SemanticPropertyMapper {
 		}
 		foreach ( $value as $index => $item ) {
 			if ( is_array( $item ) ) {
-				[ $properties, $value[$index] ] = $this->quantities->apply( $properties, $item, $subschema );
+				// The array schema itself carries no unit enum, so the element's
+				// own branch has to be resolved before its value can be mapped.
+				[ $properties, $value[$index] ] = $this->quantities->apply(
+					$properties, $item, $this->items->resolve( $subschema, $item )
+				);
 			}
 		}
 		return [ $properties, $value ];

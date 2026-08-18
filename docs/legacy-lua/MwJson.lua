@@ -35,6 +35,15 @@ p.mode = {
 	footer='footer',
 	query='query'
 }
+-- json-ld property a slot is mapped to in order to be treated as a characteristic, which makes it
+-- addressable by its schema key. keys mapped to any other property (statements, label, meta, ...)
+-- are not addressed individually to avoid minting a property for every object valued key
+p.characteristic_property = "Property:HasCharacteristic"
+-- prefix for the properties linking a parent to the subobject of a quantity slot, e.g. "l1" => "HasCharacteristic_l1".
+-- the prefix keeps these properties in a namespace only written here, so they always hold page values
+-- (the subobject reference). a bare schema key would be a global property that another schema may use
+-- for a string, which makes smw report type errors. no property page is required either way
+p.slot_property_prefix = "HasCharacteristic_"
 
 p.cache = {}
 
@@ -1139,18 +1148,22 @@ function p.getSemanticProperties(args)
 	local root = p.defaultArg(args.root, true)
 	local properties = p.defaultArg(args.properties, {}) --semantic properties to store, dict key=property_name, value=array of string values
 	local debug = p.defaultArg(args.debug, false)
+	local path = p.defaultArg(args.path, nil) -- json path of this node within the root object, e. g. "l1", "characteristics.2"
 	--if (debug) then mw.logObject("Call getSemanticProperties with args " .. mw.dumpObject( args ) .. "\n<br>") end
-	
+
 	local subjectId = mw.title.getCurrentTitle().fullText
 	local subobjectId = nil
-	if (root == false and jsondata['uuid'] ~= nil) then 
-		subobjectId = "OSW" .. string.gsub(jsondata['uuid'], "-", "") 
-		subjectId = subjectId .. '#' .. subobjectId
+	if (root == false) then
+		-- the uuid stays the primary source to keep existing subobject ids stable,
+		-- the json path addresses nodes without uuid, e. g. quantity values
+		if (jsondata['uuid'] ~= nil) then subobjectId = "OSW" .. string.gsub(jsondata['uuid'], "-", "")
+		else subobjectId = path end
+		if (subobjectId ~= nil) then subjectId = subjectId .. '#' .. subobjectId end
 	end
-	
+
 	-- create smw quantity property within the quantity value subobject
-	-- properties = p.processQuantityValue({properties=properties, value_object=jsondata, schema=subschema, debug=debug}).properties
-	
+	properties = p.processQuantityValue({properties=properties, value_object=jsondata, schema=subschema, debug=debug}).properties
+
 	local property_data = {}
 	local context = p.defaultArg(args.context, p.buildContext({jsonschema=schema}).context)
 	local error = ""
@@ -1169,6 +1182,10 @@ function p.getSemanticProperties(args)
 			local property_names = {}
 			local subobject_properties = {} -- reverse properties to store in the subobject
 			local mapping_found = false
+			-- a slot holding a characteristic is addressed by its schema key to tell apart
+			-- multiple slots of the same type, e. g. l and d, or minimal_ and maximal_dimensions.
+			-- set for a declared quantity and for any slot mapped to p.characteristic_property (below)
+			local characteristic_slot = (type(schema_properties[k]) == 'table' and schema_properties[k][p.keys.smw_quantity_property] ~= nil)
 			local property_definitions = {} -- list of objects {id=..., reverse=...}
 
 			for term, def in pairs(context) do
@@ -1188,6 +1205,8 @@ function p.getSemanticProperties(args)
 				if property_definition[1] == p.keys.property_ns_prefix then
 					mapping_found = true
 					property_name = string.gsub(id, p.keys.property_ns_prefix .. ":", "") -- also allow prefix properties like: Property:schema:url
+					-- a slot mapped to the characteristic property is addressed by its schema key, too
+					if (not e["reverse"] and id == p.defaultArg(p.characteristic_property, "")) then characteristic_slot = true end
 					if (e["reverse"]) then -- reverse properties are handled in the respective subobject
 						if (subobject_properties[property_name] == nil) then subobject_properties[property_name] = {} end --initialize empty list
 						table.insert(subobject_properties[property_name], subjectId) -- add triple subobject -property-> subject
@@ -1197,17 +1216,23 @@ function p.getSemanticProperties(args)
 					property_data[k] = {schema_type=schema_type, schema_data=schema_property, property=property_name, value=v, reverse=e["reverse"]}
 				end
 			end
+			if (characteristic_slot) then
+				local slot_property = p.defaultArg(p.slot_property_prefix, "") .. k
+				table.insert(property_names, slot_property)
+				if (properties[slot_property] == nil) then properties[slot_property] = {} end
+			end
 			for i, property_name in ipairs(property_names) do
 				if (properties[property_name] == nil) then properties[property_name] = {} end --initialize empty list
 			end
-			if type(v) == 'table' then 
+			if type(v) == 'table' then
 				--if (debug) then mw.logObject("prop " .. k .. " = " .. mw.dumpObject(v)) end
-				if (mapping_found) then
+				-- a characteristic slot descends even without a json-ld mapping to record the subobject reference
+				if (mapping_found or characteristic_slot) then
 					local subcontext = p.copy(p.defaultArgPath(context, {k, p.keys.context}, {})) --deepcopy, see also https://phabricator.wikimedia.org/T269990
 					context = p.tableMerge(context, subcontext) -- pull up nested context
 					local values = {}
 					if (p.tableLength(v) > 0 and v[1] == nil) then --key value array = object/dict => subobject
-						local subproperties_res = p.getSemanticProperties({jsonschema=schema, jsondata=v, properties=p.copy(subobject_properties), store=true, root=false, debug=debug, context=context, subschema=schema_properties[k], parent_schema_property=property_data[k]})
+						local subproperties_res = p.getSemanticProperties({jsonschema=schema, jsondata=v, properties=p.copy(subobject_properties), store=true, root=false, debug=debug, context=context, subschema=schema_properties[k], parent_schema_property=property_data[k], path=p.joinPath(path, k)})
 						local id = subproperties_res.id --subobject_id
 						if (id ~= nil) then 
 							id = mw.title.getCurrentTitle().fullText .. '#' .. id
@@ -1217,8 +1242,8 @@ function p.getSemanticProperties(args)
 						properties = p.processStatement({subject=properties, statement=subproperties_res.properties, debug=debug}).subject
 					else --list array
 						for i, e in pairs(v) do
-							if (type(e) == 'table') then 
-								local subproperties_res = p.getSemanticProperties({jsonschema=schema, jsondata=e, properties=p.copy(subobject_properties), store=true, root=false, debug=debug, context=context, subschema=schema_properties[k], parent_schema_property=property_data[k]})
+							if (type(e) == 'table') then
+								local subproperties_res = p.getSemanticProperties({jsonschema=schema, jsondata=e, properties=p.copy(subobject_properties), store=true, root=false, debug=debug, context=context, subschema=schema_properties[k], parent_schema_property=property_data[k], path=p.joinPath(path, k .. "." .. i)})
 								local id = subproperties_res.id --subobject_id
 								if (id ~= nil) then 
 									id = mw.title.getCurrentTitle().fullText .. '#' .. id
@@ -1241,8 +1266,9 @@ function p.getSemanticProperties(args)
 					properties = p.processQuantityValue({properties=properties, value_object=v, schema=schema_properties[k], debug=debug}).properties
 				else --list array
 					for i, e in pairs(v) do
-						if (type(e) == 'table') then 
-							properties = p.processQuantityValue({properties=properties, value_object=e, schema=schema_properties[k], debug=debug}).properties
+						if (type(e) == 'table') then
+							-- the array schema itself carries no unit enum - resolve the element schema first
+							properties = p.processQuantityValue({properties=properties, value_object=e, schema=p.resolveItemsSchema({schema=schema_properties[k], element=e}), debug=debug}).properties
 						end
 					end
 				end
@@ -1466,6 +1492,44 @@ function p.defaultArgPath(arg, path, default)
 		if (key == nil) then return arg end  --end of path
 		return p.defaultArgPath(arg[key], path, default)
 	end
+end
+
+-- joins a json path segment to its parent path
+-- test: mw.logObject(p.joinPath("characteristics", "2"))
+function p.joinPath(parent, key)
+	if (p.nilOrEmpty(parent)) then return key end
+	return parent .. "." .. key
+end
+
+-- resolves the schema of an array element: the 'items' schema, or - if 'items' declares a
+-- oneOf/anyOf - the branch whose declared instance type matches the type of the element.
+-- the quantity property is inherited from 'items' if the matching branch does not define one
+-- test: mw.logObject(p.resolveItemsSchema({schema={items={oneOf={{properties={type={default={"Category:A"}}}}}}}, element={type={"Category:A"}}}))
+function p.resolveItemsSchema(args)
+	local schema = p.defaultArg(args.schema, {})
+	local element = p.defaultArg(args.element, {})
+	local items = p.defaultArgPath(schema, {"items"}, nil)
+	if (items == nil) then return schema end
+	local branches = p.defaultArg(items.oneOf, items.anyOf)
+	if (type(branches) ~= 'table') then return items end
+	local element_types = p.tablefy(element[p.keys.category])
+	for bi, branch in ipairs(branches) do
+		local declared = p.defaultArgPath(branch, {"properties", p.keys.category, "default"}, nil)
+		if (declared == nil) then declared = p.defaultArgPath(branch, {"properties", p.keys.category, "const"}, nil) end
+		if (declared == nil) then declared = p.defaultArgPath(branch, {"properties", p.keys.category, "enum"}, nil) end
+		for di, dv in pairs(p.tablefy(declared)) do
+			for ei, ev in pairs(element_types) do
+				if (dv == ev) then
+					if (branch[p.keys.smw_quantity_property] == nil and items[p.keys.smw_quantity_property] ~= nil) then
+						branch = p.copy(branch)
+						branch[p.keys.smw_quantity_property] = items[p.keys.smw_quantity_property]
+					end
+					return branch
+				end
+			end
+		end
+	end
+	return items
 end
 
 function p.splitString(inputstr, sep)
