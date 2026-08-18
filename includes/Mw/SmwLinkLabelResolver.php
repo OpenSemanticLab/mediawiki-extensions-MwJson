@@ -6,7 +6,7 @@ use MediaWiki\Cache\LinkBatchFactory;
 use MediaWiki\Extension\MwJson\Render\LinkLabelResolver;
 use MediaWiki\Permissions\PermissionManager;
 use MediaWiki\Title\TitleFactory;
-use MediaWiki\User\UserIdentity;
+use MediaWiki\User\User;
 use ParserOutput;
 use SMW\DIProperty;
 use SMW\DIWikiPage;
@@ -82,7 +82,8 @@ class SmwLinkLabelResolver implements LinkLabelResolver {
 	private TitleFactory $titleFactory;
 	private PermissionManager $permissions;
 	private LinkBatchFactory $linkBatchFactory;
-	private UserIdentity $user;
+	/** A User rather than a UserIdentity: PermissionManager::userCan() requires one. */
+	private User $user;
 	private ParserOutput $parserOutput;
 	private string $language;
 
@@ -111,7 +112,7 @@ class SmwLinkLabelResolver implements LinkLabelResolver {
 		TitleFactory $titleFactory,
 		PermissionManager $permissions,
 		LinkBatchFactory $linkBatchFactory,
-		UserIdentity $user,
+		User $user,
 		ParserOutput $parserOutput,
 		string $language
 	) {
@@ -259,7 +260,17 @@ class SmwLinkLabelResolver implements LinkLabelResolver {
 			if ( $label === null ) {
 				continue;
 			}
-			$any ??= $label;
+			// The any-language fallback carries its language into the rendered
+			// label. Module:Viewer/Link asks for it with a `?HasLabel#-`
+			// printout, which has no `+lang` filter, so SMW returns monolingual
+			// text in its display form: the text followed by the language code
+			// in brackets. The two filtered printouts above it return the text
+			// alone. Reproduced rather than tidied, since it is what a reader
+			// sees today on every page whose label is in neither their language
+			// nor English.
+			$any ??= $language !== null && $language !== ''
+				? $label . ' (' . $language . ')'
+				: $label;
 			if ( $language === $this->language ) {
 				$localized ??= $label;
 			}

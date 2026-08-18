@@ -159,7 +159,11 @@ class PipelineFactory {
 			$services->getTitleFactory(),
 			$services->getPermissionManager(),
 			$services->getLinkBatchFactory(),
-			$parser->getOptions()->getUserIdentity(),
+			// A User, not the UserIdentity the options hand back, because
+			// PermissionManager::userCan() takes one.
+			$services->getUserFactory()->newFromUserIdentity(
+				$parser->getOptions()->getUserIdentity()
+			),
 			$parser->getOutput(),
 			$this->resolveUserLanguage( $parser )
 		);
