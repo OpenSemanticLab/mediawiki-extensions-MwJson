@@ -332,6 +332,17 @@ mwjson.editor = class {
 							}
 						).bind(subeditor);
 						subeditor.fbind = true;
+
+						// Values stored by earlier versions can be the literal string
+						// "undefined", left behind when a failed lookup was assigned to
+						// the DOM input. Sanitising setValue only helps new input, so
+						// clear an existing one here. Scoped to autocomplete fields,
+						// where such a value is always an artifact - a plain text field
+						// may legitimately contain the word.
+						if ( mwjson.util.emptyIfUndefinedString( subeditor.value ) === ""
+							&& subeditor.value !== undefined && subeditor.value !== null && subeditor.value !== "" ) {
+							subeditor.setValue( "", false, false, "" );
+						}
 					}
 
 					if (subeditor.unhandled_input && input.value && input.value !== "") {

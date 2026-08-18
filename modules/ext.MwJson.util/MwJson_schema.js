@@ -184,6 +184,28 @@ mwjson.schema = class {
         return res;
     }
 
+    // Split the collected refs into pages that really do not exist and pages that exist
+    // but carry no schema. Resolves even when the query fails, in which case the refs
+    // keep their initial classification.
+    classifyUnresolvedRefs() {
+        const titles = this.unresolved_refs.missing.slice();
+        if (!titles.length || !window.mw || !mw.Api) return Promise.resolve();
+        return new mw.Api().get({
+            action: 'query', titles: titles.join('|'), format: 'json'
+        }).then((data) => {
+            const pages = (data && data.query && data.query.pages) ? data.query.pages : {};
+            const existing = [];
+            for (const key of Object.keys(pages)) {
+                if (!Object.hasOwn(pages[key], 'missing')) existing.push(pages[key].title);
+            }
+            if (!existing.length) return;
+            this.unresolved_refs.missing = this.unresolved_refs.missing.filter((t) => !existing.includes(t));
+            for (const title of existing) {
+                if (!this.unresolved_refs.empty.includes(title)) this.unresolved_refs.empty.push(title);
+            }
+        }).catch(() => { /* keep the initial classification */ });
+    }
+
     // Report refs that could not be resolved, once per bundle rather than once per ref.
     // Missing pages and pages without a schema have separate policies
     // ($wgMwJsonMissingSchemaPage, default warn; $wgMwJsonEmptySchemaSlot, default ignore),
@@ -249,9 +271,16 @@ mwjson.schema = class {
                             const name = (match && match.groups && match.groups.title) ? match.groups.title : href;
                             if (!this.unresolved_refs.missing.includes(name)) this.unresolved_refs.missing.push(name);
                         }
-                        const report = this.reportUnresolvedRefs();
-                        if (report && report.abort) reject(new Error(report.message));
-                        else resolve();
+                        // action=raw&slot=jsonschema answers 404 both when the page is
+                        // absent and when it merely has no such slot, so the collector
+                        // above cannot tell them apart. Ask the API which titles exist
+                        // and move the rest to the empty-slot bucket, which has its own
+                        // (quieter) policy.
+                        this.classifyUnresolvedRefs().then(() => {
+                            const report = this.reportUnresolvedRefs();
+                            if (report && report.abort) reject(new Error(report.message));
+                            else resolve();
+                        });
                     }
                 });
             }
