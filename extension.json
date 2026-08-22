@@ -267,8 +267,8 @@
             "description": "Which implementation renders the header/footer pipeline: 'lua' (legacy Module:MwJson, the default during the migration) or 'php' (the in-extension OO-LD pipeline). Module:Entity dispatches on this via mw.ext.mwjson.enabled(), so it is a live rollback switch: no page edits required to flip back."
         },
         "MwJsonResolveLinkLabels": {
-            "value": false,
-            "description": "When true, the PHP pipeline resolves a link's display label by reading the semantic store instead of expanding the Viewer/Link wiki template, which runs one SMW query per link. Access is enforced with the same read permission check the query path uses, so a reader who may not see a target gets the plain link they get today. Off by default so it can be verified against a wiki's own data first."
+            "value": true,
+            "description": "When true, the PHP pipeline resolves a link's display label by reading the semantic store instead of expanding the Viewer/Link wiki template, which runs one SMW query per link. Access is enforced with the same read permission check the query path uses, so a reader who may not see a target gets the plain link they get today. On by default: output is byte-identical to the wiki template across the full corpus, and it removes one SMW query per link. Set false to fall back to expanding Viewer/Link."
         },
         "MwJsonBypassLegacyTemplates": {
             "value": false,
