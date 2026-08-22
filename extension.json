@@ -298,6 +298,7 @@
         }
     },
     "ExtensionMessagesFiles": {
-        "MwJsonMagic": "MwJson.i18n.magic.php"
+        "MwJsonMagic": "MwJson.i18n.magic.php",
+        "MwJsonAlias": "MwJson.i18n.alias.php"
     }
 }
