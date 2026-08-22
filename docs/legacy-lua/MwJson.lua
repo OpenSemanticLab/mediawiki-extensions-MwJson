@@ -1319,8 +1319,10 @@ end
 
 function p.processQuantityValue(args)
 	local properties = p.defaultArg(args.properties, {})
-	local object = p.defaultArg(args.value_object) -- {value: 1.1, unit: "Item:..."}
-	local schema = p.defaultArg(args.schema) -- {title: "Length", properties: {unit: {default: "Item:...", enum: ["Item:...", ...], options: enum_titles: ["m", ...]}}}
+	-- default to empty tables: a value without a matching property definition in the
+	-- parent schema would otherwise be indexed on nil below
+	local object = p.defaultArg(args.value_object, {}) -- {value: 1.1, unit: "Item:..."}
+	local schema = p.defaultArg(args.schema, {}) -- {title: "Length", properties: {unit: {default: "Item:...", enum: ["Item:...", ...], options: enum_titles: ["m", ...]}}}
 	local debug = p.defaultArg(args.debug, false)
 	
 	if debug then
