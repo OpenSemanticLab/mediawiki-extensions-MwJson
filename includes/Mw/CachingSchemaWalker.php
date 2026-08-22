@@ -25,17 +25,25 @@ class CachingSchemaWalker implements SchemaResolver {
 	private ResolvedSchemaCache $cache;
 	private SlotDependencies $dependencies;
 	private string $subjectTitle;
+	private ?ParserDependencyRegistrar $registrar;
 
+	/**
+	 * @param ParserDependencyRegistrar|null $registrar Records the pages the
+	 *   walk read as parser-cache dependencies. Null leaves them unregistered,
+	 *   which is what both this port and the Lua have always done.
+	 */
 	public function __construct(
 		SchemaWalker $walker,
 		ResolvedSchemaCache $cache,
 		SlotDependencies $dependencies,
-		string $subjectTitle
+		string $subjectTitle,
+		?ParserDependencyRegistrar $registrar = null
 	) {
 		$this->walker = $walker;
 		$this->cache = $cache;
 		$this->dependencies = $dependencies;
 		$this->subjectTitle = $subjectTitle;
+		$this->registrar = $registrar;
 	}
 
 	/**
@@ -61,7 +69,8 @@ class CachingSchemaWalker implements SchemaResolver {
 			$this->dependencies,
 			fn (): SchemaWalkResult => $this->walker->walk(
 				$schema, $categories, $mode, $recursive, $template
-			)
+			),
+			$this->registrar
 		);
 	}
 

@@ -270,6 +270,10 @@
             "value": true,
             "description": "When true, the PHP pipeline resolves a link's display label by reading the semantic store instead of expanding the Viewer/Link wiki template, which runs one SMW query per link. Access is enforced with the same read permission check the query path uses, so a reader who may not see a target gets the plain link they get today. On by default: output is byte-identical to the wiki template across the full corpus, and it removes one SMW query per link. Set false to fall back to expanding Viewer/Link."
         },
+        "MwJsonRegisterSlotDependencies": {
+            "value": false,
+            "description": "When true, the pages a schema resolution reads (the category chain and every $ref target) are registered as parser-cache dependencies, so editing a category's jsonschema slot invalidates the pages below it. Off by default because enabling it makes an edit to a base category queue a refresh for every entity beneath it, which is the intended effect but is an operational event worth scheduling. Neither this port nor the Lua registers them today."
+        },
         "MwJsonBypassLegacyTemplates": {
             "value": false,
             "description": "When true, the PHP pipeline renders the values behind recognised legacy eval_templates itself instead of running them. Those templates exist because Scribunto could not resolve the reader's language; the pipeline can, so running them is redundant work on every page. Output is unchanged. Off by default so the recogniser can be verified against a wiki's own schemas before it takes effect."

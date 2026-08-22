@@ -46,6 +46,7 @@ class ResolvedSchemaCache {
 	private LinkBatchFactory $linkBatchFactory;
 
 	/** @var array<string,SchemaWalkResult> in-request memo, keyed as the WAN cache is */
+	/** @var array<string,array{result:SchemaWalkResult,dependencies:array<string,int>}> */
 	private array $processCache = [];
 
 	public function __construct(
@@ -72,24 +73,40 @@ class ResolvedSchemaCache {
 	public function get(
 		string $subjectKey,
 		SlotDependencies $dependencies,
-		callable $compute
+		callable $compute,
+		?ParserDependencyRegistrar $registrar = null
 	): SchemaWalkResult {
 		$key = $this->cache->makeKey( 'mwjson-schema', self::VERSION, $subjectKey );
 
+		// Every exit below registers the same dependency set, because a page
+		// served from cache depends on those pages just as much as one that
+		// read them. Registering only on a miss would make invalidation depend
+		// on whether the entry happened to be warm.
 		if ( isset( $this->processCache[$key] ) ) {
-			return $this->processCache[$key];
+			$memo = $this->processCache[$key];
+			if ( $registrar !== null ) {
+				$registrar->register( $memo['dependencies'] );
+			}
+			return $memo['result'];
 		}
 
 		$entry = $this->cache->get( $key );
 		if ( is_array( $entry ) && $this->isFresh( $entry ) ) {
 			$result = $this->unserialize( $entry['result'] );
-			$this->processCache[$key] = $result;
+			$recorded = $entry['dependencies'];
+			if ( $registrar !== null ) {
+				$registrar->register( $recorded );
+			}
+			$this->processCache[$key] = [ 'result' => $result, 'dependencies' => $recorded ];
 			return $result;
 		}
 
 		$dependencies->reset();
 		$result = $compute();
 		$recorded = $dependencies->getAll();
+		if ( $registrar !== null ) {
+			$registrar->register( $recorded );
+		}
 
 		// A resolution that read nothing has no way to be invalidated, so it is
 		// not stored. That happens for pages with no schema at all, where
@@ -101,7 +118,7 @@ class ResolvedSchemaCache {
 			], self::TTL );
 		}
 
-		$this->processCache[$key] = $result;
+		$this->processCache[$key] = [ 'result' => $result, 'dependencies' => $recorded ];
 		return $result;
 	}
 

@@ -65,7 +65,7 @@ class PipelineFactory {
 		$title = $parser->getTitle();
 
 		return new EntityProcessor(
-			$this->newSchemaResolver( $loader, $slots, $dependencies, $title ),
+			$this->newSchemaResolver( $loader, $slots, $dependencies, $title, $parser ),
 			new JsonRefExpander( $loader, $this->merge ),
 			new EmbeddedTemplateExpander(
 				$this->newMustacheRenderer(),
@@ -191,11 +191,26 @@ class PipelineFactory {
 	 * so it is worth storing. Falls back to the bare walker when there is no
 	 * title to key on, which happens in some maintenance contexts.
 	 */
+	/**
+	 * Registers what the walk read as parser-cache dependencies, or null when
+	 * the wiki has not opted in. See ParserDependencyRegistrar for why that is
+	 * a decision rather than a default.
+	 */
+	private function newDependencyRegistrar( Parser $parser ): ?ParserDependencyRegistrar {
+		$services = MediaWikiServices::getInstance();
+		if ( !$services->getMainConfig()->get( 'MwJsonRegisterSlotDependencies' ) ) {
+			return null;
+		}
+
+		return new ParserDependencyRegistrar( $parser->getOutput(), $services->getTitleFactory() );
+	}
+
 	private function newSchemaResolver(
 		SlotJsonLoader $loader,
 		WsSlotSource $slots,
 		SlotDependencies $dependencies,
-		?\MediaWiki\Title\Title $title
+		?\MediaWiki\Title\Title $title,
+		?Parser $parser = null
 	): SchemaResolver {
 		$walker = new SchemaWalker( $loader, $slots, $this->merge );
 
@@ -210,7 +225,10 @@ class PipelineFactory {
 			$services->getLinkBatchFactory()
 		);
 
-		return new CachingSchemaWalker( $walker, $cache, $dependencies, $title->getPrefixedText() );
+		return new CachingSchemaWalker(
+			$walker, $cache, $dependencies, $title->getPrefixedText(),
+			$parser !== null ? $this->newDependencyRegistrar( $parser ) : null
+		);
 	}
 
 	/**
