@@ -76,6 +76,14 @@ class RenderParity extends Maintenance {
 			false,
 			true
 		);
+		$this->addOption(
+			'uselang',
+			'Reader language for every render, e.g. "de-formal". Defaults to the content '
+				. 'language. A run covers one language, so a variant that no #switch case '
+				. 'matches is only visible when it is asked for explicitly.',
+			false,
+			true
+		);
 		$this->addOption( 'timings', 'Also record per-page wall time (excluded from diffs).' );
 		$this->requireExtension( 'MwJson' );
 	}
@@ -109,8 +117,12 @@ class RenderParity extends Maintenance {
 			$this->output( 'wgMwJsonBypassLegacyTemplates: ' . ( $bypass ? 'true' : 'false' ) . "\n" );
 		}
 
-		$recorder = ParityRecorder::newFromGlobalState( $implementation );
+		$userLanguage = $this->getOption( 'uselang' );
+		$recorder = ParityRecorder::newFromGlobalState( $implementation, $userLanguage );
 		$this->output( "Entry point: $implementation\n" );
+		if ( $userLanguage !== null ) {
+			$this->output( "Reader language: $userLanguage\n" );
+		}
 		$modes = $this->parseList( $this->getOption( 'modes' ) ) ?: self::DEFAULT_MODES;
 		$titles = $this->resolveTitles( $recorder );
 

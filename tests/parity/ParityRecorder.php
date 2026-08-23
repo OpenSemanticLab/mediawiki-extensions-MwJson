@@ -49,17 +49,22 @@ class ParityRecorder {
 	private Parser $parser;
 	private BacklinkCacheFactory $backlinkCacheFactory;
 	private HtmlNormalizer $htmlNormalizer;
+
+	/** Reader language for every render in this run; null means content language. */
+	private ?string $userLanguage;
 	private string $implementation;
 
 	public function __construct(
 		Parser $parser,
 		BacklinkCacheFactory $backlinkCacheFactory,
 		HtmlNormalizer $htmlNormalizer,
-		string $implementation = 'lua'
+		string $implementation = 'lua',
+		?string $userLanguage = null
 	) {
 		$this->parser = $parser;
 		$this->backlinkCacheFactory = $backlinkCacheFactory;
 		$this->htmlNormalizer = $htmlNormalizer;
+		$this->userLanguage = $userLanguage;
 
 		if ( !isset( self::ENTRY_POINTS[$implementation] ) ) {
 			throw new \InvalidArgumentException( "Unknown implementation '$implementation'" );
@@ -67,7 +72,10 @@ class ParityRecorder {
 		$this->implementation = $implementation;
 	}
 
-	public static function newFromGlobalState( string $implementation = 'lua' ): self {
+	public static function newFromGlobalState(
+		string $implementation = 'lua',
+		?string $userLanguage = null
+	): self {
 		$services = MediaWikiServices::getInstance();
 		return new self(
 			// Deliberately the shared Parser, not ParserFactory::create().
@@ -80,7 +88,8 @@ class ParityRecorder {
 			$services->getParser(),
 			$services->getBacklinkCacheFactory(),
 			new HtmlNormalizer(),
-			$implementation
+			$implementation,
+			$userLanguage
 		);
 	}
 
@@ -138,8 +147,15 @@ class ParityRecorder {
 			) );
 			// Pin everything that would otherwise vary per invoking user, so a
 			// difference in the record is a difference in the pipeline.
+			//
+			// One language per run, which is a real limitation: anything that
+			// resolves differently per reader is invisible to a run. The
+			// content language is the default because it is what most readers
+			// get; --uselang exists to cover a variant such as de-formal, where
+			// a #switch with no #default renders nothing at all.
 			$options->setUserLang(
-				MediaWikiServices::getInstance()->getContentLanguage()->getCode()
+				$this->userLanguage
+					?? MediaWikiServices::getInstance()->getContentLanguage()->getCode()
 			);
 
 			$output = $this->parser->parse(
