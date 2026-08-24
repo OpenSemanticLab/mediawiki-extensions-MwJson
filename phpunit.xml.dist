@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	Standalone PHPUnit config for the MwJson OO-LD pipeline.
+
+	The classes under includes/OO-LD, includes/Template and includes/Render are
+	deliberately MediaWiki-free (arrays in, arrays out), so their tests run here
+	without an MediaWiki bootstrap, a database or a wiki:
+
+		composer install && composer phpunit:unit
+
+	The MediaWiki-dependent adapters under includes/Mw, includes/Scribunto and
+	includes/ParserFunctions are covered by tests/phpunit/Integration, which runs
+	through MediaWiki core's runner instead. From $IP:
+
+		composer phpunit:entrypoint extensions/MwJson/tests/phpunit/Integration
+-->
+<phpunit
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+	bootstrap="vendor/autoload.php"
+	colors="true"
+	beStrictAboutTestsThatDoNotTestAnything="true"
+	convertErrorsToExceptions="true"
+	convertNoticesToExceptions="true"
+	convertWarningsToExceptions="true"
+	failOnRisky="true"
+	failOnWarning="true"
+	cacheResultFile=".phpunit.result.cache"
+>
+	<testsuites>
+		<testsuite name="unit">
+			<directory>tests/phpunit/Unit</directory>
+		</testsuite>
+	</testsuites>
+	<coverage>
+		<include>
+			<directory suffix=".php">includes/OO-LD</directory>
+			<directory suffix=".php">includes/Template</directory>
+			<directory suffix=".php">includes/Render</directory>
+		</include>
+	</coverage>
+</phpunit>

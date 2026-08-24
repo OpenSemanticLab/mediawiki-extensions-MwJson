@@ -4,17 +4,25 @@ use MediaWiki\MediaWikiServices;
 
 class MwJson {
 
+	/**
+	 * @param \MediaWiki\Output\OutputPage $out
+	 * @param \Skin $skin
+	 * @return bool|void
+	 */
 	public static function onBeforePageDisplay( $out, $skin ) {
-
 		$out->addModules( 'ext.MwJson' );
 		if ( version_compare( MW_VERSION, '1.43', '>=' ) ) {
-			return MwJson::transformSlotRenderResults($out);
+			return self::transformSlotRenderResults( $out );
 		}
 		return true;
-
 	}
 
-	// see https://www.mediawiki.org/wiki/Manual:Hooks/ResourceLoaderGetConfigVars
+	/**
+	 * @see https://www.mediawiki.org/wiki/Manual:Hooks/ResourceLoaderGetConfigVars
+	 * @param array &$vars
+	 * @param string $skin
+	 * @param Config $config
+	 */
 	public static function onResourceLoaderGetConfigVars( array &$vars, $skin, Config $config ): void {
 		$vars['wgMwJsonAllowSubmitInvalide'] = $config->get( 'MwJsonAllowSubmitInvalide' );
 		$vars['wgMwJsonAiCompletionApiUrl'] = $config->get( 'MwJsonAiCompletionApiUrl' );
@@ -23,24 +31,39 @@ class MwJson {
 		$vars['wgMwJsonEmptySchemaSlot'] = $config->get( 'MwJsonEmptySchemaSlot' );
 	}
 
-	public static function onOutputPageParserOutput($out, $parserOutput) {
+	/**
+	 * @param \MediaWiki\Output\OutputPage $out
+	 * @param \MediaWiki\Parser\ParserOutput $parserOutput
+	 * @return bool|void
+	 */
+	public static function onOutputPageParserOutput( $out, $parserOutput ) {
 		if ( version_compare( MW_VERSION, '1.43', '<' ) ) {
-			return MwJson::transformSlotRenderResults($out, $parserOutput);
+			return self::transformSlotRenderResults( $out, $parserOutput );
 		}
 	}
 
-	protected static function transformSlotRenderResults($out, $parserOutput = null)
-	{
+	/**
+	 * Reorder and optionally wrap the per-slot render results.
+	 *
+	 * @param \MediaWiki\Output\OutputPage $out
+	 * @param \MediaWiki\Parser\ParserOutput|null $parserOutput
+	 * @return bool|void
+	 */
+	protected static function transformSlotRenderResults( $out, $parserOutput = null ) {
 		$config = MediaWikiServices::getInstance()->getMainConfig();
 		$settings = $config->get( 'MwJsonSlotRenderResultTransformation' );
 		if ( $settings["enabled"] === null ) {
 			// Default to true for MW >= 1.43, false otherwise
 			$settings["enabled"] = version_compare( MW_VERSION, '1.43', '>=' );
 		}
-		if (!$settings["enabled"]) return;
+		if ( !$settings["enabled"] ) {
+			return;
+		}
 
 		// Skip e.g. pages in NS Special
-		if ( !$out->getTitle()->isContentPage() ) return;
+		if ( !$out->getTitle()->isContentPage() ) {
+			return;
+		}
 
 		if ( $parserOutput !== null ) {
 			// MW < 1.43: get HTML from parser output (OutputPageParserOutput hook)
@@ -50,10 +73,12 @@ class MwJson {
 			$html = $out->getHtml();
 		}
 
-		if ($html === null || trim($html) === "") return;
+		if ( $html === null || trim( $html ) === "" ) {
+			return;
+		}
 
 		// Ensure the HTML is properly encoded in UTF-8
-		$html = mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8');
+		$html = mb_convert_encoding( $html, 'HTML-ENTITIES', 'UTF-8' );
 
 		// Note: this manipulation interacts with Skin:Citizen if wgCitizenEnableCollapsibleSections is true
 		// The behavior of those sections is correct but the elements are located in the wrong wrapper
@@ -64,33 +89,36 @@ class MwJson {
 		// from merging sibling root elements (e.g. SMW warning divs before .mw-parser-output)
 		$html = '<div id="mwjson-tmp-root">' . $html . '</div>';
 
-		$dom = new DOMDocument('1.0', 'UTF-8');
-		@$dom->loadHTML($html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+		$dom = new DOMDocument( '1.0', 'UTF-8' );
+		// Wiki output is not guaranteed well formed, and libxml reports every
+		// stray tag as a warning.
+		// phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged
+		@$dom->loadHTML( $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD );
 
 		// Use XPath to find the target div
-		$xpath = new DOMXPath($dom);
-		$parserOutputDivs = $xpath->query('//div[contains(@class, "mw-parser-output")]');
+		$xpath = new DOMXPath( $dom );
+		$parserOutputDivs = $xpath->query( '//div[contains(@class, "mw-parser-output")]' );
 
-		$appendElement = function ($parent, $child) use (&$settings) {
+		$appendElement = static function ( $parent, $child ) use ( &$settings ) {
 			// skip table of contents which usually is handled separately by skins
-			if ($settings["skip_toc"] && $child->hasAttributes() && $child->getAttribute('id') === 'toc') {
+			if ( $settings["skip_toc"] && $child->hasAttributes() && $child->getAttribute( 'id' ) === 'toc' ) {
 					return;
 			}
-			$parent->appendChild($child);
+			$parent->appendChild( $child );
 		};
 
-		foreach ($parserOutputDivs as $div) {
-			$slotHeaders = $xpath->query('.//*[contains(@class, "mw-slot-header")]', $div);
+		foreach ( $parserOutputDivs as $div ) {
+			$slotHeaders = $xpath->query( './/*[contains(@class, "mw-slot-header")]', $div );
 
-			if ($slotHeaders->length > 0) {
-				$slots = ['main' => []];
+			if ( $slotHeaders->length > 0 ) {
+				$slots = [ 'main' => [] ];
 				$currentSlot = 'main';
 
 				// Iterate over all child nodes of the div
-				foreach ($div->childNodes as $child) {
-					if ($child->nodeType === XML_ELEMENT_NODE && $child->hasAttributes() && strpos($child->getAttribute('class'), 'mw-slot-header') !== false) {
+				foreach ( $div->childNodes as $child ) {
+					if ( $child->nodeType === XML_ELEMENT_NODE && $child->hasAttributes() && strpos( $child->getAttribute( 'class' ), 'mw-slot-header' ) !== false ) {
 						// Create a new slot with the text content of the mw-slot-header
-						$currentSlot = trim($child->textContent);
+						$currentSlot = trim( $child->textContent );
 						$slots[$currentSlot] = [];
 					} else {
 						// Add the child to the current slot
@@ -103,81 +131,84 @@ class MwJson {
 
 				// Define the order of slots
 				$orderedSlots = [];
-				if ($settings["order"]) $orderedSlots = ['header', 'main', 'footer'];
+				if ( $settings["order"] ) {
+					$orderedSlots = [ 'header', 'main', 'footer' ];
+				}
 
 				// Append slots in the defined order
-				foreach ($orderedSlots as $slotName) {
-					if (isset($slots[$slotName])) {
-						if ($wrap) {
-							$wrapperDiv = $dom->createElement('div');
-							$wrapperDiv->setAttribute('id', 'mw-slot-wrapper-' . htmlspecialchars($slotName));
-							$wrapperDiv->setAttribute('class', 'mw-slot-wrapper');
+				foreach ( $orderedSlots as $slotName ) {
+					if ( isset( $slots[$slotName] ) ) {
+						if ( $wrap ) {
+							$wrapperDiv = $dom->createElement( 'div' );
+							$wrapperDiv->setAttribute( 'id', 'mw-slot-wrapper-' . htmlspecialchars( $slotName ) );
+							$wrapperDiv->setAttribute( 'class', 'mw-slot-wrapper' );
 							// debug
 							//$wrapperDiv->setAttribute('style', 'border: 1px solid #aaa;');
 							//$wrapperDiv->appendChild($dom->createElement('p', '>' . htmlspecialchars($slotName)));
 
-							foreach ($slots[$slotName] as $element) {
-								$appendElement($wrapperDiv, $element);
+							foreach ( $slots[$slotName] as $element ) {
+								$appendElement( $wrapperDiv, $element );
 							}
 
-							$newFragment->appendChild($wrapperDiv);
+							$newFragment->appendChild( $wrapperDiv );
 						} else {
-							foreach ($slots[$slotName] as $element) {
-								$appendElement($newFragment, $element);
+							foreach ( $slots[$slotName] as $element ) {
+								$appendElement( $newFragment, $element );
 							}
 						}
 					}
 				}
 
 				// Append any remaining slots that are not in the predefined order
-				foreach ($slots as $slotName => $elements) {
-					if (!in_array($slotName, $orderedSlots)) {
+				foreach ( $slots as $slotName => $elements ) {
+					if ( !in_array( $slotName, $orderedSlots ) ) {
 
-						$details = $dom->createElement('details');
-						$details->setAttribute('class', 'mw-slot-details');
-						$summary = $dom->createElement('summary', htmlspecialchars($slotName));
-						$summary->setAttribute('class', 'mw-slot-details-summary');
-						$details->appendChild($summary);
+						$details = $dom->createElement( 'details' );
+						$details->setAttribute( 'class', 'mw-slot-details' );
+						$summary = $dom->createElement( 'summary', htmlspecialchars( $slotName ) );
+						$summary->setAttribute( 'class', 'mw-slot-details-summary' );
+						$details->appendChild( $summary );
 
-						if ($wrap) {
-							$wrapperDiv = $dom->createElement('div');
-							$wrapperDiv->setAttribute('id', 'mw-slot-wrapper-' . htmlspecialchars($slotName));
-							$wrapperDiv->setAttribute('class', 'mw-slot-wrapper');
+						if ( $wrap ) {
+							$wrapperDiv = $dom->createElement( 'div' );
+							$wrapperDiv->setAttribute( 'id', 'mw-slot-wrapper-' . htmlspecialchars( $slotName ) );
+							$wrapperDiv->setAttribute( 'class', 'mw-slot-wrapper' );
 							// debug
 							//$wrapperDiv->setAttribute('style', 'border: 1px solid #aaa;');
 							//$wrapperDiv->appendChild($dom->createElement('p', '>' . htmlspecialchars($slotName)));
 
-							foreach ($elements as $element) {
-								$appendElement($details, $element);
+							foreach ( $elements as $element ) {
+								$appendElement( $details, $element );
 							}
 
-							$wrapperDiv->appendChild($details);
-							$newFragment->appendChild($wrapperDiv);
+							$wrapperDiv->appendChild( $details );
+							$newFragment->appendChild( $wrapperDiv );
 						} else {
-							foreach ($elements as $element) {
-								$appendElement($details, $element);
+							foreach ( $elements as $element ) {
+								$appendElement( $details, $element );
 							}
-							$newFragment->appendChild($details);
+							$newFragment->appendChild( $details );
 						}
 					}
 				}
 
 				// Replace the original content with the new wrapped content
 				// this doesn't work: $div->innerHTML = '';
-				while ($div->firstChild) {
-					$div->removeChild($div->firstChild);
+				while ( $div->firstChild ) {
+					$div->removeChild( $div->firstChild );
 				}
-				//$div->innerHTML = '';
-				$div->appendChild($newFragment);
+				// $div->innerHTML = '';
+				$div->appendChild( $newFragment );
 			}
+
 		}
 
 		// Unwrap temporary root element
-		$tmpRoot = $dom->getElementById('mwjson-tmp-root');
+		$tmpRoot = $dom->getElementById( 'mwjson-tmp-root' );
 		$savedHtml = '';
-		if ($tmpRoot) {
-			foreach ($tmpRoot->childNodes as $child) {
-				$savedHtml .= $dom->saveHTML($child);
+		if ( $tmpRoot ) {
+			foreach ( $tmpRoot->childNodes as $child ) {
+				$savedHtml .= $dom->saveHTML( $child );
 			}
 		} else {
 			$savedHtml = $dom->saveHTML();
@@ -185,7 +216,7 @@ class MwJson {
 
 		if ( $parserOutput !== null ) {
 			// MW < 1.43: save back to parser output
-			$parserOutput->setText($savedHtml);
+			$parserOutput->setText( $savedHtml );
 		} else {
 			// MW >= 1.43: save back to output page
 			$out->clearHtml();
@@ -194,7 +225,9 @@ class MwJson {
 
 		// e.g. Skin:Citizen does wrap the toc => hide it in the main content section
 		// custom toc is still displayed in the right sidebar
-		if ($settings["hide_toc"]) $out->addInlineStyle( ".mw-slot-wrapper #toc { display: none; }" );
+		if ( $settings["hide_toc"] ) {
+			$out->addInlineStyle( ".mw-slot-wrapper #toc { display: none; }" );
+		}
 		$out->addInlineStyle( ".mw-slot-header { display: none; }" );
 
 		return true;

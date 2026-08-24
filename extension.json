@@ -1,55 +1,56 @@
 {
-    "manifest_version":2,
-    "name":"MwJson",
-    "version":"0.55.6",
-    "author":[
+    "manifest_version": 2,
+    "name": "MwJson",
+    "version": "0.55.6",
+    "author": [
         "[https://github.com/simontaurus Simon Stier]",
         "[https://github.com/ademolaomosanya Ademola Omosanya]",
-		"[https://github.com/lukasgold Lukas Gold]"
+        "[https://github.com/lukasgold Lukas Gold]"
     ],
-    "url":"https://github.com/simontaurus/mediawiki-extensions-MwJson",
-    "descriptionmsg":"mw-json-desc",
-    "namemsg":"mw-json-name",
-    "license-name":"AGPL-3.0-or-later",
-    "type":"editor",
-    "requires":{
-        "MediaWiki":">= 1.35",
+    "url": "https://github.com/simontaurus/mediawiki-extensions-MwJson",
+    "descriptionmsg": "mw-json-desc",
+    "namemsg": "mw-json-name",
+    "license-name": "AGPL-3.0-or-later",
+    "type": "editor",
+    "requires": {
+        "MediaWiki": ">= 1.43",
         "extensions": {
             "WSSlots": "*",
             "SemanticMediaWiki": "*",
             "SemanticCompoundQueries": "*",
             "CodeEditor": "*",
             "CodeMirror": "*",
-            "VEForAll": "*"
-		}
+            "VEForAll": "*",
+            "Scribunto": "*"
+        }
     },
-    "MessagesDirs":{
-        "MwJson":[
+    "MessagesDirs": {
+        "MwJson": [
             "i18n"
         ]
     },
-    "ResourceModules":{
-        "ext.mwjson":{
-            "localBasePath":"modules/ext.MwJson",
-            "remoteExtPath":"MwJson/modules/ext.MwJson",
-            "styles":[
+    "ResourceModules": {
+        "ext.mwjson": {
+            "localBasePath": "modules/ext.MwJson",
+            "remoteExtPath": "MwJson/modules/ext.MwJson",
+            "styles": [
                 "MwJson.css",
                 "bootstrap.min.css",
                 "fontawesome.min.css",
                 "spectre-icons.min.css",
                 "bootstrap5-toggle.min.css"
             ],
-            "scripts":[
+            "scripts": [
                 "MwJson.js",
                 "bootstrap.min.js",
                 "bootstrap5-toggle.ecmas.min.js"
             ],
-            "position":"top"
+            "position": "top"
         },
-        "ext.mwjson.util":{
-            "localBasePath":"modules/ext.MwJson.util",
-            "remoteExtPath":"MwJson/modules/ext.MwJson.util",
-            "scripts":[
+        "ext.mwjson.util": {
+            "localBasePath": "modules/ext.MwJson.util",
+            "remoteExtPath": "MwJson/modules/ext.MwJson.util",
+            "scripts": [
                 "lz-string.min.js",
                 "json-schema-ref-parser.js",
                 "jsonpath.min.js",
@@ -61,47 +62,47 @@
             "dependencies": [
                 "ext.mwjson"
             ],
-            "position":"bottom",
+            "position": "bottom",
             "messages": [
                 "mwjson-schema-resolver-title",
                 "mwjson-schema-missing-page",
                 "mwjson-schema-empty-slot"
             ]
         },
-        "ext.mwjson.api":{
-            "localBasePath":"modules/ext.MwJson.api",
-            "remoteExtPath":"MwJson/modules/ext.MwJson.api",
-            "scripts":[
+        "ext.mwjson.api": {
+            "localBasePath": "modules/ext.MwJson.api",
+            "remoteExtPath": "MwJson/modules/ext.MwJson.api",
+            "scripts": [
                 "MwJson_cache.js",
                 "MwJson_api.js"
             ],
             "dependencies": [
                 "ext.mwjson.util"
             ],
-            "position":"bottom"
+            "position": "bottom"
         },
-        "ext.mwjson.parser":{
-            "localBasePath":"modules/ext.MwJson.parser",
-            "remoteExtPath":"MwJson/modules/ext.MwJson.parser",
-            "scripts":[
+        "ext.mwjson.parser": {
+            "localBasePath": "modules/ext.MwJson.parser",
+            "remoteExtPath": "MwJson/modules/ext.MwJson.parser",
+            "scripts": [
                 "CeJS_wiki.min.js",
                 "MwJson_parser.js"
             ],
             "dependencies": [
                 "ext.mwjson.util"
             ],
-            "position":"bottom"
+            "position": "bottom"
         },
-        "ext.mwjson.editor":{
-            "localBasePath":"modules/ext.MwJson.editor",
-            "remoteExtPath":"MwJson/modules/ext.MwJson.editor",
-            "styles":[
+        "ext.mwjson.editor": {
+            "localBasePath": "modules/ext.MwJson.editor",
+            "remoteExtPath": "MwJson/modules/ext.MwJson.editor",
+            "styles": [
                 "autocomplete.min.css",
                 "flatpickr.min.css",
                 "json-editor.css",
                 "jsoneditor.css"
             ],
-            "scripts":[
+            "scripts": [
                 "handlebars.min.js",
                 "autocomplete.min.js",
                 "imask.min.js",
@@ -115,9 +116,9 @@
             ],
             "dependencies": [
                 "ext.mwjson.api",
-		        "ext.mwjson.parser"
+                "ext.mwjson.parser"
             ],
-            "position":"bottom",
+            "position": "bottom",
             "messages": [
                 "mwjson-editor-submit-save",
                 "mwjson-editor-submit-query",
@@ -235,64 +236,91 @@
                 "json-editor-paste_max_length_reached"
             ]
         },
-        "ext.mwjson.editor.ace":{
-            "localBasePath":"modules/ext.MwJson.editor.ace",
-            "remoteExtPath":"MwJson/modules/ext.MwJson.editor.ace",
-            "scripts":[
+        "ext.mwjson.editor.ace": {
+            "localBasePath": "modules/ext.MwJson.editor.ace",
+            "remoteExtPath": "MwJson/modules/ext.MwJson.editor.ace",
+            "scripts": [
                 "theme-vibrant_ink.js",
                 "mode-handlebars.js"
             ],
             "dependencies": [
                 "ext.mwjson.editor"
             ],
-            "position":"bottom"
+            "position": "bottom"
         }
     },
-    "AutoloadClasses":{
-        "MwJson":"includes/MwJson.php",
-		"SpecialSlotResolver": "special/SlotResolver.php"
+    "AutoloadClasses": {
+        "MwJson": "includes/MwJson.php",
+        "SpecialSlotResolver": "special/SpecialSlotResolver.php"
     },
-    "Hooks":{
-        "BeforePageDisplay":"MwJson::onBeforePageDisplay",
+    "Hooks": {
+        "BeforePageDisplay": "MwJson::onBeforePageDisplay",
         "OutputPageParserOutput": "MwJson::onOutputPageParserOutput",
-        "ResourceLoaderGetConfigVars": "MwJson::onResourceLoaderGetConfigVars"
+        "ResourceLoaderGetConfigVars": "MwJson::onResourceLoaderGetConfigVars",
+        "ScribuntoExternalLibraries": "MediaWiki\\Extension\\MwJson\\Hooks::onScribuntoExternalLibraries",
+        "ParserFirstCallInit": "MediaWiki\\Extension\\MwJson\\ParserFunctions\\MwJsonParserFunction::onParserFirstCallInit"
     },
     "SpecialPages": {
-		"SlotResolver": "SpecialSlotResolver"
+        "SlotResolver": "SpecialSlotResolver"
     },
     "config": {
+        "MwJsonRenderer": {
+            "value": "lua",
+            "description": "Which implementation renders the header/footer pipeline: 'lua' (legacy Module:MwJson, the default during the migration) or 'php' (the in-extension OO-LD pipeline). Module:Entity dispatches on this via mw.ext.mwjson.enabled(), so it is a live rollback switch: no page edits required to flip back."
+        },
+        "MwJsonResolveLinkLabels": {
+            "value": true,
+            "description": "When true, the PHP pipeline resolves a link's display label by reading the semantic store instead of expanding the Viewer/Link wiki template, which runs one SMW query per link. Access is enforced with the same read permission check the query path uses, so a reader who may not see a target gets the plain link they get today. On by default: output is byte-identical to the wiki template across the full corpus, and it removes one SMW query per link. Set false to fall back to expanding Viewer/Link."
+        },
+        "MwJsonRegisterSlotDependencies": {
+            "value": false,
+            "description": "When true, the pages a schema resolution reads (the category chain and every $ref target) are registered as parser-cache dependencies, so editing a category's jsonschema slot invalidates the pages below it. Off by default because enabling it makes an edit to a base category queue a refresh for every entity beneath it, which is the intended effect but is an operational event worth scheduling. Neither this port nor the Lua registers them today."
+        },
+        "MwJsonBypassLegacyTemplates": {
+            "value": false,
+            "description": "When true, the PHP pipeline renders the values behind recognised legacy eval_templates itself instead of running them. Those templates exist because Scribunto could not resolve the reader's language; the pipeline can, so running them is redundant work on every page. Output is unchanged. Off by default so the recogniser can be verified against a wiki's own schemas before it takes effect."
+        },
         "MwJsonAllowSubmitInvalide": {
-			"value": "always",
-			"description": "Forbid ('never'), conditional if set in schema option ('option') or always ('always') allow the user to save data failing schema validation."
-		},
+            "value": "always",
+            "description": "Forbid ('never'), conditional if set in schema option ('option') or always ('always') allow the user to save data failing schema validation."
+        },
         "MwJsonRemoveEmptyOnSubmit": {
-			"value": true,
-			"description": "When true, mwjson.editor recursively strips empty values ('', null, undefined, [], {}) from jsondata before saving so unfilled defaultProperties and cleared optional fields do not persist. Set to false to keep the raw form value."
-		},
+            "value": true,
+            "description": "When true, mwjson.editor recursively strips empty values ('', null, undefined, [], {}) from jsondata before saving so unfilled defaultProperties and cleared optional fields do not persist. Set to false to keep the raw form value."
+        },
         "MwJsonMissingSchemaPage": {
-			"value": "warn",
-			"description": "How the schema resolver reacts when a $ref target page does not exist at all, e.g. a category missing from the inheritance chain. One of 'ignore', 'warn' or 'abort'. An empty schema is substituted unless 'abort' is set, so a single broken reference cannot make the editor impossible to open."
-		},
+            "value": "warn",
+            "description": "How the schema resolver reacts when a $ref target page does not exist at all, e.g. a category missing from the inheritance chain. One of 'ignore', 'warn' or 'abort'. An empty schema is substituted unless 'abort' is set, so a single broken reference cannot make the editor impossible to open."
+        },
         "MwJsonEmptySchemaSlot": {
-			"value": "ignore",
-			"description": "How the schema resolver reacts when a $ref target page exists but carries no schema, e.g. a Property without a jsonschema slot. One of 'ignore', 'warn' or 'abort'. This is routine, hence 'ignore' by default."
-		},
+            "value": "ignore",
+            "description": "How the schema resolver reacts when a $ref target page exists but carries no schema, e.g. a Property without a jsonschema slot. One of 'ignore', 'warn' or 'abort'. This is routine, hence 'ignore' by default."
+        },
         "MwJsonAiCompletionApiUrl": {
-			"value": null,
-			"description": "REST-API endpoint accepting {\"promt\": \"...\", \"jsonschema\": \"\"} and returning a valide schema instance."
-		},
+            "value": null,
+            "description": "REST-API endpoint accepting {\"promt\": \"...\", \"jsonschema\": \"\"} and returning a valide schema instance."
+        },
         "MwJsonSlotRenderResultTransformation": {
-			"value": {
+            "value": {
                 "enabled": null,
                 "wrap": true,
                 "order": true,
                 "skip_toc": false,
                 "hide_toc": true
             },
-			"description": "Brings the render results of slots into order 'header', 'main', 'footer', <additional slots>. if enabled. Optionally wraps slot content in a div (default: true). Optionally skips (default: false) or hides (default: true) the table of contents which usually is handled separately by skins."
-		}
+            "description": "Brings the render results of slots into order 'header', 'main', 'footer', <additional slots>. if enabled. Optionally wraps slot content in a div (default: true). Optionally skips (default: false) or hides (default: true) the table of contents which usually is handled separately by skins."
+        }
     },
     "ExtensionMessagesFiles": {
+        "MwJsonMagic": "MwJson.i18n.magic.php",
         "MwJsonAlias": "MwJson.i18n.alias.php"
-    }
+    },
+    "AutoloadNamespaces": {
+        "MediaWiki\\Extension\\MwJson\\": "includes/",
+        "MediaWiki\\Extension\\MwJson\\OOLD\\": "includes/OO-LD/"
+    },
+    "TestAutoloadNamespaces": {
+        "MediaWiki\\Extension\\MwJson\\Tests\\": "tests/phpunit/"
+    },
+    "load_composer_autoloader": true
 }
