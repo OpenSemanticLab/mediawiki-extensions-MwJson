@@ -65,7 +65,7 @@ class MultilangValue {
 
 		if ( isset( $jsondata[$key] ) && is_array( $jsondata[$key] ) ) {
 			foreach ( $jsondata[$key] as $entry ) {
-				if ( !is_array( $entry ) || !isset( $entry['lang'], $entry['text'] ) ) {
+				if ( !is_array( $entry ) || !isset( $entry['lang'] ) || !isset( $entry['text'] ) ) {
 					continue;
 				}
 				if ( $entry['lang'] === $this->language ) {

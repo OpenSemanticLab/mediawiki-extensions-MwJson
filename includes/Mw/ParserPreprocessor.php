@@ -6,7 +6,6 @@ use MediaWiki\Extension\MwJson\Template\WikitextPreprocessor;
 use MediaWiki\MediaWikiServices;
 use Parser;
 use PPFrame;
-use Title;
 
 /**
  * The MediaWiki side of WikitextPreprocessor.

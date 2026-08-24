@@ -98,8 +98,6 @@ class SlotJsonLoaderTest extends TestCase {
 		$this->assertCount( 2, $reads );
 	}
 
-	// -- $defs.generated inlining -------------------------------------------
-
 	public function testInlinesGeneratedViaRootRef(): void {
 		$loader = $this->newLoader( [ 'Category:X' => [ 'jsonschema' => json_encode( [
 			'$ref' => '#/$defs/generated',

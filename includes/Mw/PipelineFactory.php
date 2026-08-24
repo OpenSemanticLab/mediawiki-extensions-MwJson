@@ -128,8 +128,14 @@ class PipelineFactory {
 		$base = is_string( $configured ) && $configured !== '' ? $configured : sys_get_temp_dir();
 		$directory = $base . '/mwjson-mustache';
 
-		if ( !is_dir( $directory ) && !@mkdir( $directory, 0777, true ) && !is_dir( $directory ) ) {
-			return new MustacheRenderer();
+		// Not silenced for convenience: a concurrent request may win the race,
+		// so a failed mkdir only matters if the directory still is not there.
+		if ( !is_dir( $directory ) ) {
+			// phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged
+			@mkdir( $directory, 0777, true );
+			if ( !is_dir( $directory ) ) {
+				return new MustacheRenderer();
+			}
 		}
 		if ( !is_writable( $directory ) ) {
 			return new MustacheRenderer();
@@ -191,6 +197,7 @@ class PipelineFactory {
 	 * so it is worth storing. Falls back to the bare walker when there is no
 	 * title to key on, which happens in some maintenance contexts.
 	 */
+
 	/**
 	 * Registers what the walk read as parser-cache dependencies, or null when
 	 * the wiki has not opted in. See ParserDependencyRegistrar for why that is

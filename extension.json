@@ -16,6 +16,7 @@
         "MediaWiki": ">= 1.35",
         "extensions": {
             "WSSlots": "*",
+            "Scribunto": "*",
             "SemanticMediaWiki": "*",
             "SemanticCompoundQueries": "*",
             "CodeEditor": "*",
@@ -245,12 +246,16 @@
     },
     "AutoloadClasses": {
         "MwJson": "includes/MwJson.php",
-        "SpecialSlotResolver": "special/SlotResolver.php"
+        "SpecialSlotResolver": "special/SpecialSlotResolver.php"
     },
     "AutoloadNamespaces": {
         "MediaWiki\\Extension\\MwJson\\": "includes/",
         "MediaWiki\\Extension\\MwJson\\OOLD\\": "includes/OO-LD/"
     },
+    "TestAutoloadNamespaces": {
+        "MediaWiki\\Extension\\MwJson\\Tests\\": "tests/phpunit/"
+    },
+    "load_composer_autoloader": true,
     "Hooks": {
         "BeforePageDisplay": "MwJson::onBeforePageDisplay",
         "OutputPageParserOutput": "MwJson::onOutputPageParserOutput",

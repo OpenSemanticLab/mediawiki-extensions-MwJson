@@ -67,7 +67,8 @@ use SMWDIContainer;
 class SmwLinkLabelResolver implements LinkLabelResolver {
 
 	/** SemanticACL's markers. A non-public value means the rendering depends
-	 * on who is reading it. */
+	 * on who is reading it.
+	 */
 	private const ACL_PROPERTIES = [ '___VISIBLE', '___EDITABLE' ];
 
 	private const LABEL = 'HasLabel';
@@ -87,7 +88,11 @@ class SmwLinkLabelResolver implements LinkLabelResolver {
 	private ParserOutput $parserOutput;
 	private string $language;
 
-	/** SMW's batched property loader, or null when this store has none. */
+	/**
+	 * SMW's batched property loader, or null when this store has none.
+	 *
+	 * @var \SMW\SQLStore\EntityStore\PrefetchCache|null
+	 */
 	private $prefetch;
 
 	private RequestOptions $requestOptions;
@@ -226,7 +231,8 @@ class SmwLinkLabelResolver implements LinkLabelResolver {
 		if ( array_key_exists( $title, $this->cache ) ) {
 			return $this->cache[$title];
 		}
-		return $this->cache[$title] = $this->resolve( $title );
+		$this->cache[$title] = $this->resolve( $title );
+		return $this->cache[$title];
 	}
 
 	private function resolve( string $text ): ?string {

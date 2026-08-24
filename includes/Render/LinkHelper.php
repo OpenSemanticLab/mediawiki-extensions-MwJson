@@ -2,7 +2,6 @@
 
 namespace MediaWiki\Extension\MwJson\Render;
 
-use MediaWiki\Extension\MwJson\Render\LinkLabelResolver;
 use MediaWiki\Extension\MwJson\Template\WikitextPreprocessor;
 
 /**

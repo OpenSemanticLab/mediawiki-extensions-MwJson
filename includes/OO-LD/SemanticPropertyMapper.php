@@ -69,7 +69,7 @@ class SemanticPropertyMapper {
 	 *   whole schema at the page level and a property's subschema below it.
 	 * @param array<string,mixed> $properties Seeded with reverse properties when
 	 *   descending into a subobject.
-	 * @param array<int,array{id:?string,properties:array}> &$subobjects
+	 * @param array<int,array{id:?string,properties:array}> $subobjects
 	 * @param string|null $path This node's JSON path within the root object,
 	 *   e.g. "l1" or "characteristics.2".
 	 */
@@ -235,8 +235,8 @@ class SemanticPropertyMapper {
 	 * to record against the parent property.
 	 *
 	 * @param array<string,mixed> $reverseProperties
-	 * @param array<string,mixed> &$properties Statement shortcuts are folded in here.
-	 * @param array<int,array{id:?string,properties:array}> &$subobjects
+	 * @param array<string,mixed> $properties Statement shortcuts are folded in here.
+	 * @param array<int,array{id:?string,properties:array}> $subobjects
 	 * @return array<int,string>
 	 */
 	private function descend(
@@ -284,8 +284,8 @@ class SemanticPropertyMapper {
 	}
 
 	/**
-	 * @param array<string,mixed> &$properties
-	 * @param array<int,array{id:?string,properties:array}> &$subobjects
+	 * @param array<string,mixed> $properties
+	 * @param array<int,array{id:?string,properties:array}> $subobjects
 	 * @return array<int,string>
 	 */
 	private function descendInto(

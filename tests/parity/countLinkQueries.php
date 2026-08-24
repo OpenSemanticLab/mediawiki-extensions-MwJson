@@ -33,10 +33,17 @@ if ( getenv( 'MW_INSTALL_PATH' ) !== false ) {
  */
 class CountLinkQueries extends Maintenance {
 
+	/** @var \MediaWiki\Extension\MwJson\OOLD\SchemaWalker */
 	private $walker;
+
+	/** @var \MediaWiki\Extension\MwJson\OOLD\MergeStrategy */
 	private $merge;
 
-	/** Which recognised class to count; see the --class option. */
+	/**
+	 * Which recognised class to count; see the --class option.
+	 *
+	 * @var string
+	 */
 	private $wanted;
 
 	public function __construct() {

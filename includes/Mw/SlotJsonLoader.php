@@ -5,8 +5,8 @@ namespace MediaWiki\Extension\MwJson\Mw;
 use MediaWiki\Extension\MwJson\OOLD\JsonLoader;
 use MediaWiki\Extension\MwJson\OOLD\JsonUtil;
 use MediaWiki\Extension\MwJson\OOLD\MergeStrategy;
-use MediaWiki\Extension\MwJson\OOLD\SlotTextLoader;
 use MediaWiki\Extension\MwJson\OOLD\Slots;
+use MediaWiki\Extension\MwJson\OOLD\SlotTextLoader;
 
 /**
  * Port of Module:MwJson's p.loadJson().

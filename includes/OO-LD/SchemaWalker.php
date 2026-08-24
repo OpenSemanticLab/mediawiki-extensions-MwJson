@@ -113,7 +113,7 @@ class SchemaWalker implements SchemaResolver {
 	 * reference them, so `visited` runs most basal first.
 	 *
 	 * @param string[]|string|null $categories
-	 * @param array{schemas:array,templates:array,visited:array,debug:array} &$state
+	 * @param array{schemas:array,templates:array,visited:array,debug:array} $state
 	 */
 	private function collect(
 		array $schema,

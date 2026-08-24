@@ -2,8 +2,8 @@
 
 namespace MediaWiki\Extension\MwJson\Mw;
 
-use MediaWiki\Extension\MwJson\OOLD\JsonUtil;
 use MediaWiki\Extension\MwJson\OOLD\JsonRefExpander;
+use MediaWiki\Extension\MwJson\OOLD\JsonUtil;
 use MediaWiki\Extension\MwJson\OOLD\LabelHelper;
 use MediaWiki\Extension\MwJson\OOLD\ProcessResult;
 use MediaWiki\Extension\MwJson\OOLD\SchemaKeys;

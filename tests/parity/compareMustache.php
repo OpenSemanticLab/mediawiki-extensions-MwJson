@@ -156,6 +156,9 @@ class CompareMustache extends Maintenance {
 		return [ 'self' => $case['template'] ] + ( $case['partials'] ?? [] );
 	}
 
+	/**
+	 * @param mixed $value
+	 */
 	private function show( $value ): string {
 		$text = (string)$value;
 		return strlen( $text ) > 300 ? substr( $text, 0, 300 ) . '...' : $text;
