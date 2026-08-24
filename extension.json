@@ -13,7 +13,7 @@
     "license-name": "AGPL-3.0-or-later",
     "type": "editor",
     "requires": {
-        "MediaWiki": ">= 1.35",
+        "MediaWiki": ">= 1.43",
         "extensions": {
             "WSSlots": "*",
             "Scribunto": "*",
