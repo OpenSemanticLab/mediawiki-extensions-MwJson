@@ -12,6 +12,7 @@ use MediaWiki\Extension\MwJson\OOLD\SchemaKeys;
 use MediaWiki\Extension\MwJson\OOLD\SchemaResolver;
 use MediaWiki\Extension\MwJson\OOLD\SchemaWalker;
 use MediaWiki\Extension\MwJson\OOLD\SemanticPropertyMapper;
+use MediaWiki\Extension\MwJson\OOLD\Slots;
 use MediaWiki\Extension\MwJson\Render\DateFormatter;
 use MediaWiki\Extension\MwJson\Render\InfoBoxRenderer;
 use MediaWiki\Extension\MwJson\Render\LinkHelper;
@@ -22,6 +23,7 @@ use MediaWiki\Extension\MwJson\Template\EmbeddedTemplateExpander;
 use MediaWiki\Extension\MwJson\Template\LegacyTemplateBypass;
 use MediaWiki\Extension\MwJson\Template\MustacheRenderer;
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Title\Title;
 use Parser;
 use PPFrame;
 
@@ -87,6 +89,66 @@ class PipelineFactory {
 			$wikitext,
 			$this->keys
 		);
+	}
+
+	/**
+	 * Render one slot of one page, and apply what the render decided to write.
+	 *
+	 * Both entry points call this rather than repeating it. They had the same
+	 * fifteen lines twice and had already drifted apart once: the ordering fix
+	 * below had to be made in two places, and the two joined SMW errors
+	 * differently. One copy removes that class of divergence.
+	 *
+	 * @param Parser $parser The parser rendering the page.
+	 * @param PPFrame $frame Its current frame.
+	 * @param string $mode Slots::MODE_HEADER or Slots::MODE_FOOTER.
+	 * @param Title $title The page to render.
+	 * @param array|null $jsondata Supplied data, or null to read the page's slot.
+	 * @param array $jsonschema An inline schema, when the caller has one.
+	 * @param string|null $template An inline template for the page itself.
+	 * @return string Wikitext.
+	 */
+	public function renderSlot(
+		Parser $parser,
+		PPFrame $frame,
+		string $mode,
+		Title $title,
+		?array $jsondata = null,
+		array $jsonschema = [],
+		?string $template = null
+	): string {
+		$subject = $title->getPrefixedText();
+		$jsondata ??= $this->newSlotJsonLoader()->load( $subject, Slots::JSONDATA );
+
+		// A Category page is rendered as an instance of the metaclass, since a
+		// class is itself an entity. Matches Module:Entity's dispatch.
+		$categories = $title->getNamespace() === NS_CATEGORY ? [ 'Category:Category' ] : null;
+
+		$result = $this->newEntityProcessor( $parser, $frame )->process(
+			$jsondata,
+			$subject,
+			$title->getNsText(),
+			$mode,
+			$categories,
+			$jsonschema,
+			$template
+		);
+
+		// The processor computes without writing; the writes happen here, in the
+		// order the Lua performed them. That order matters: the display title
+		// goes first, because SMW derives a subject's sort key from it during
+		// the #set and would otherwise fall back to the page name, so a category
+		// listing would sort by raw OSW id rather than by label.
+		$this->setDisplayTitle( $parser, $result->displayTitle );
+
+		$wikitext = $result->wikitext;
+		if ( $result->mapping !== null ) {
+			foreach ( $this->newSmwWriter( $parser )->write( $result->mapping ) as $error ) {
+				$wikitext .= ' ' . $error;
+			}
+		}
+
+		return $wikitext;
 	}
 
 	/**
@@ -216,7 +278,7 @@ class PipelineFactory {
 		SlotJsonLoader $loader,
 		WsSlotSource $slots,
 		SlotDependencies $dependencies,
-		?\MediaWiki\Title\Title $title,
+		?Title $title,
 		?Parser $parser = null
 	): SchemaResolver {
 		$walker = new SchemaWalker( $loader, $slots, $this->merge );

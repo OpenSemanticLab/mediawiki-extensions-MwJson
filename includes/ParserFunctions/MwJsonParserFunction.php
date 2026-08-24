@@ -56,42 +56,15 @@ class MwJsonParserFunction {
 			return '';
 		}
 
-		$factory = new PipelineFactory();
-		$subject = $title->getPrefixedText();
-
-		$jsondata = self::decode( $parsed['jsondata'] ?? null )
-			?? $factory->newSlotJsonLoader()->load( $subject, Slots::JSONDATA );
-
-		// A Category page is rendered as an instance of the metaclass, since a
-		// class is itself an entity. Matches Module:Entity's dispatch.
-		$categories = $title->getNamespace() === NS_CATEGORY ? [ 'Category:Category' ] : null;
-
-		$result = $factory->newEntityProcessor( $parser, $frame )->process(
-			$jsondata,
-			$subject,
-			$title->getNsText(),
+		return ( new PipelineFactory() )->renderSlot(
+			$parser,
+			$frame,
 			$mode,
-			$categories,
+			$title,
+			self::decode( $parsed['jsondata'] ?? null ),
 			self::decode( $parsed['jsonschema'] ?? null ) ?? [],
 			$parsed['template'] ?? null
 		);
-
-		// The processor computes without writing; the writes happen here, in
-		// the order the Lua performed them. That order matters: the display
-		// title goes first, because SMW derives a subject's sort key from it
-		// during the #set and would otherwise fall back to the page name, so a
-		// category listing would sort by raw OSW id rather than by label.
-		$factory->setDisplayTitle( $parser, $result->displayTitle );
-
-		$wikitext = $result->wikitext;
-		if ( $result->mapping !== null ) {
-			$errors = $factory->newSmwWriter( $parser )->write( $result->mapping );
-			foreach ( $errors as $error ) {
-				$wikitext .= ' ' . $error;
-			}
-		}
-
-		return $wikitext;
 	}
 
 	/**
