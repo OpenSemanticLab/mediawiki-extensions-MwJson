@@ -32,18 +32,39 @@ mwjson.editor = class {
 		// https://json-schema.org/understanding-json-schema/reference/string#dates-and-times
 		// https://flatpickr.js.org/formatting/
 		// https://www.mediawiki.org/wiki/Manual:$wgDefaultUserOptions
+		//month name first, 12 hour clock => January 15, 2011 4:12 PM
+		let mdyFormat = {"date": "F d, Y", "time": "G:i K", "datetime-local": "F d, Y G:i K"};
+		//day first, dot separated, 24 hour clock => 15.01.2011 16:12
+		let dmyDotFormat = {"date": "d.m.Y", "time": "H:i", "datetime-local": "d.m.Y H:i"};
 		let langDatetimeFormats = {
-			"en": {"date": "F d, Y", "time": "G:i K", "datetime-local": "F d, Y G:i K"},
-			"de": {"date": "d.m.Y", "time": "H:i", "datetime-local": "d.m.Y H:i"},
+			"en": mdyFormat,
+			//languages conventionally written day first, dot separated, on a 24 hour clock.
+			//Regional variants (de-at, de-ch, de-formal, ...) resolve through their base code
+			//below, so only base codes are listed here.
+			"de": dmyDotFormat, "bg": dmyDotFormat, "bs": dmyDotFormat, "cs": dmyDotFormat,
+			"da": dmyDotFormat, "et": dmyDotFormat, "fi": dmyDotFormat, "hr": dmyDotFormat,
+			"is": dmyDotFormat, "lv": dmyDotFormat, "nb": dmyDotFormat, "nn": dmyDotFormat,
+			"no": dmyDotFormat, "pl": dmyDotFormat, "ro": dmyDotFormat, "ru": dmyDotFormat,
+			"sk": dmyDotFormat, "sl": dmyDotFormat, "sr": dmyDotFormat, "tr": dmyDotFormat,
+			"uk": dmyDotFormat,
 		};
+		let userLang = "" + (config.lang ? config.lang : defaultConfig.lang);
+		//variants such as de-at, de-ch or de-formal share the format of their base language
+		let baseLang = userLang.split("-")[0].toLowerCase();
 		let datetimeFormats = {
-			"default": langDatetimeFormats[config.lang ? config.lang : defaultConfig.lang],//No preference
-			"mdy": {"date": "F d, Y", "time": "G:i K", "datetime-local": "F d, Y G:i K"}, //16:12, January 15, 2011
-			"dmy": {"date": "d.m.Y", "time": "H:i", "datetime-local": "d.m.Y H:i"}, //16:12, 15 January 2011
-			"ymd": {"date": "Y/m/d", "time": "H:i", "datetime-local": "Y/m/d H:i"}, //16:12, 2011 January 15
-			"ISO 8601": {"date": "Y-m-d", "time": "H:i", "datetime-local": "Z"}, //2011-01-15T16:12:34
+			//No preference: follow the user language, falling back to the base language and
+			//finally to "en" for any language we have no explicit format for
+			"default": langDatetimeFormats[userLang] || langDatetimeFormats[baseLang] || langDatetimeFormats["en"],
+			//examples below show what the format actually renders, not the MediaWiki
+			//preference label it is mapped from
+			"mdy": mdyFormat, //January 15, 2011 4:12 PM
+			"dmy": dmyDotFormat, //15.01.2011 16:12
+			"ymd": {"date": "Y/m/d", "time": "H:i", "datetime-local": "Y/m/d H:i"}, //2011/01/15 16:12
+			"ISO 8601": {"date": "Y-m-d", "time": "H:i", "datetime-local": "Z"}, //2011-01-15, 2011-01-15T16:12:34.000Z
 		};
-		defaultConfig.format = datetimeFormats[mw.user.options.get("date")];
+		//the available date preferences depend on the content language, so a wiki can
+		//offer keys we have no format for. Fall back to the language default.
+		defaultConfig.format = datetimeFormats[mw.user.options.get("date")] || datetimeFormats["default"];
 		this.config = mwjson.util.mergeDeep(defaultConfig, config);
 		this.flags = {
 			'initial-data-load': false, // true while initial applying config.data => Used for copy-feature
@@ -95,6 +116,18 @@ mwjson.editor = class {
 			})
 			.catch((err) => {
 				console.error(err);
+				// The popup is created before the schema is bundled, so a schema that
+				// cannot be resolved (e.g. a category missing from the chain while the
+				// abort policy is set) would otherwise leave an empty editor open once
+				// the message has been dismissed.
+				if (this.config.popup) {
+					const element = document.getElementById(this.config.id);
+					const modalElement = element ? (element.classList.contains('modal') ? element : element.closest('.modal')) : null;
+					if (modalElement && window.bootstrap) {
+						const instance = bootstrap.Modal.getInstance(modalElement) || bootstrap.Modal.getOrCreateInstance(modalElement);
+						if (instance) instance.hide();
+					}
+				}
 			});
 		console.log("constructor done");
 	}
@@ -283,6 +316,14 @@ mwjson.editor = class {
 						).bind(subeditor);
 						subeditor.setValue = (function(value, initial, fromTemplate, label) {
 								//console.log("Editor-Set ", this.key, ": ", value )
+								// this.input is a DOM element: assigning undefined or null to
+								// .value coerces it to the literal string "undefined" / "null",
+								// which the user then sees in the field and which gets stored
+								// when the field is submitted. Sanitising on the way in also
+								// clears values already stored by earlier versions, so an
+								// affected field empties on load instead of being written back.
+								value = mwjson.util.emptyIfUndefinedString(value);
+								label = mwjson.util.emptyIfUndefinedString(label);
 								this.value = value;
 								this.input.value = label;
 								this.input.value_id = value;
@@ -291,6 +332,17 @@ mwjson.editor = class {
 							}
 						).bind(subeditor);
 						subeditor.fbind = true;
+
+						// Values stored by earlier versions can be the literal string
+						// "undefined", left behind when a failed lookup was assigned to
+						// the DOM input. Sanitising setValue only helps new input, so
+						// clear an existing one here. Scoped to autocomplete fields,
+						// where such a value is always an artifact - a plain text field
+						// may legitimately contain the word.
+						if ( mwjson.util.emptyIfUndefinedString( subeditor.value ) === ""
+							&& subeditor.value !== undefined && subeditor.value !== null && subeditor.value !== "" ) {
+							subeditor.setValue( "", false, false, "" );
+						}
 					}
 
 					if (subeditor.unhandled_input && input.value && input.value !== "") {
@@ -602,6 +654,11 @@ mwjson.editor = class {
 
 	// remove properties named in options.copy_ignore but keep empty values for required and defaultProperties
 	applyCopyIgnoreOption(editor) {
+		// The recursion below walks editor.editors, whose entries are not guaranteed to be
+		// initialised editors: a category missing from the chain resolves to an empty
+		// schema, so JSON Editor builds placeholders without getValue() and copying threw
+		// "editor.getValue is not a function". Skip anything that is not a real editor.
+		if (!editor || typeof editor.getValue !== 'function') return;
 		let ignored_properties = [];
 		if (editor.schema?.options?.copy_ignore) ignored_properties = ignored_properties.concat(editor.schema?.options?.copy_ignore);
 		if (editor.parent?.schema?.options?.array_copy_ignore) ignored_properties = ignored_properties.concat(editor.parent?.schema?.options?.array_copy_ignore);
@@ -1620,7 +1677,14 @@ mwjson.editor = class {
 					jseditor_editor.input.value_id = result_value;
 					jseditor_editor.onChange(true);*/
 					jseditor_editor.unhandled_input = false; // mark finalized user input
-					mwjson.util.setJsonEditorAutocompleteField(jseditor_editor, result_value, result.printouts.label[0]);
+					// printouts.label is empty whenever the page carries no label, so [0] is
+					// undefined. Fall back to what the suggestion list already displays
+					// instead of handing an undefined label to the input.
+					var result_label = result.printouts?.label?.[0];
+					if (result_label === undefined || result_label === null || result_label === "") {
+						result_label = (result.displaytitle && result.displaytitle !== "") ? result.displaytitle : result.fulltext;
+					}
+					mwjson.util.setJsonEditorAutocompleteField(jseditor_editor, result_value, result_label);
 					//jseditor_editor.input.value_label = result.printouts.label[0];
 					
 					if (jseditor_editor.schema?.options?.autocomplete?.field_maps) {

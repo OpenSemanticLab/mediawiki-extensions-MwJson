@@ -568,7 +568,7 @@ mwjson.api = class {
 		var subject = title.split("#")[0];
 		var subObject = "";
 		if (title.split("#")[1]) {
-			subObject = title.split("#")[1].replace(" ", "_");
+			subObject = title.split("#")[1].replaceAll(" ", "_");
 		}
 		var namespace_id = 0;
 		if (subject.split(":")[1]) {
@@ -649,7 +649,7 @@ mwjson.api = class {
 					var properties = data.query.data; //normal page
 					if (title.includes('#')) { //subobject
 						for (var i = 0; i < data.query.sobj.length; i++) {
-							if (data.query.sobj[i].subject.endsWith(title.split('#').pop().replace(' ', ''))) {
+							if (data.query.sobj[i].subject.endsWith(title.split('#').pop().replaceAll(' ', '_'))) {
 								properties = data.query.sobj[i].data;
 								break;
 							}

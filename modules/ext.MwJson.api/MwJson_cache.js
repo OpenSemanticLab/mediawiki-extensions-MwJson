@@ -181,6 +181,11 @@ mwjson.Cache = class {
             let key = page.title;
             if (page.missing) {
                 console.error("Referenced resource missing: " + page.title + ". Please check you system setup and installed packages.");
+                // Remember it: this is the only place where a page that does not exist can
+                // be told apart from one that exists but carries no schema. Callers only
+                // see an absent value and cannot distinguish the two.
+                if (!this.missing_pages) this.missing_pages = new Set();
+                this.missing_pages.add(page.title);
                 continue;
             }
             const revision = page.revisions[0];

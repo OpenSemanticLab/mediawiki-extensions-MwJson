@@ -5124,6 +5124,14 @@ async function download(u, httpOptions, _redirects) {
         if (res.status === 404) {
             // Return empty schema for missing $ref targets (e.g. Property page without jsonschema slot)
             console.warn("json-schema-ref-parser: 404 for " + u.href + ", returning empty schema");
+            // Record it so mwjson.schema can report the gap once bundling has finished.
+            // This is the only place these refs are detected: the custom wiki resolver
+            // never sees them, so swallowing the 404 here made them invisible.
+            if (typeof window !== 'undefined') {
+                window.mwjson = window.mwjson || {};
+                if (!window.mwjson._unresolved_schema_refs) window.mwjson._unresolved_schema_refs = [];
+                if (!window.mwjson._unresolved_schema_refs.includes(u.href)) window.mwjson._unresolved_schema_refs.push(u.href);
+            }
             return Buffer.from("{}");
         }
         else if (res.status >= 400) {

@@ -730,8 +730,13 @@ mwjson.util = class {
 	// replace " in string values with \" for processing with handlebars json templates
 	static escapeDoubleQuotes(obj) {
 		if (typeof obj === 'string') {
-			// Escape double quotes in string
-			return obj.replace(/"/g, '\\"');
+			// Escape everything a JSON string literal cannot carry, not only quotes:
+			// a multi line value (e.g. a description ending in a newline) left a raw
+			// line break in the rendered template and JSON.parse rejected the result.
+			// Backslashes and other control characters had the same problem.
+			// JSON.stringify does the whole job; strip the quotes it adds, since the
+			// template supplies its own.
+			return JSON.stringify(obj).slice(1, -1);
 		} else if (Array.isArray(obj)) {
 			// Iterate over array elements
 			return obj.map(mwjson.util.escapeDoubleQuotes);
@@ -898,6 +903,20 @@ mwjson.util = class {
 			}
 		}
 		return result;
+	}
+
+	/**
+	 * Normalise a value that a failed lookup stringified into a DOM input.
+	 * Assigning undefined or null to HTMLInputElement.value yields the literal
+	 * strings "undefined" / "null", which then look like real content and get
+	 * persisted. Map those, and the real undefined/null, onto "".
+	 * Only exact matches are treated as empty, so text that merely contains the
+	 * word is left alone.
+	 */
+	static emptyIfUndefinedString(value) {
+		if (value === undefined || value === null) return "";
+		if (value === "undefined" || value === "null") return "";
+		return value;
 	}
 
 	static setJsonEditorAutocompleteField(editor, value_id, value_label) {
