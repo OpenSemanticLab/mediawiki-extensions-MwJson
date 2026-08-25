@@ -120,7 +120,9 @@ class TreeRenderer {
 			// property never gets a "Definition:" tooltip even when its name
 			// matches a top-level one that has definitions recorded. Passing
 			// them down would add tooltips the Lua does not render.
-			. $this->render( $value, $propertySchema, [], $level + 1, $displayEmpty );
+			. $this->render(
+				$value, $this->resolveBranch( $propertySchema, $value ), [], $level + 1, $displayEmpty
+			);
 	}
 
 	/**
@@ -155,20 +157,138 @@ class TreeRenderer {
 				continue;
 			}
 
+			// Each item picks its own branch, so a list whose entries are of
+			// different kinds describes each one with the right schema, and its
+			// heading names the kind rather than repeating the generic title.
+			$resolved = $this->resolveBranch( $itemSchema, $item, true );
+
 			// Item headings are numbered from 1: they are labels for a reader,
 			// not indices into the array.
 			$result .= $this->renderLiteral(
 				(string)( $index + 1 ),
 				$this->summariseItem( $item ),
-				$itemSchema,
+				$resolved,
 				$propertyDefinitions,
 				$level + 1
 			);
 			// As above: nested levels get no definitions.
-			$result .= $this->render( $item, $itemSchema, [], $level + 2, $displayEmpty );
+			$result .= $this->render( $item, $resolved, [], $level + 2, $displayEmpty );
 		}
 
 		return $result;
+	}
+
+	/**
+	 * Pick the oneOf branch the data actually is, and fold it into the schema.
+	 *
+	 * A schema built for the form editor puts nothing in `items.properties` and
+	 * everything in `items.oneOf`, one branch per kind of entry. Without
+	 * resolving that, every field of such an entry renders with no schema at
+	 * all: raw key names instead of titles, alphabetical instead of declared
+	 * order, and no options.
+	 *
+	 * The branch is chosen by its discriminator, the hidden `const` or
+	 * single-value `enum` that the editor writes to say which branch was
+	 * filled in. A branch declaring no discriminator is matched on having all
+	 * its required keys present, which is what the editor itself falls back to.
+	 * If nothing matches, the schema is returned untouched and rendering is no
+	 * worse than before.
+	 *
+	 * @param mixed $schema
+	 * @param mixed $value
+	 * @param bool $takeTitle Adopt the branch's title. Right for a list item,
+	 *   where the branch title names the kind of entry, and wrong for a single
+	 *   object, where it would relabel the property the object belongs to.
+	 * @return mixed
+	 */
+	private function resolveBranch( $schema, $value, bool $takeTitle = false ) {
+		if ( !is_array( $schema ) || !is_array( $value ) ) {
+			return $schema;
+		}
+
+		$branches = $schema['oneOf'] ?? $schema['anyOf'] ?? null;
+		if ( !is_array( $branches ) ) {
+			return $schema;
+		}
+
+		foreach ( $branches as $branch ) {
+			if ( !is_array( $branch ) || !$this->branchMatches( $branch, $value ) ) {
+				continue;
+			}
+
+			$merged = $schema;
+			unset( $merged['oneOf'], $merged['anyOf'] );
+			$merged['properties'] = ( $branch['properties'] ?? [] )
+				+ ( $schema['properties'] ?? [] );
+
+			if ( $takeTitle ) {
+				foreach ( [ 'title', 'title*', 'description', 'description*' ] as $key ) {
+					if ( isset( $branch[$key] ) ) {
+						$merged[$key] = $branch[$key];
+					}
+				}
+			}
+
+			return $merged;
+		}
+
+		return $schema;
+	}
+
+	/**
+	 * @param array $branch
+	 * @param array $value
+	 */
+	private function branchMatches( array $branch, array $value ): bool {
+		$properties = $branch['properties'] ?? null;
+		if ( !is_array( $properties ) ) {
+			return false;
+		}
+
+		$discriminated = false;
+		foreach ( $properties as $name => $definition ) {
+			$expected = $this->discriminatorOf( $definition );
+			if ( $expected === null ) {
+				continue;
+			}
+			$discriminated = true;
+			if ( ( $value[$name] ?? null ) !== $expected ) {
+				return false;
+			}
+		}
+
+		if ( $discriminated ) {
+			return true;
+		}
+
+		foreach ( (array)( $branch['required'] ?? [] ) as $name ) {
+			if ( !is_string( $name ) || !array_key_exists( $name, $value ) ) {
+				return false;
+			}
+		}
+
+		return isset( $branch['required'] );
+	}
+
+	/**
+	 * The one value a property is pinned to, from `const` or a one-member
+	 * `enum`. Both, because the schemas in the wild use both.
+	 *
+	 * @param mixed $definition
+	 * @return mixed null when the property pins nothing
+	 */
+	private function discriminatorOf( $definition ) {
+		if ( !is_array( $definition ) ) {
+			return null;
+		}
+		if ( array_key_exists( 'const', $definition ) ) {
+			return $definition['const'];
+		}
+		$enum = $definition['enum'] ?? null;
+		if ( is_array( $enum ) && count( $enum ) === 1 ) {
+			return $enum[0] ?? null;
+		}
+		return null;
 	}
 
 	/**
@@ -195,7 +315,14 @@ class TreeRenderer {
 		$type = $this->types->resolve( null, null, $schema );
 		$smwProperty = JsonUtil::defaultArgPath( $propertyDefinitions, [ $key, 'property' ] );
 
-		$values = $this->expandSemicolonList( $value );
+		// `options.literal` marks a field whose value is code rather than prose:
+		// a regular expression, a JSONPath, a fragment of a template. Such a
+		// value has to survive the trip through the parser intact, and it does
+		// not otherwise: an HTML comment in it disappears, "== x ==" becomes a
+		// heading, and a semicolon splits it into a list.
+		$literal = JsonUtil::defaultArgPath( $schemaArray, [ 'options', 'literal' ], false ) === true;
+
+		$values = $literal ? null : $this->expandSemicolonList( $value );
 		if ( $values === null ) {
 			$values = is_array( $value ) && JsonUtil::hasFirstElement( $value )
 				? JsonUtil::listPart( $value )
@@ -204,18 +331,18 @@ class TreeRenderer {
 
 		if ( $values === null ) {
 			return $prefix . ' ' . $label . ': '
-				. $this->stringify( $value, $type, $smwProperty ) . "\n";
+				. $this->stringify( $value, $type, $smwProperty, $literal ) . "\n";
 		}
 
 		if ( count( $values ) === 1 ) {
 			return $prefix . ' ' . $label . ': '
-				. $this->stringify( $values[0], $type, $smwProperty ) . "\n";
+				. $this->stringify( $values[0], $type, $smwProperty, $literal ) . "\n";
 		}
 
 		$result = $prefix . ' ' . $label . ":\n";
 		$nested = str_repeat( '*', $level + 2 );
 		foreach ( $values as $item ) {
-			$result .= $nested . ' ' . $this->stringify( $item, $type, $smwProperty ) . "\n";
+			$result .= $nested . ' ' . $this->stringify( $item, $type, $smwProperty, $literal ) . "\n";
 		}
 		return $result;
 	}
@@ -276,7 +403,7 @@ class TreeRenderer {
 	/**
 	 * @param mixed $value
 	 */
-	private function stringify( $value, string $type, ?string $smwProperty ): string {
+	private function stringify( $value, string $type, ?string $smwProperty, bool $literal = false ): string {
 		if ( is_bool( $value ) ) {
 			return $value ? 'true' : 'false';
 		}
@@ -284,6 +411,12 @@ class TreeRenderer {
 			return 'nil';
 		}
 		if ( is_string( $value ) ) {
+			if ( $literal ) {
+				// Shown as written. Not a link either: a patch that replaces
+				// "Category:X" with "Category:Y" is talking about text, not
+				// about pages, and linking it would say the wrong thing.
+				return '<nowiki>' . $value . '</nowiki>';
+			}
 			if ( $type === PropertyTypeResolver::DATE || $type === PropertyTypeResolver::DATE_TIME ) {
 				return (string)$this->dates->format( $value, $type, $smwProperty );
 			}
@@ -354,9 +487,16 @@ class TreeRenderer {
 
 		$number = $value['numerical_value'] ?? $value['value'] ?? $value['amount'] ?? null;
 		$unit = $value['unit'] ?? null;
-		if ( $number !== null && ( is_string( $unit ) || $unit === null ) ) {
+		if ( $number !== null && is_string( $unit ) ) {
 			return true;
 		}
+
+		// A missing unit is not enough on its own: any object carrying a `value`
+		// key would be a quantity, and an object such as
+		// `{"mode": "set", "value": "..."}` would collapse to its value with the
+		// siblings dropped. A unitless quantity resolves below instead, through
+		// the schema, since a schema declaring a numeric value declares a unit
+		// beside it.
 
 		$properties = is_array( $schema ) ? ( $schema['properties'] ?? null ) : null;
 		if ( !is_array( $properties ) ) {
