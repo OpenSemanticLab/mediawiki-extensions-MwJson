@@ -551,6 +551,30 @@ mwjson.editor.createSubpageDialog = function (_config) {
     mwjson.editor.createPageDialog(_config);
 };
 
+mwjson.editor.canCreate = function (titles) {
+    // Preflight for a create button: may this user create a page classed like
+    // the chosen template? Creating targets a title that does not exist yet, so
+    // nothing about the target can answer it; the class of the source is what
+    // decides, and only the server knows the rules and the chain.
+    //
+    // Fails open on purpose. This is UX, not enforcement: MultiContentSave
+    // refuses the save regardless, so an unreachable API should not stop
+    // someone whose edit would have been allowed.
+    titles = (Array.isArray(titles) ? titles : [titles]).filter(t => t && t !== "");
+    if (!titles.length) return $.Deferred().resolve({ allowed: true, missing: [] }).promise();
+
+    return new mw.Api().get({ action: 'mwjsoncancreate', titles: titles.join('|'), format: 'json' })
+        .then(data => {
+            const rows = (data.mwjsoncancreate && data.mwjsoncancreate.titles) || [];
+            const missing = [];
+            rows.forEach(row => (row.missing || []).forEach(right => {
+                if (!missing.includes(right)) missing.push(right);
+            }));
+            return { allowed: rows.every(row => row.allowed), missing: missing };
+        })
+        .catch(() => ({ allowed: true, missing: [] }));
+};
+
 mwjson.editor.createPageDialog = function (_config) {
     var defaultConfig = {
         "superpage": "",
@@ -746,27 +770,40 @@ mwjson.editor.createPageDialog = function (_config) {
 
                 if (_config.template !== "" && !_config.beforeSubmit) _config.beforeSubmit = (targetTitle, template) => { return mwjson.api.copyPage(template, targetTitle, "", _config.modify); };
 
-                if (_config.beforeSubmit) {
-                    _config.beforeSubmit(title, _config.template).then(() => {
+                // Every create path in the wiki funnels through this dialog, so
+                // asking here covers all of them: the copy dialog, the subpage
+                // dialog, and the buttons that pick a template by autocomplete.
+                const proceed = () => {
+                    if (_config.beforeSubmit) {
+                        _config.beforeSubmit(title, _config.template).then(() => {
+                            mwjson.api.getPage(title).then((page) => {
+                                var url = _config.redirect(page);
+                                if (url && url !== "") {
+                                    if (_config.new_window) window.open(_config.redirect(page)); //new tab
+                                    else window.location.href = _config.redirect(page); //same tab
+                                }
+                            });
+                        });
+                    }
+                    else {
                         mwjson.api.getPage(title).then((page) => {
                             var url = _config.redirect(page);
+                            console.log(url);
                             if (url && url !== "") {
                                 if (_config.new_window) window.open(_config.redirect(page)); //new tab
                                 else window.location.href = _config.redirect(page); //same tab
                             }
                         });
-                    });
-                }
-                else {
-                    mwjson.api.getPage(title).then((page) => {
-                        var url = _config.redirect(page);
-                        console.log(url);
-                        if (url && url !== "") {
-                            if (_config.new_window) window.open(_config.redirect(page)); //new tab
-                            else window.location.href = _config.redirect(page); //same tab
-                        }
-                    });
-                }
+                    }
+                };
+
+                return mwjson.editor.canCreate(_config.template).then((verdict) => {
+                    if (verdict.allowed) return proceed();
+                    return $.Deferred().reject(new OO.ui.Error(
+                        mw.message('mwjson-cannot-create-here', verdict.missing.join(', '), verdict.missing.length).text(),
+                        { recoverable: false }
+                    )).promise();
+                });
 
             }, this);
         }
