@@ -317,6 +317,16 @@
 		"MwJsonCategoryEditRights": {
 			"value": {},
 			"description": "Map of category page title to the right needed to create, edit, delete or move an instance of it, or a subclass of it. Empty by default, so nothing is guarded and the check reads no slots. A page is covered when its class chain reaches a guarded category, so declaring a subclass and instantiating that does not get around it. Enforced in MultiContentSave, which every write path goes through and which is the only point that can see the content being saved: a page being created has no stored type yet. Independent of $wgMwJsonEnablePatches, so a rule keeps holding while patches are switched off."
+		},
+		"MwJsonEnablePatches": {
+			"value": false,
+			"description": "When true, pages of type Category:PagePatch are consulted while reading slots, and the operations they declare are applied at read time without editing the target. Off by default: nothing is queried, read or applied while it is off. A patch only takes effect when the reader asks for one of the patch sets it declares, so turning this on changes nothing until $wgMwJsonDefaultPatchsets and a patch agree."
+		},
+		"MwJsonDefaultPatchsets": {
+			"value": [
+				"render"
+			],
+			"description": "The patch sets page rendering asks for. A patch applies when its own patchset list intersects this one. The form editor asks for 'ui' separately, so a patch can change the rendered page, the form the author edits, or both, as an explicit choice. An empty list means raw content, which is what keeps package export and other raw consumers unaffected even when patches are enabled."
 		}
 	},
 	"ExtensionMessagesFiles": {
