@@ -70,7 +70,19 @@ mwjson.schema = class {
             read: (file) => {
                 let url = file.url;
                 //console.log("Fetch: ", url);
-                let query = new mw.Uri(file.url).query;
+                // URL handles both forms file.url arrives in, relative and
+                // absolute. Anything thrown here costs the whole resolver:
+                // $RefParser treats a failing plugin as unable to read and
+                // falls back to its own http resolver, which knows nothing
+                // about slots or patch sets.
+                let query = {};
+                try {
+                    new URL(file.url, location.href).searchParams.forEach((value, key) => {
+                        query[key] = value;
+                    });
+                } catch (e) {
+                    query = {};
+                }
                 let match = regex.exec(file.url);
                 let title = null;
                 if (match && match.groups && match.groups.title) {
