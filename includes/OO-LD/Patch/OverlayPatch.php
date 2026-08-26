@@ -83,9 +83,11 @@ class OverlayPatch {
 		}
 
 		if ( array_key_exists( 'update', $action ) ) {
+			// Text from the editor, or a value from an older patch.
+			$update = JsonValue::decode( $action['update'] );
 			foreach ( $matches as $match ) {
 				$node = &$match->getValue();
-				$node = $this->update( $node, $action['update'] );
+				$node = $this->update( $node, $update );
 				unset( $node );
 			}
 		}

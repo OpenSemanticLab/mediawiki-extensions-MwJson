@@ -3,6 +3,7 @@
 namespace MediaWiki\Extension\MwJson\Mw;
 
 use MediaWiki\Extension\MwJson\OOLD\JsonLoader;
+use MediaWiki\Extension\MwJson\OOLD\Patch\JsonValue;
 use MediaWiki\Extension\MwJson\OOLD\Patch\MergePatch;
 use MediaWiki\Extension\MwJson\OOLD\Patch\OverlayPatch;
 use MediaWiki\Extension\MwJson\OOLD\Slots;
@@ -77,7 +78,8 @@ class PatchingJsonLoader implements JsonLoader {
 	 * @param array $operation
 	 */
 	private function applyOne( array $document, array $operation ): array {
-		$value = $operation['value'] ?? null;
+		// Written as text by the editor, or as an object by an older patch.
+		$value = JsonValue::decode( $operation['value'] ?? null );
 		if ( !is_array( $value ) ) {
 			return $document;
 		}

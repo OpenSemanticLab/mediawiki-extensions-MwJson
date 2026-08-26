@@ -2,6 +2,7 @@
 
 namespace MediaWiki\Extension\MwJson\Tests\Unit;
 
+use MediaWiki\Extension\MwJson\OOLD\Patch\JsonValue;
 use MediaWiki\Extension\MwJson\OOLD\Patch\MergePatch;
 use MediaWiki\Extension\MwJson\OOLD\Patch\OverlayPatch;
 use MediaWiki\Extension\MwJson\OOLD\Patch\WikitextOps;
@@ -15,6 +16,7 @@ use MediaWikiUnitTestCase;
  * enum, taking one member out of a list, and extending a template without
  * restating it.
  *
+ * @covers \MediaWiki\Extension\MwJson\OOLD\Patch\JsonValue
  * @covers \MediaWiki\Extension\MwJson\OOLD\Patch\MergePatch
  * @covers \MediaWiki\Extension\MwJson\OOLD\Patch\OverlayPatch
  * @covers \MediaWiki\Extension\MwJson\OOLD\Patch\WikitextOps
@@ -168,6 +170,39 @@ class PatchPrimitivesTest extends MediaWikiUnitTestCase {
 		);
 
 		$this->assertSame( [ 'b', 'c' ], $result['enum'] );
+	}
+
+	public function testAnUpdateWrittenAsTextIsDecoded() {
+		// What the editor stores: format "json" on a string is an ace editor, so
+		// the payload arrives as text rather than as an object.
+		$result = ( new OverlayPatch() )->apply(
+			[ 'properties' => [ 'unit' => [ 'title' => 'Unit' ] ] ],
+			[ 'actions' => [ [
+				'target' => '$.properties.unit',
+				'update' => '{"title": "Narrowed"}',
+			] ] ]
+		);
+
+		$this->assertSame( 'Narrowed', $result['properties']['unit']['title'] );
+	}
+
+	public function testAnUpdateThatIsNotJsonStaysAString() {
+		// An overlay update may legitimately be a bare string, so text that does
+		// not parse is used as itself rather than discarded.
+		$result = ( new OverlayPatch() )->apply(
+			[ 'enum' => [ 'a' ] ],
+			[ 'actions' => [ [ 'target' => '$.enum', 'update' => 'b' ] ] ]
+		);
+
+		$this->assertSame( [ 'a', 'b' ], $result['enum'] );
+	}
+
+	public function testJsonValueAcceptsBothForms() {
+		$this->assertSame( [ 'a' => 1 ], JsonValue::decode( '{"a": 1}' ) );
+		$this->assertSame( [ 'a' => 1 ], JsonValue::decode( [ 'a' => 1 ] ) );
+		$this->assertSame( 'not json', JsonValue::decode( 'not json' ) );
+		$this->assertSame( '', JsonValue::decode( '' ) );
+		$this->assertNull( JsonValue::decode( null ) );
 	}
 
 	public function testWikitextOperationsApplyInOrder() {
