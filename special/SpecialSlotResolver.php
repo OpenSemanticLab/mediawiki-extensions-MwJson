@@ -11,6 +11,8 @@
  */
 
 use MediaWiki\Content\TextContent;
+use MediaWiki\Extension\MwJson\Mw\PipelineFactory;
+use MediaWiki\Extension\MwJson\OOLD\Slots;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Title\Title;
 use WSSlots\WSSlots;
@@ -63,7 +65,7 @@ class SpecialSlotResolver extends SpecialPage {
 			throw new PermissionsError( 'read' );
 		}
 
-		$content = $this->readSlot( $title, $slot );
+		$content = $this->readSlot( $title, $slot, $this->requestedPatchsets() );
 		if ( $content === null ) {
 			// Undistinguished from the permission case above only in wording:
 			// by this point the reader is known to be allowed to see the page,
@@ -118,11 +120,51 @@ class SpecialSlotResolver extends SpecialPage {
 	 * form this page can return, so it is reported as absent rather than
 	 * stringified into something misleading.
 	 */
-	private function readSlot( Title $title, string $slot ): ?string {
+
+	/**
+	 * @param string[] $patchsets Empty for the stored content.
+	 */
+	private function readSlot( Title $title, string $slot, array $patchsets ): ?string {
+		if ( $patchsets !== [] && in_array( $slot, [ Slots::JSONDATA, Slots::JSONSCHEMA ], true ) ) {
+			$patched = ( new PipelineFactory() )->newPatchedJsonLoader( $patchsets )
+				->load( $title->getPrefixedText(), $slot );
+
+			return $patched === []
+				? null
+				: json_encode( $patched, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		}
+
 		$page = MediaWikiServices::getInstance()->getWikiPageFactory()->newFromTitle( $title );
 		$content = WSSlots::getSlotContent( $page, $slot );
 
 		return $content instanceof TextContent ? $content->getText() : null;
+	}
+
+	/**
+	 * Patch sets the caller is asking for.
+	 *
+	 * Absent means the stored content, which is what keeps package export and
+	 * every other raw consumer reading what is actually on the page. The form
+	 * editor asks for "ui" so that a patch can change the form without changing
+	 * the render, or the other way round.
+	 *
+	 * @return string[]
+	 */
+	private function requestedPatchsets(): array {
+		$requested = $this->getRequest()->getText( 'patchset' );
+		if ( $requested === '' ) {
+			return [];
+		}
+
+		$patchsets = [];
+		foreach ( explode( '|', $requested ) as $name ) {
+			$name = trim( $name );
+			if ( $name !== '' ) {
+				$patchsets[] = $name;
+			}
+		}
+
+		return $patchsets;
 	}
 
 	private function emit( string $content, string $extension ): void {

@@ -148,24 +148,88 @@ See also [T324933](https://phabricator.wikimedia.org/T324933)
 
 ## Configuration
 
-```json
-{
-    "wgMwJsonAllowSubmitInvalide": {
-        "value": "always",
-        "description": "Forbid ('never'), conditional if set in schema option ('option') or always ('always') allow the user to save data failing schema validation."
-    },
-    "wgMwJsonAiCompletionApiUrl": {
-        "value": null,
-        "description": "REST-API endpoint acception {\"promt\": \"...\", \"jsonschema\": \"\"} and returning a valide schema instance."
-    },
-    "wgMwJsonOrderSlotRenderResults": {
-        "value": false,
-        "description": "Brings the render results of the slots into order 'header', 'main', 'footer', <additional slots>."
-    },
-    "wgMwJsonWrapSlotRenderResults": {
-        "value": false,
-        "description": "Wraps the render results of the slots in a div element"
-    }
-}
-```
+Generated from `extension.json`; every setting the extension defines, with its default.
 
+### `$wgMwJsonRenderer`
+
+Default: `"lua"`
+
+Which implementation renders the header/footer pipeline: 'lua' (legacy Module:MwJson, the default during the migration) or 'php' (the in-extension OO-LD pipeline). Module:Entity dispatches on this via mw.ext.mwjson.enabled(), so it is a live rollback switch: no page edits required to flip back.
+
+### `$wgMwJsonResolveLinkLabels`
+
+Default: `true`
+
+When true, the PHP pipeline resolves a link's display label by reading the semantic store instead of expanding the Viewer/Link wiki template, which runs one SMW query per link. Access is enforced with the same read permission check the query path uses, so a reader who may not see a target gets the plain link they get today. On by default: output is byte-identical to the wiki template across the full corpus, and it removes one SMW query per link. Set false to fall back to expanding Viewer/Link.
+
+### `$wgMwJsonRegisterSlotDependencies`
+
+Default: `false`
+
+When true, the pages a schema resolution reads (the category chain and every $ref target) are registered as parser-cache dependencies, so editing a category's jsonschema slot invalidates the pages below it. Off by default because enabling it makes an edit to a base category queue a refresh for every entity beneath it, which is the intended effect but is an operational event worth scheduling. Neither this port nor the Lua registers them today.
+
+### `$wgMwJsonBypassLegacyTemplates`
+
+Default: `false`
+
+When true, the PHP pipeline renders the values behind recognised legacy eval_templates itself instead of running them. Those templates exist because Scribunto could not resolve the reader's language; the pipeline can, so running them is redundant work on every page. Output is unchanged. Off by default so the recogniser can be verified against a wiki's own schemas before it takes effect.
+
+### `$wgMwJsonAllowSubmitInvalide`
+
+Default: `"always"`
+
+Forbid ('never'), conditional if set in schema option ('option') or always ('always') allow the user to save data failing schema validation.
+
+### `$wgMwJsonRemoveEmptyOnSubmit`
+
+Default: `true`
+
+When true, mwjson.editor recursively strips empty values ('', null, undefined, [], {}) from jsondata before saving so unfilled defaultProperties and cleared optional fields do not persist. Set to false to keep the raw form value.
+
+### `$wgMwJsonMissingSchemaPage`
+
+Default: `"warn"`
+
+How the schema resolver reacts when a $ref target page does not exist at all, e.g. a category missing from the inheritance chain. One of 'ignore', 'warn' or 'abort'. An empty schema is substituted unless 'abort' is set, so a single broken reference cannot make the editor impossible to open.
+
+### `$wgMwJsonEmptySchemaSlot`
+
+Default: `"ignore"`
+
+How the schema resolver reacts when a $ref target page exists but carries no schema, e.g. a Property without a jsonschema slot. One of 'ignore', 'warn' or 'abort'. This is routine, hence 'ignore' by default.
+
+### `$wgMwJsonAiCompletionApiUrl`
+
+Default: `null`
+
+REST-API endpoint accepting {"promt": "...", "jsonschema": ""} and returning a valide schema instance.
+
+### `$wgMwJsonSlotRenderResultTransformation`
+
+Default: `{"enabled": null, "wrap": true, "order": true, "skip_toc": false, "hide_toc": true}`
+
+Brings the render results of slots into order 'header', 'main', 'footer', <additional slots>. if enabled. Optionally wraps slot content in a div (default: true). Optionally skips (default: false) or hides (default: true) the table of contents which usually is handled separately by skins.
+
+### `$wgMwJsonCategoryEditRights`
+
+Default: `{}`
+
+Map of category page title to the right needed to create, edit, delete or move an instance of it, or a subclass of it. Empty by default, so nothing is guarded and the check reads no slots. A page is covered when its class chain reaches a guarded category, so declaring a subclass and instantiating that does not get around it. Enforced in MultiContentSave, which every write path goes through and which is the only point that can see the content being saved: a page being created has no stored type yet. Independent of $wgMwJsonEnablePatches, so a rule keeps holding while patches are switched off.
+
+### `$wgMwJsonEnablePatches`
+
+Default: `false`
+
+When true, pages of type Category:PagePatch are consulted while reading slots, and the operations they declare are applied at read time without editing the target. Off by default: nothing is queried, read or applied while it is off. A patch only takes effect when the reader asks for one of the patch sets it declares, so turning this on changes nothing until $wgMwJsonDefaultPatchsets and a patch agree.
+
+### `$wgMwJsonDefaultPatchsets`
+
+Default: `["render"]`
+
+The patch sets page rendering asks for. A patch applies when its own patchset list intersects this one. The form editor asks for 'ui' separately, so a patch can change the rendered page, the form the author edits, or both, as an explicit choice. An empty list means raw content, which is what keeps package export and other raw consumers unaffected even when patches are enabled.
+
+### `$wgMwJsonPatchCategory`
+
+Default: `""`
+
+Prefixed title of the category a page must declare as its jsondata type before it is honoured as a patch, for example Category:OSWbd03ae43c1954ca889860ecf170682ef. Empty means nothing is honoured. The discovery query cannot be trusted to answer this: any user who can edit a page can add {{#set: HasPatchTarget=... }} to it, or declare the property in a category's @context, so the query finds candidates and the type decides. Subclasses of this category are deliberately not followed, since the candidate list is attacker controlled and a class walk per candidate would read slots per candidate. The category should also appear in $wgMwJsonCategoryEditRights, or anyone may write a page of that type.

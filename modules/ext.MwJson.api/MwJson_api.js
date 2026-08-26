@@ -361,6 +361,57 @@ mwjson.api = class {
 		return deferred.promise();
 	}
 
+	/**
+	 * The reason a save failed, as one value.
+	 *
+	 * mw.Api rejects with (code, result) and the readable text is in
+	 * result.error.info. Callers routinely forward only the first argument, so
+	 * packing both into one Error is what keeps the reason from being lost on
+	 * the way back to whoever has to show it.
+	 *
+	 * @param {string} code
+	 * @param {Object} [result]
+	 * @return {Error}
+	 */
+	static saveError(code, result) {
+		const info = (result && result.error && result.error.info) || code || "";
+		const error = new Error(info);
+		error.code = code;
+		error.info = info;
+		error.result = result;
+		return error;
+	}
+
+	/**
+	 * Show why a save failed, once.
+	 *
+	 * Reported here rather than by the caller because callers are replaceable:
+	 * OpenSemanticLab substitutes its own submit handler, and any of them can
+	 * drop a rejection. Every save reaches this point, so this is the only
+	 * place that can promise the author sees something. The flag lets a caller
+	 * that reports it too avoid a second notification.
+	 *
+	 * @param {Error} error From saveError()
+	 * @return {Error} The same error, marked as reported
+	 */
+	static notifySaveError(error) {
+		if (!error || error.reported) return error;
+		error.reported = true;
+		console.error("MwJson: save failed", error);
+		if (typeof mw !== "undefined" && mw.notify) {
+			mw.notify(error.info || error.message, {
+				title: mw.message("mwjson-editor-error").text(),
+				type: 'error',
+				autoHide: false
+			});
+		}
+		return error;
+	}
+
+	/**
+	 * Rejects with one Error carrying the code and the readable reason, so a
+	 * caller that forwards only the first rejection argument keeps both.
+	 */
 	static updatePage(page, meta) {
 		const deferred = $.Deferred();
 		const hasChangedFile = ('file' in page && page.file.changed);
@@ -377,30 +428,14 @@ mwjson.api = class {
 
 		for (var slot_key of Object.keys(page.slots)) { if (page.slots_changed[slot_key]) slots_changed = true; }
 
-		if (!page.exists && page.title && slots_changed) {
-			mwjson.api.createPage(page.title, page.slots['main'], summary).then((data) => {
-				page.exists = true;
-				page.slots_changed['main'] = false;
-				mwjson.api.editSlots(page, summary).then((data) => { //will only edit changed slots
-					
-					if (hasChangedFile) {
-						mwjson.api.uploadFile(page.file.contentBlob, page.file.name, summary).then((data) => {
-							page.file.changed = false;
-							page.file.exists = true;
-							deferred.resolve(page);
-						}, (error) => {
-							deferred.reject(error);
-						});
-					}
-					else deferred.resolve(page);
-				}, (error) => {
-					deferred.reject(error);
-				});
-			}, (error) => {
-				deferred.reject(error);
-			});
-		}
-		else if (slots_changed) {
+		// Creating and editing are the same call: action=editslots creates the
+		// page when it does not exist, and writes every slot in one revision.
+		//
+		// One revision matters beyond tidiness. A permission check that reads
+		// the content sees the whole page at once, and a refused save leaves
+		// nothing behind: splitting the write would let a page be created that
+		// then could not be filled in.
+		if (slots_changed) {
 			mwjson.api.editSlots(page, summary).then((data) => {
 				page.exists = true;
 				if (hasChangedFile) {
@@ -408,13 +443,13 @@ mwjson.api = class {
 						page.file.changed = false;
 						page.file.exists = true;
 						deferred.resolve(page);
-					}, (error) => {
-						deferred.reject(error);
+					}, (error, result) => {
+						deferred.reject(mwjson.api.notifySaveError(mwjson.api.saveError(error, result)));
 					});
 				}
 				else deferred.resolve(page);
-			}, (error) => {
-				deferred.reject(error);
+			}, (error, result) => {
+				deferred.reject(mwjson.api.notifySaveError(mwjson.api.saveError(error, result)));
 			});
 		}
 		else if (hasChangedFile) {
@@ -422,8 +457,8 @@ mwjson.api = class {
 				page.file.changed = false;
 				page.file.exists = true;
 				deferred.resolve(page);
-			}, (error) => {
-				deferred.reject(error);
+			}, (error, result) => {
+				deferred.reject(mwjson.api.notifySaveError(mwjson.api.saveError(error, result)));
 			});
 		}
 		else deferred.resolve(page);

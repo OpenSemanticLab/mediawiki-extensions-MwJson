@@ -29,8 +29,8 @@
 	"mwjson-editor-optional": "optional",
 	"mwjson-editor-required": "required",
 	"mwjson-editor-edit-comment-input-label": "Comment / Change description",
-	"mwjson-editor-edit-comment-input-placeholder" : "What has changed and why?",
-	"mwjson-editor-edit-comment-input-tooltip" : "Add a comment to your edit for documentation",
+	"mwjson-editor-edit-comment-input-placeholder": "What has changed and why?",
+	"mwjson-editor-edit-comment-input-tooltip": "Add a comment to your edit for documentation",
 	"mwjson-editor-edit-inline-label": "",
 	"mwjson-editor-edit-inline-tooltip": "Edit selected element in separate dialog",
 	"mwjson-editor-clone-inline-label": "",
@@ -123,5 +123,13 @@
 	"json-editor-default_array_item_title": "item",
 	"json-editor-button_delete_node_warning": "Are you sure you want to remove this node?",
 	"json-editor-table_controls": "Controls",
-	"json-editor-paste_max_length_reached": "Pasted text exceeded maximum length of ((0)) and will be clipped."
+	"json-editor-paste_max_length_reached": "Pasted text exceeded maximum length of ((0)) and will be clipped.",
+	"mwjson-category-edit-right-denied": "You do not have permission to change \"$1\", because of the class it belongs to. {{PLURAL:$3|The right|The rights}} $2 {{PLURAL:$3|is|are}} required.",
+	"right-mwjson-editpatch": "Create and edit page patches",
+	"action-mwjson-editpatch": "create or edit a page patch",
+	"apihelp-mwjsoncancreate-description": "Check whether the current user may create a page classed like the given ones.",
+	"apihelp-mwjsoncancreate-summary": "Check whether the current user may create a page classed like the given ones.",
+	"apihelp-mwjsoncancreate-param-titles": "Pages to ask about. A category is asked about as a class; anything else as a page to copy.",
+	"apihelp-mwjsoncancreate-example": "Ask whether a page patch may be created",
+	"mwjson-cannot-create-here": "You cannot create a page of this kind. {{PLURAL:$2|The right|The rights}} $1 {{PLURAL:$2|is|are}} required."
 }

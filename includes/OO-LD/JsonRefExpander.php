@@ -21,9 +21,14 @@ namespace MediaWiki\Extension\MwJson\OOLD;
  *
  * Reference URLs are the OSL raw-action form, e.g.
  * `/wiki/JsonSchema:Label?action=raw` or
- * `/wiki/Category:Entity?action=raw&slot=jsonschema`. Fragment-only refs
- * (`#/$defs/...`) are skipped: p.loadJson() inlines the one fragment OSL uses,
- * `#/$defs/generated`, before the expander ever sees the document.
+ * `/wiki/Category:Entity?action=raw&slot=jsonschema`.
+ *
+ * A `$ref` may also carry a JSON Pointer fragment, either on its own
+ * (`#/$defs/operation`, into the document being expanded) or after a URL
+ * (`/wiki/JsonSchema:X?action=raw#/$defs/y`, into the document that loads).
+ * Both are resolved here. The Lua skipped them and inlined the single fragment
+ * OSL used, `#/$defs/generated`, in p.loadJson() before the expander ever ran;
+ * SlotJsonLoader still does that, so that one keeps its old meaning.
  *
  * @see docs/legacy-lua/MwJson.lua
  */
@@ -41,8 +46,44 @@ class JsonRefExpander {
 	 */
 	private const UNPARSEABLE_REF_FALLBACK = 'JsonSchema:Entity';
 
+	/** Depth limit for pointer chains, so a cycle cannot spin. */
+	private const MAX_POINTER_DEPTH = 32;
+
 	private JsonLoader $loader;
 	private MergeStrategy $merge;
+
+	/**
+	 * The documents a fragment could be resolving against, innermost last.
+	 *
+	 * A JSON Pointer is relative to the document it appears in, so content
+	 * loaded from a `$ref` gets its own base while it is expanded. Without that,
+	 * `#/$defs/x` written inside JsonSchema:Foo would be looked up in whatever
+	 * document happened to pull Foo in.
+	 *
+	 * Each entry is the document as it was on entry, not the partially expanded
+	 * copy: pointing into a half-rewritten document would make the result depend
+	 * on traversal order.
+	 *
+	 * @var array[]
+	 */
+	private array $bases = [];
+
+	/** @var string[] Pointers currently being resolved, innermost last. */
+	private array $resolving = [];
+
+	/**
+	 * Expanded pointer targets, keyed by the reference that named them.
+	 *
+	 * Not just a saving. The legacy merge appends list-valued members rather
+	 * than replacing them, so flattening a chain multiplies the `allOf` entries
+	 * that carry a `$ref`, and one schema in the corpus ends up with hundreds of
+	 * copies of the same same-document reference. Expanding each copy
+	 * separately grows the document, which produces more copies, which is a
+	 * feedback loop that exhausts memory rather than terminating.
+	 *
+	 * @var array<string,array>
+	 */
+	private array $pointerCache = [];
 
 	public function __construct( JsonLoader $loader, MergeStrategy $merge ) {
 		$this->loader = $loader;
@@ -53,11 +94,36 @@ class JsonRefExpander {
 	 * Expand every `$ref` in $json, recursively, then flatten `allOf`.
 	 */
 	public function expand( array $json ): array {
+		$outermost = $this->bases === [];
+
+		try {
+			return $this->expandIn( $json, $json );
+		} finally {
+			if ( $outermost ) {
+				$this->resolving = [];
+				$this->pointerCache = [];
+			}
+		}
+	}
+
+	/**
+	 * Expand $json with $base as the document its fragment refs point into.
+	 */
+	private function expandIn( array $json, array $base ): array {
+		$this->bases[] = $base;
+		try {
+			return $this->expandNode( $json );
+		} finally {
+			array_pop( $this->bases );
+		}
+	}
+
+	private function expandNode( array $json ): array {
 		$json = $this->resolveRefs( $json );
 
 		foreach ( $json as $key => $value ) {
 			if ( is_array( $value ) ) {
-				$json[$key] = $this->expand( $value );
+				$json[$key] = $this->expandNode( $value );
 			}
 		}
 
@@ -74,23 +140,139 @@ class JsonRefExpander {
 		}
 
 		$ref = $json['$ref'];
-		if ( str_contains( $ref, '#' ) ) {
-			// Relative/fragment reference. p.loadJson() has already inlined
-			// "#/$defs/generated"; anything else is left as-is rather than
-			// guessed at.
-			return $json;
+
+		[ $url, $pointer ] = $this->splitFragment( $ref );
+
+		if ( $url === '' ) {
+			if ( $this->isWholeDocument( $pointer ) ) {
+				// "#" means this whole document, which is how a schema declares
+				// itself recursive: JsonSchema:Statement's substatements are
+				// statements. There is nothing to inline, only an infinite
+				// regress, so the reference stays as written.
+				return $json;
+			}
+
+			$resolved = $this->followPointer( $this->currentBase(), $pointer, $ref );
+			if ( $resolved === null ) {
+				// Unresolvable, so left exactly as it was. A dangling pointer is
+				// an authoring mistake worth seeing in the output rather than
+				// silently replacing with nothing.
+				return $json;
+			}
+			unset( $json['$ref'] );
+			return $this->merge->merge( $resolved, $json );
 		}
 
 		// The Lua drops the `$ref` before it knows whether the URL parsed, so an
 		// unparseable ref is removed rather than left in place.
 		unset( $json['$ref'] );
 
-		$target = $this->parseRef( $ref );
+		$target = $this->parseRef( $url );
 		$loaded = $target === null
 			? $this->loader->load( self::UNPARSEABLE_REF_FALLBACK, null )
 			: $this->loader->load( $target['title'], $target['slot'] );
 
+		if ( $this->isWholeDocument( $pointer ) ) {
+			// Expanded under its own base, so any fragment written inside it
+			// points at itself rather than at whatever pulled it in.
+			$loaded = $this->expandIn( $loaded, $loaded );
+		} else {
+			$this->bases[] = $loaded;
+			try {
+				$loaded = $this->followPointer( $loaded, $pointer, $ref ) ?? [];
+			} finally {
+				array_pop( $this->bases );
+			}
+		}
+
 		return $this->merge->merge( $loaded, $json );
+	}
+
+	/**
+	 * Split a `$ref` into the part that names a document and the pointer into it.
+	 *
+	 * `%24` is decoded because that is how an encoded `$defs` reaches us; the
+	 * client rewrites the same thing on its side (MwJson_schema.js).
+	 *
+	 * @return array{0:string,1:string} URL (empty for a same-document ref) and
+	 *   JSON Pointer (empty when the ref names no fragment).
+	 */
+	private function splitFragment( string $ref ): array {
+		$hash = strpos( $ref, '#' );
+		if ( $hash === false ) {
+			return [ $ref, '' ];
+		}
+
+		return [
+			substr( $ref, 0, $hash ),
+			str_replace( '%24', '$', substr( $ref, $hash + 1 ) ),
+		];
+	}
+
+	/**
+	 * Does this pointer name the document itself rather than a place in it?
+	 */
+	private function isWholeDocument( string $pointer ): bool {
+		return trim( $pointer, '/' ) === '';
+	}
+
+	/**
+	 * The document that same-document fragments currently resolve against.
+	 */
+	private function currentBase(): array {
+		return $this->bases === [] ? [] : $this->bases[count( $this->bases ) - 1];
+	}
+
+	/**
+	 * Walk a JSON Pointer (RFC 6901) into a document.
+	 *
+	 * @param array $document
+	 * @param string $pointer Without the leading `#`, and never empty: a
+	 *   whole-document reference is handled before it gets here.
+	 * @param string $ref The original reference, for the cycle guard.
+	 * @return array|null Null when the pointer does not resolve to an object.
+	 */
+	private function followPointer( array $document, string $pointer, string $ref ): ?array {
+		if ( in_array( $ref, $this->resolving, true )
+			|| count( $this->resolving ) >= self::MAX_POINTER_DEPTH
+		) {
+			// A pointer chain that comes back to itself. Stopping here leaves
+			// the node as it stands rather than recursing until PHP gives up.
+			return null;
+		}
+
+		$node = $document;
+		foreach ( explode( '/', ltrim( $pointer, '/' ) ) as $token ) {
+			// RFC 6901 escaping: ~1 is "/" and ~0 is "~", decoded in that order.
+			$token = str_replace( [ '~1', '~0' ], [ '/', '~' ], rawurldecode( $token ) );
+			if ( !is_array( $node ) || !array_key_exists( $token, $node ) ) {
+				return null;
+			}
+			$node = $node[$token];
+		}
+
+		if ( !is_array( $node ) ) {
+			return null;
+		}
+
+		// Keyed by depth as well as by reference: the same "#/$defs/x" means a
+		// different thing in a different document.
+		$cacheKey = count( $this->bases ) . '|' . $ref;
+		if ( array_key_exists( $cacheKey, $this->pointerCache ) ) {
+			return $this->pointerCache[$cacheKey];
+		}
+
+		// Expanded on the way out, so a target that is itself a ref, or holds
+		// refs, arrives resolved rather than passing the problem to the caller.
+		$this->resolving[] = $ref;
+		try {
+			$expanded = $this->expandNode( $node );
+		} finally {
+			array_pop( $this->resolving );
+		}
+
+		$this->pointerCache[$cacheKey] = $expanded;
+		return $expanded;
 	}
 
 	/**

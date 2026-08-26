@@ -4,6 +4,7 @@ namespace MediaWiki\Extension\MwJson\Mw;
 
 use CoreParserFunctions;
 use MediaWiki\Extension\MwJson\OOLD\ContextBuilder;
+use MediaWiki\Extension\MwJson\OOLD\JsonLoader;
 use MediaWiki\Extension\MwJson\OOLD\JsonRefExpander;
 use MediaWiki\Extension\MwJson\OOLD\LabelHelper;
 use MediaWiki\Extension\MwJson\OOLD\LegacyLuaMergeStrategy;
@@ -13,6 +14,7 @@ use MediaWiki\Extension\MwJson\OOLD\SchemaResolver;
 use MediaWiki\Extension\MwJson\OOLD\SchemaWalker;
 use MediaWiki\Extension\MwJson\OOLD\SemanticPropertyMapper;
 use MediaWiki\Extension\MwJson\OOLD\Slots;
+use MediaWiki\Extension\MwJson\OOLD\SlotTextLoader;
 use MediaWiki\Extension\MwJson\Render\DateFormatter;
 use MediaWiki\Extension\MwJson\Render\InfoBoxRenderer;
 use MediaWiki\Extension\MwJson\Render\LinkHelper;
@@ -56,8 +58,12 @@ class PipelineFactory {
 		// The collector has to sit under the slot source, so that every read the
 		// walk performs is recorded and can be revalidated on a later request.
 		$dependencies = new SlotDependencies();
-		$slots = $this->newSlotSource( $dependencies );
-		$loader = new SlotJsonLoader( $slots, $this->merge );
+		$registry = $this->newPatchRegistry( $dependencies );
+		$slots = $this->newSlotSource( $dependencies, $registry );
+		$loader = $this->wrapWithPatches(
+			new SlotJsonLoader( $slots, $this->merge ),
+			$registry
+		);
 
 		$multilang = new MultilangValue( $this->resolveUserLanguage( $parser ) );
 		$types = new PropertyTypeResolver();
@@ -67,7 +73,7 @@ class PipelineFactory {
 		$title = $parser->getTitle();
 
 		return new EntityProcessor(
-			$this->newSchemaResolver( $loader, $slots, $dependencies, $title, $parser ),
+			$this->newSchemaResolver( $loader, $slots, $dependencies, $title, $parser, $registry ),
 			new JsonRefExpander( $loader, $this->merge ),
 			new EmbeddedTemplateExpander(
 				$this->newMustacheRenderer(),
@@ -94,10 +100,8 @@ class PipelineFactory {
 	/**
 	 * Render one slot of one page, and apply what the render decided to write.
 	 *
-	 * Both entry points call this rather than repeating it. They had the same
-	 * fifteen lines twice and had already drifted apart once: the ordering fix
-	 * below had to be made in two places, and the two joined SMW errors
-	 * differently. One copy removes that class of divergence.
+	 * Both entry points call this rather than repeating it, so the ordering
+	 * below and the handling of SMW errors exist once and cannot drift apart.
 	 *
 	 * @param Parser $parser The parser rendering the page.
 	 * @param PPFrame $frame Its current frame.
@@ -156,6 +160,19 @@ class PipelineFactory {
 	 */
 	public function newSlotJsonLoader(): SlotJsonLoader {
 		return new SlotJsonLoader( $this->newSlotSource(), $this->merge );
+	}
+
+	/**
+	 * A loader that sees patched content, for callers that want what a reader
+	 * would see rather than what is stored.
+	 */
+	public function newPatchedJsonLoader( ?array $patchsets = null ): JsonLoader {
+		$dependencies = new SlotDependencies();
+		$registry = $this->newPatchRegistry( $dependencies, $patchsets );
+		return $this->wrapWithPatches(
+			new SlotJsonLoader( $this->newSlotSource( $dependencies, $registry ), $this->merge ),
+			$registry
+		);
 	}
 
 	public function newSmwWriter( Parser $parser ): SmwWriter {
@@ -242,13 +259,61 @@ class PipelineFactory {
 			->get( 'MwJsonBypassLegacyTemplates' );
 	}
 
-	private function newSlotSource( ?SlotDependencies $dependencies = null ): WsSlotSource {
+	private function newSlotSource(
+		?SlotDependencies $dependencies = null,
+		?PatchRegistry $registry = null
+	): SlotTextLoader {
 		$services = MediaWikiServices::getInstance();
-		return new WsSlotSource(
+		$source = new WsSlotSource(
 			$services->getTitleFactory(),
 			$services->getWikiPageFactory(),
 			$dependencies
 		);
+
+		return $registry === null ? $source : new PatchingSlotSource( $source, $registry );
+	}
+
+	/**
+	 * The registry, or null when patches are switched off.
+	 *
+	 * Its own unpatched loader on purpose: a patch that could patch patch pages
+	 * would recurse, and the set of patches has to settle before any of them is
+	 * applied. The dependency collector is shared, so the patch pages a render
+	 * consulted are revalidated along with everything else it read.
+	 */
+	private function newPatchRegistry(
+		SlotDependencies $dependencies,
+		?array $patchsets = null
+	): ?PatchRegistry {
+		$config = MediaWikiServices::getInstance()->getMainConfig();
+		if ( !$config->get( 'MwJsonEnablePatches' ) ) {
+			return null;
+		}
+		if ( !class_exists( \SMW\StoreFactory::class ) ) {
+			return null;
+		}
+
+		$services = MediaWikiServices::getInstance();
+		$plain = new WsSlotSource(
+			$services->getTitleFactory(),
+			$services->getWikiPageFactory(),
+			$dependencies
+		);
+
+		$loader = new SlotJsonLoader( $plain, $this->merge );
+
+		return new PatchRegistry(
+			\SMW\StoreFactory::getStore(),
+			$loader,
+			$patchsets ?? (array)$config->get( 'MwJsonDefaultPatchsets' ),
+			new GuardedCategories( (array)$config->get( 'MwJsonCategoryEditRights' ), $loader ),
+			$services->getTitleFactory(),
+			(string)$config->get( 'MwJsonPatchCategory' )
+		);
+	}
+
+	private function wrapWithPatches( JsonLoader $loader, ?PatchRegistry $registry ): JsonLoader {
+		return $registry === null ? $loader : new PatchingJsonLoader( $loader, $registry );
 	}
 
 	/**
@@ -275,11 +340,12 @@ class PipelineFactory {
 	}
 
 	private function newSchemaResolver(
-		SlotJsonLoader $loader,
-		WsSlotSource $slots,
+		JsonLoader $loader,
+		SlotTextLoader $slots,
 		SlotDependencies $dependencies,
 		?Title $title,
-		?Parser $parser = null
+		?Parser $parser = null,
+		?PatchRegistry $registry = null
 	): SchemaResolver {
 		$walker = new SchemaWalker( $loader, $slots, $this->merge );
 
@@ -294,8 +360,17 @@ class PipelineFactory {
 			$services->getLinkBatchFactory()
 		);
 
+		// The patch set in play is part of the subject, not a dependency. A
+		// dependency is revalidated against pages the resolution recorded, so
+		// it notices a patch being edited and cannot notice one being created,
+		// which is exactly the change that makes a page start differing.
+		$subject = $title->getPrefixedText();
+		if ( $registry !== null ) {
+			$subject .= '|patches:' . $registry->fingerprint();
+		}
+
 		return new CachingSchemaWalker(
-			$walker, $cache, $dependencies, $title->getPrefixedText(),
+			$walker, $cache, $dependencies, $subject,
 			$parser !== null ? $this->newDependencyRegistrar( $parser ) : null
 		);
 	}
