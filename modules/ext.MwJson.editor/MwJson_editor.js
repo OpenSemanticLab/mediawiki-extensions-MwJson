@@ -1118,17 +1118,15 @@ mwjson.editor = class {
 	 * hang rather than as a refusal.
 	 */
 	_reportSaveError(error) {
-		const info = (error && error.info)
-			|| (error && error.message)
-			|| (typeof error === 'string' ? error : null)
-			|| mw.message("mwjson-editor-error-occured-while-saving").text();
-		console.error("MwJson editor: save failed", error);
-		mw.notify(info, {
-			title: mw.message("mwjson-editor-error").text(),
-			type: 'error',
-			autoHide: false
-		});
-		return info;
+		// A save failure is already reported at the api seam, which every save
+		// passes through. This covers the rest: a submit handler that fails
+		// before it gets that far, such as postprocessing or schema generation.
+		if (error && error.reported) return;
+		mwjson.api.notifySaveError(
+			error instanceof Error ? error : mwjson.api.saveError(
+				typeof error === 'string' ? error : mw.message("mwjson-editor-error-occured-while-saving").text()
+			)
+		);
 	}
 
 	onsubmit(json, meta) {
