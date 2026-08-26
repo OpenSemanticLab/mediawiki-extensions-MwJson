@@ -331,6 +331,12 @@
 		"MwJsonPatchCategory": {
 			"value": "",
 			"description": "Prefixed title of the category a page must declare as its jsondata type before it is honoured as a patch, for example Category:OSWbd03ae43c1954ca889860ecf170682ef. Empty means nothing is honoured. The discovery query cannot be trusted to answer this: any user who can edit a page can add {{#set: HasPatchTarget=... }} to it, or declare the property in a category's @context, so the query finds candidates and the type decides. Subclasses of this category are deliberately not followed, since the candidate list is attacker controlled and a class walk per candidate would read slots per candidate. The category should also appear in $wgMwJsonCategoryEditRights, or anyone may write a page of that type."
+		},
+		"MwJsonUiPatchsets": {
+			"value": [
+				"ui"
+			],
+			"description": "The patch sets the form editor asks for when it resolves a schema. Only consulted when $wgMwJsonEnablePatches is on; with it off the editor reads stored content exactly as before. Separate from $wgMwJsonDefaultPatchsets so a patch can change the form an author fills in, the rendered page, or both, as an explicit choice."
 		}
 	},
 	"ExtensionMessagesFiles": {

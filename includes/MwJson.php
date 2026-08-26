@@ -29,6 +29,10 @@ class MwJson {
 		$vars['wgMwJsonRemoveEmptyOnSubmit'] = $config->get( 'MwJsonRemoveEmptyOnSubmit' );
 		$vars['wgMwJsonMissingSchemaPage'] = $config->get( 'MwJsonMissingSchemaPage' );
 		$vars['wgMwJsonEmptySchemaSlot'] = $config->get( 'MwJsonEmptySchemaSlot' );
+		// Neither varies by reader, so the shared startup module is the right
+		// place for them, unlike wgMwJsonCanCreateInstance.
+		$vars['wgMwJsonEnablePatches'] = $config->get( 'MwJsonEnablePatches' );
+		$vars['wgMwJsonUiPatchsets'] = $config->get( 'MwJsonUiPatchsets' );
 	}
 
 	/**

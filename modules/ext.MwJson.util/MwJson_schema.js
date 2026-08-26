@@ -110,6 +110,29 @@ mwjson.schema = class {
                     return value;
                 };
 
+                // A form has to be built from the schema a patch says it
+                // should be, or an author can be shown a field that the save
+                // will then reject. Special:SlotResolver is the one read that
+                // applies patches; the revisions API the cache uses below is
+                // deliberately unpatched, since that is what gets edited and
+                // written back.
+                //
+                // The schema cache is keyed by title alone, so a patched read
+                // skips it rather than storing patched content under the key an
+                // unpatched read would find.
+                const patchsets = this.patchsetsFor(title);
+                if (patchsets) {
+                    return fetch(this.slotResolverUrl(title, query, patchsets))
+                        .catch(err => {
+                            console.warn("MwJson schema resolver: patched fetch failed for " + title, err);
+                            return null;
+                        })
+                        .then(response => {
+                            if (!response || !response.ok) return unresolved('missing-page');
+                            return response.text().then(text => classify(text));
+                        });
+                }
+
                 if (this.config.use_cache && title) {
                     //console.log("Fetch from cache: ", match.groups.title);
                     // catch before then, so an 'abort' policy is not swallowed here
@@ -131,6 +154,43 @@ mwjson.schema = class {
                     });
             }
         };
+    }
+
+    /**
+     * Patch sets to ask for when resolving this title, or null to read what is
+     * stored.
+     *
+     * Null unless the wiki has patching on, so a wiki without patches reads
+     * through the cache below instead.
+     */
+    patchsetsFor(title) {
+        if (!title || title.indexOf(":") === -1) {
+            // Special:SlotResolver addresses a slot as <namespace>/<page>, so a
+            // page with no namespace has no address there.
+            return null;
+        }
+        if (typeof mw === "undefined" || !mw.config.get("wgMwJsonEnablePatches")) return null;
+
+        const configured = this.config.patchset || mw.config.get("wgMwJsonUiPatchsets") || [];
+        const patchsets = Array.isArray(configured) ? configured : [configured];
+        return patchsets.length ? patchsets : null;
+    }
+
+    /**
+     * The address Special:SlotResolver serves a slot at.
+     */
+    slotResolverUrl(title, query, patchsets) {
+        const separator = title.indexOf(":");
+        const namespace = title.slice(0, separator);
+        const page = title.slice(separator + 1);
+        // JsonSchema: pages hold their schema in the main slot; everything else
+        // in the jsonschema slot. Mirrors SchemaWalker.
+        const slot = query.slot || (namespace === "JsonSchema" ? "main" : "jsonschema");
+
+        return mw.util.getUrl(
+            "Special:SlotResolver/" + namespace + "/" + page + ".slot_" + slot + ".json",
+            { patchset: patchsets.join("|") }
+        );
     }
 
     static selftest() {
