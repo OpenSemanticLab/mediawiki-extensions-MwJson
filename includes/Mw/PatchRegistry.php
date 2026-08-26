@@ -4,7 +4,9 @@ namespace MediaWiki\Extension\MwJson\Mw;
 
 use MediaWiki\Extension\MwJson\OOLD\JsonLoader;
 use MediaWiki\Extension\MwJson\OOLD\Slots;
+use MediaWiki\Title\TitleFactory;
 use SMW\DIProperty;
+use SMW\RequestOptions;
 use SMW\Store;
 use Throwable;
 
@@ -29,14 +31,42 @@ use Throwable;
  * The loader here is a plain one, deliberately not the patched loader the
  * pipeline uses. A patch that could patch patch pages would recurse, and the
  * set of patches has to be a fixed point before any of them is applied.
+ *
+ * ## The query is a hint, the type is the authority
+ *
+ * Anyone who can edit any page can put a page in the result: `{{#set:
+ * HasPatchTarget=... }}` in plain wikitext is enough, and so is a category
+ * whose `@context` maps the property. Both were demonstrated by an unprivileged
+ * account. So the query says only "look at these", never "apply these".
+ *
+ * What decides is the jsondata `type` of the page itself, which is the one
+ * signal that cannot be produced without writing the slot the edit guard
+ * checks. It must name $wgMwJsonPatchCategory directly. Subclasses are not
+ * followed, deliberately: the candidate list is attacker controlled, and
+ * walking a class chain per candidate reads slots per candidate, which turns a
+ * cheap flood of {{#set}} calls into a slow wiki. A direct comparison is O(1)
+ * and the candidate list is capped besides.
  */
 class PatchRegistry {
 
 	/** The only property registered for patches. Discovery is all an index is for. */
 	public const PROPERTY = 'HasPatchTarget';
 
+	/**
+	 * How many candidates are looked at before giving up.
+	 *
+	 * The list is attacker controlled, so it needs a ceiling. Far above any
+	 * plausible number of real patches, and far below what would hurt.
+	 */
+	private const MAX_CANDIDATES = 500;
+
 	private Store $store;
 	private JsonLoader $loader;
+	private GuardedCategories $guard;
+	private TitleFactory $titleFactory;
+
+	/** Prefixed title of the category a patch must declare as its type. */
+	private string $patchCategory;
 
 	/** @var string[] Patch sets this reader is asking for. */
 	private array $requested;
@@ -51,10 +81,20 @@ class PatchRegistry {
 	 * @param string[] $requestedPatchsets Empty means no patch applies, which
 	 *   is what keeps package export and every other raw consumer unaffected.
 	 */
-	public function __construct( Store $store, JsonLoader $loader, array $requestedPatchsets ) {
+	public function __construct(
+		Store $store,
+		JsonLoader $loader,
+		array $requestedPatchsets,
+		GuardedCategories $guard,
+		TitleFactory $titleFactory,
+		string $patchCategory
+	) {
+		$this->patchCategory = self::normaliseTitle( $patchCategory );
 		$this->store = $store;
 		$this->loader = $loader;
 		$this->requested = $requestedPatchsets;
+		$this->guard = $guard;
+		$this->titleFactory = $titleFactory;
 	}
 
 	/**
@@ -118,7 +158,7 @@ class PatchRegistry {
 			// is part of what decided that, so a later edit has to be visible.
 			$this->seen[$page] = $this->revisionOf( $page );
 
-			if ( !$this->applies( $patch ) ) {
+			if ( !$this->mayPatch( $patch ) || !$this->applies( $patch ) ) {
 				continue;
 			}
 
@@ -145,7 +185,9 @@ class PatchRegistry {
 	 */
 	private function patchPages(): array {
 		try {
-			$subjects = $this->store->getAllPropertySubjects( new DIProperty( self::PROPERTY ) );
+			$options = new RequestOptions();
+			$options->limit = self::MAX_CANDIDATES;
+			$subjects = $this->store->getAllPropertySubjects( new DIProperty( self::PROPERTY ), $options );
 		} catch ( Throwable $error ) {
 			// An unknown property on a wiki that has never had a patch, or a
 			// store mid-rebuild. Neither is a reason to fail a page render.
@@ -162,6 +204,36 @@ class PatchRegistry {
 
 		sort( $pages, SORT_STRING );
 		return $pages;
+	}
+
+	/**
+	 * Is this page one whose creation was restricted?
+	 *
+	 * Carrying the property is not enough: it is granted by a schema, and
+	 * writing a schema that grants it is not restricted.
+	 */
+	private function mayPatch( array $patch ): bool {
+		if ( $this->patchCategory === '' ) {
+			return false;
+		}
+
+		$types = $patch['type'] ?? null;
+		if ( is_string( $types ) ) {
+			$types = [ $types ];
+		}
+		if ( !is_array( $types ) ) {
+			return false;
+		}
+
+		foreach ( $types as $type ) {
+			if ( is_string( $type ) && self::normaliseTitle( $type ) === $this->patchCategory ) {
+				// And writing one has to have taken a right, or the class is a
+				// patch class in name only and anyone can populate it.
+				return $this->guard->rightsForData( $patch ) !== [];
+			}
+		}
+
+		return false;
 	}
 
 	private function applies( array $patch ): bool {
@@ -194,8 +266,12 @@ class PatchRegistry {
 	}
 
 	private function revisionOf( string $page ): int {
-		$title = \MediaWiki\Title\Title::newFromText( $page );
+		$title = $this->titleFactory->newFromText( $page );
 		return $title === null ? 0 : $title->getLatestRevID();
+	}
+
+	private static function normaliseTitle( string $title ): string {
+		return trim( str_replace( '_', ' ', $title ) );
 	}
 
 	private function normalise( string $title ): string {

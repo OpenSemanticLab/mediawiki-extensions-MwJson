@@ -327,6 +327,10 @@
 				"render"
 			],
 			"description": "The patch sets page rendering asks for. A patch applies when its own patchset list intersects this one. The form editor asks for 'ui' separately, so a patch can change the rendered page, the form the author edits, or both, as an explicit choice. An empty list means raw content, which is what keeps package export and other raw consumers unaffected even when patches are enabled."
+		},
+		"MwJsonPatchCategory": {
+			"value": "",
+			"description": "Prefixed title of the category a page must declare as its jsondata type before it is honoured as a patch, for example Category:OSWbd03ae43c1954ca889860ecf170682ef. Empty means nothing is honoured. The discovery query cannot be trusted to answer this: any user who can edit a page can add {{#set: HasPatchTarget=... }} to it, or declare the property in a category's @context, so the query finds candidates and the type decides. Subclasses of this category are deliberately not followed, since the candidate list is attacker controlled and a class walk per candidate would read slots per candidate. The category should also appear in $wgMwJsonCategoryEditRights, or anyone may write a page of that type."
 		}
 	},
 	"ExtensionMessagesFiles": {

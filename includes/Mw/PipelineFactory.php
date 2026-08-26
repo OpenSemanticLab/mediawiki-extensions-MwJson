@@ -302,10 +302,15 @@ class PipelineFactory {
 			$dependencies
 		);
 
+		$loader = new SlotJsonLoader( $plain, $this->merge );
+
 		return new PatchRegistry(
 			\SMW\StoreFactory::getStore(),
-			new SlotJsonLoader( $plain, $this->merge ),
-			$patchsets ?? (array)$config->get( 'MwJsonDefaultPatchsets' )
+			$loader,
+			$patchsets ?? (array)$config->get( 'MwJsonDefaultPatchsets' ),
+			new GuardedCategories( (array)$config->get( 'MwJsonCategoryEditRights' ), $loader ),
+			$services->getTitleFactory(),
+			(string)$config->get( 'MwJsonPatchCategory' )
 		);
 	}
 
