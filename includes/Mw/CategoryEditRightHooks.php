@@ -159,17 +159,12 @@ class CategoryEditRightHooks implements
 			return;
 		}
 
-		$guard = $this->guard();
-		if ( $guard->isEmpty() ) {
-			$vars['wgMwJsonCanCreateInstance'] = true;
-			return;
-		}
-
-		$missing = $this->missingRights(
-			$guard->rightsForCategory( $title->getPrefixedText() ),
-			$out->getUser()
+		// The same answer CategoryEditRight gives a skin building a button, so
+		// the page variable and the server cannot disagree about it.
+		$vars['wgMwJsonCanCreateInstance'] = CategoryEditRight::userCanUse(
+			$out->getUser(),
+			$title->getPrefixedText()
 		);
-		$vars['wgMwJsonCanCreateInstance'] = $missing === [];
 	}
 
 	/**
