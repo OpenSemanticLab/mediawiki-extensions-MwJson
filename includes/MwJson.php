@@ -29,8 +29,21 @@ class MwJson {
 		$vars['wgMwJsonRemoveEmptyOnSubmit'] = $config->get( 'MwJsonRemoveEmptyOnSubmit' );
 		$vars['wgMwJsonMissingSchemaPage'] = $config->get( 'MwJsonMissingSchemaPage' );
 		$vars['wgMwJsonEmptySchemaSlot'] = $config->get( 'MwJsonEmptySchemaSlot' );
-		// Neither varies by reader, so the shared startup module is the right
-		// place for them, unlike wgMwJsonCanCreateInstance.
+	}
+
+	/**
+	 * Settings the schema resolver needs before it fetches anything.
+	 *
+	 * Not in onResourceLoaderGetConfigVars with the rest, though neither varies
+	 * by reader and that is where they belong: on this installation nothing
+	 * that hook sets arrives in the browser at all, verified for several
+	 * long-standing variables. This hook writes into RLCONF, which does.
+	 *
+	 * @param array &$vars
+	 * @param \MediaWiki\Output\OutputPage $out
+	 */
+	public static function onMakeGlobalVariablesScript( &$vars, $out ): void {
+		$config = $out->getConfig();
 		$vars['wgMwJsonEnablePatches'] = $config->get( 'MwJsonEnablePatches' );
 		$vars['wgMwJsonUiPatchsets'] = $config->get( 'MwJsonUiPatchsets' );
 	}

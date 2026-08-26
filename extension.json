@@ -261,7 +261,10 @@
 		"ScribuntoExternalLibraries": "MediaWiki\\Extension\\MwJson\\Hooks::onScribuntoExternalLibraries",
 		"ParserFirstCallInit": "MediaWiki\\Extension\\MwJson\\ParserFunctions\\MwJsonParserFunction::onParserFirstCallInit",
 		"MultiContentSave": "CategoryEditRight",
-		"MakeGlobalVariablesScript": "CategoryEditRight",
+		"MakeGlobalVariablesScript": [
+			"CategoryEditRight",
+			"MwJson::onMakeGlobalVariablesScript"
+		],
 		"getUserPermissionsErrors": "CategoryEditRight"
 	},
 	"SpecialPages": {
