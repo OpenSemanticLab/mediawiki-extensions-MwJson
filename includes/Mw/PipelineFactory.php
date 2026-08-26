@@ -100,10 +100,8 @@ class PipelineFactory {
 	/**
 	 * Render one slot of one page, and apply what the render decided to write.
 	 *
-	 * Both entry points call this rather than repeating it. They had the same
-	 * fifteen lines twice and had already drifted apart once: the ordering fix
-	 * below had to be made in two places, and the two joined SMW errors
-	 * differently. One copy removes that class of divergence.
+	 * Both entry points call this rather than repeating it, so the ordering
+	 * below and the handling of SMW errors exist once and cannot drift apart.
 	 *
 	 * @param Parser $parser The parser rendering the page.
 	 * @param PPFrame $frame Its current frame.
