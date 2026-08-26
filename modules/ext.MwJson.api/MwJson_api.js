@@ -362,9 +362,29 @@ mwjson.api = class {
 	}
 
 	/**
-	 * Rejects with (code, result), not code alone: the readable reason a save
-	 * was refused is in result.error.info, and without it the caller can only
-	 * show an error code.
+	 * The reason a save failed, as one value.
+	 *
+	 * mw.Api rejects with (code, result) and the readable text is in
+	 * result.error.info. Callers routinely forward only the first argument, so
+	 * packing both into one Error is what keeps the reason from being lost on
+	 * the way back to whoever has to show it.
+	 *
+	 * @param {string} code
+	 * @param {Object} [result]
+	 * @return {Error}
+	 */
+	static saveError(code, result) {
+		const info = (result && result.error && result.error.info) || code || "";
+		const error = new Error(info);
+		error.code = code;
+		error.info = info;
+		error.result = result;
+		return error;
+	}
+
+	/**
+	 * Rejects with one Error carrying the code and the readable reason, so a
+	 * caller that forwards only the first rejection argument keeps both.
 	 */
 	static updatePage(page, meta) {
 		const deferred = $.Deferred();
@@ -382,30 +402,14 @@ mwjson.api = class {
 
 		for (var slot_key of Object.keys(page.slots)) { if (page.slots_changed[slot_key]) slots_changed = true; }
 
-		if (!page.exists && page.title && slots_changed) {
-			mwjson.api.createPage(page.title, page.slots['main'], summary).then((data) => {
-				page.exists = true;
-				page.slots_changed['main'] = false;
-				mwjson.api.editSlots(page, summary).then((data) => { //will only edit changed slots
-					
-					if (hasChangedFile) {
-						mwjson.api.uploadFile(page.file.contentBlob, page.file.name, summary).then((data) => {
-							page.file.changed = false;
-							page.file.exists = true;
-							deferred.resolve(page);
-						}, (error, result) => {
-							deferred.reject(error, result);
-						});
-					}
-					else deferred.resolve(page);
-				}, (error, result) => {
-					deferred.reject(error, result);
-				});
-			}, (error, result) => {
-				deferred.reject(error, result);
-			});
-		}
-		else if (slots_changed) {
+		// Creating and editing are the same call: action=editslots creates the
+		// page when it does not exist, and writes every slot in one revision.
+		//
+		// One revision matters beyond tidiness. A permission check that reads
+		// the content sees the whole page at once, and a refused save leaves
+		// nothing behind: splitting the write would let a page be created that
+		// then could not be filled in.
+		if (slots_changed) {
 			mwjson.api.editSlots(page, summary).then((data) => {
 				page.exists = true;
 				if (hasChangedFile) {
@@ -414,12 +418,12 @@ mwjson.api = class {
 						page.file.exists = true;
 						deferred.resolve(page);
 					}, (error, result) => {
-						deferred.reject(error, result);
+						deferred.reject(mwjson.api.saveError(error, result));
 					});
 				}
 				else deferred.resolve(page);
 			}, (error, result) => {
-				deferred.reject(error, result);
+				deferred.reject(mwjson.api.saveError(error, result));
 			});
 		}
 		else if (hasChangedFile) {
@@ -428,7 +432,7 @@ mwjson.api = class {
 				page.file.exists = true;
 				deferred.resolve(page);
 			}, (error, result) => {
-				deferred.reject(error, result);
+				deferred.reject(mwjson.api.saveError(error, result));
 			});
 		}
 		else deferred.resolve(page);

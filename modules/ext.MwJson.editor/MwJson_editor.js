@@ -1064,6 +1064,7 @@ mwjson.editor = class {
 										resolve();
 										if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success' });
 									}).catch((error) => {
+										this._reportSaveError(error);
 										reject(error);
 									});
 									else {
@@ -1093,6 +1094,7 @@ mwjson.editor = class {
 							resolve();
 							if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success' });
 						}).catch((error) => {
+							this._reportSaveError(error);
 							reject(error);
 						});
 						else {
@@ -1115,11 +1117,12 @@ mwjson.editor = class {
 	 * silently leaves the editor sitting on "saving" forever, which reads as a
 	 * hang rather than as a refusal.
 	 */
-	_reportSaveError(error, result) {
-		const info = (result && result.error && result.error.info)
+	_reportSaveError(error) {
+		const info = (error && error.info)
+			|| (error && error.message)
 			|| (typeof error === 'string' ? error : null)
 			|| mw.message("mwjson-editor-error-occured-while-saving").text();
-		console.error("MwJson editor: save failed", error, result);
+		console.error("MwJson editor: save failed", error);
 		mw.notify(info, {
 			title: mw.message("mwjson-editor-error").text(),
 			type: 'error',
@@ -1168,12 +1171,10 @@ mwjson.editor = class {
 				mwjson.api.updatePage(page, meta).then(() => {
 					resolve();
 					window.location.href = mw.util.getUrl(page.title);
-				}, (error, result) => {
-					this._reportSaveError(error, result);
+				}, (error) => {
 					reject(error);
 				});
-			}, (error, result) => {
-				this._reportSaveError(error, result);
+			}, (error) => {
 				reject(error);
 			});
 		});
