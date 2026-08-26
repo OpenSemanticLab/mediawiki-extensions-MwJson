@@ -361,6 +361,11 @@ mwjson.api = class {
 		return deferred.promise();
 	}
 
+	/**
+	 * Rejects with (code, result), not code alone: the readable reason a save
+	 * was refused is in result.error.info, and without it the caller can only
+	 * show an error code.
+	 */
 	static updatePage(page, meta) {
 		const deferred = $.Deferred();
 		const hasChangedFile = ('file' in page && page.file.changed);
@@ -388,16 +393,16 @@ mwjson.api = class {
 							page.file.changed = false;
 							page.file.exists = true;
 							deferred.resolve(page);
-						}, (error) => {
-							deferred.reject(error);
+						}, (error, result) => {
+							deferred.reject(error, result);
 						});
 					}
 					else deferred.resolve(page);
-				}, (error) => {
-					deferred.reject(error);
+				}, (error, result) => {
+					deferred.reject(error, result);
 				});
-			}, (error) => {
-				deferred.reject(error);
+			}, (error, result) => {
+				deferred.reject(error, result);
 			});
 		}
 		else if (slots_changed) {
@@ -408,13 +413,13 @@ mwjson.api = class {
 						page.file.changed = false;
 						page.file.exists = true;
 						deferred.resolve(page);
-					}, (error) => {
-						deferred.reject(error);
+					}, (error, result) => {
+						deferred.reject(error, result);
 					});
 				}
 				else deferred.resolve(page);
-			}, (error) => {
-				deferred.reject(error);
+			}, (error, result) => {
+				deferred.reject(error, result);
 			});
 		}
 		else if (hasChangedFile) {
@@ -422,8 +427,8 @@ mwjson.api = class {
 				page.file.changed = false;
 				page.file.exists = true;
 				deferred.resolve(page);
-			}, (error) => {
-				deferred.reject(error);
+			}, (error, result) => {
+				deferred.reject(error, result);
 			});
 		}
 		else deferred.resolve(page);

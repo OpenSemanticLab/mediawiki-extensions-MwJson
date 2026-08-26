@@ -228,7 +228,10 @@ mwjson.editor.prototype.createPopupDialog = function (_config) {
                     meta.comment = document.getElementById(`${editor.config.id}_edit-comment-input`).value;
                 editor._onsubmit({meta:meta})
                     .then(() => dataEditor_modal.hide())
-                    .catch();
+                    // Left open on failure so the author can correct and retry.
+                    // The reason is already on screen; swallowing the rejection
+                    // here would leave the dialog sitting on "saving" instead.
+                    .catch((error) => console.warn("MwJson editor: save not completed", error));
             }}
         ]
 
@@ -410,7 +413,8 @@ mwjson.editor.prototype.createPopupDialog_old = function (_config) {
                     {meta:meta}
                 )
                     .then(() => dialog.close({ action: action }))
-                    .catch();
+                    // As above: keep the dialog open when the save was refused.
+                    .catch((error) => console.warn("MwJson editor: save not completed", error));
             }, this);
         }
         if (action === 'toggle-fullscreen') {

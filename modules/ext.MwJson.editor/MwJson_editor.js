@@ -1063,7 +1063,9 @@ mwjson.editor = class {
 									if (submit_promise) submit_promise.then(() => {
 										resolve();
 										if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success' });
-									}).catch();
+									}).catch((error) => {
+										reject(error);
+									});
 									else {
 										resolve();
 										if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success' });
@@ -1090,7 +1092,9 @@ mwjson.editor = class {
 						if (submit_promise) submit_promise.then(() => {
 							resolve();
 							if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success' });
-						}).catch();
+						}).catch((error) => {
+							reject(error);
+						});
 						else {
 							resolve();
 							if (this.config.mode !== 'query') mw.notify(mw.message("mwjson-editor-saved").text(), { type: 'success' });
@@ -1100,6 +1104,28 @@ mwjson.editor = class {
 			});
 		});
 		return promise;
+	}
+
+	/**
+	 * Show why a save was refused, and say what it was refused for.
+	 *
+	 * mw.Api rejects with (code, result); the readable reason is in
+	 * result.error.info, and the code alone is not something to put in front of
+	 * an author. Every save path routes through here, because a save that fails
+	 * silently leaves the editor sitting on "saving" forever, which reads as a
+	 * hang rather than as a refusal.
+	 */
+	_reportSaveError(error, result) {
+		const info = (result && result.error && result.error.info)
+			|| (typeof error === 'string' ? error : null)
+			|| mw.message("mwjson-editor-error-occured-while-saving").text();
+		console.error("MwJson editor: save failed", error, result);
+		mw.notify(info, {
+			title: mw.message("mwjson-editor-error").text(),
+			type: 'error',
+			autoHide: false
+		});
+		return info;
 	}
 
 	onsubmit(json, meta) {
@@ -1142,8 +1168,14 @@ mwjson.editor = class {
 				mwjson.api.updatePage(page, meta).then(() => {
 					resolve();
 					window.location.href = mw.util.getUrl(page.title);
+				}, (error, result) => {
+					this._reportSaveError(error, result);
+					reject(error);
 				});
-			}).catch();
+			}, (error, result) => {
+				this._reportSaveError(error, result);
+				reject(error);
+			});
 		});
 		return promise;
 	}

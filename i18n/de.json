@@ -131,5 +131,6 @@
 	"apihelp-mwjsoncancreate-summary": "Prüfen, ob der aktuelle Benutzer eine Seite mit der Klasse der angegebenen Seiten anlegen darf.",
 	"apihelp-mwjsoncancreate-param-titles": "Seiten, nach denen gefragt wird. Eine Kategorie wird als Klasse betrachtet, alles andere als zu kopierende Seite.",
 	"apihelp-mwjsoncancreate-example": "Fragen, ob ein Seiten-Patch angelegt werden darf",
-	"mwjson-cannot-create-here": "Sie können keine Seite dieser Art anlegen. {{PLURAL:$2|Erforderlich ist das Recht|Erforderlich sind die Rechte}} $1."
+	"mwjson-cannot-create-here": "Sie können keine Seite dieser Art anlegen. {{PLURAL:$2|Erforderlich ist das Recht|Erforderlich sind die Rechte}} $1.",
+	"mwjson-editor-error-occured-while-saving": "Beim Speichern ist ein Fehler aufgetreten"
 }
