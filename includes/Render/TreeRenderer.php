@@ -354,7 +354,16 @@ class TreeRenderer {
 	 * @param array<string,array> $propertyDefinitions
 	 */
 	private function buildTooltip( string $key, array $schema, array $propertyDefinitions ): string {
-		$description = $this->multilang->render( $schema, [], 'description', '' );
+		// Escaped before anything is appended, because it goes straight into a
+		// parser function argument: a brace opens a template, a pipe starts the
+		// next argument, and an equals sign turns the whole thing into a named
+		// one. A description showing an example of JSON, or merely citing a URL
+		// with a query string, would otherwise corrupt the call and take the
+		// surrounding list markup with it. The links added below are ours and
+		// are meant to be parsed, so they go on afterwards.
+		$description = $this->escapeForParserFunction(
+			$this->multilang->render( $schema, [], 'description', '' )
+		);
 		$declaredIn = JsonUtil::defaultArgPath( $propertyDefinitions, [ $key, 'defined_in' ], [] );
 
 		if ( is_array( $declaredIn ) && $declaredIn !== [] ) {
@@ -370,6 +379,23 @@ class TreeRenderer {
 		}
 
 		return $description === '' ? '' : '{{#info: ' . $description . '|note }}';
+	}
+
+	/**
+	 * Neutralise the characters that would end the argument or start a template.
+	 *
+	 * Angle brackets are deliberately left alone: descriptions use `<br>` and
+	 * other inline HTML, and that is meant to render.
+	 */
+	private function escapeForParserFunction( string $text ): string {
+		return strtr( $text, [
+			'{' => '&#123;',
+			'}' => '&#125;',
+			'|' => '&#124;',
+			'[' => '&#91;',
+			']' => '&#93;',
+			'=' => '&#61;',
+		] );
 	}
 
 	/**
@@ -401,6 +427,58 @@ class TreeRenderer {
 	}
 
 	/**
+	 * A code value, shown exactly as written, inside one wikitext line.
+	 *
+	 * Two problems at once. The value is wikitext to the parser, so `[[x]]`
+	 * becomes a link and an HTML comment disappears; and this goes inside a
+	 * bullet, where a real newline ends the list item and the rest of the value
+	 * spills out of the tree. So each line is wrapped on its own and the lines
+	 * are joined with a break, which reads as several lines and is one line of
+	 * wikitext.
+	 *
+	 * Leading indentation becomes non-breaking, since HTML would otherwise
+	 * collapse it and a nested JSON patch would lose its shape.
+	 *
+	 * Every character that means something to the parser is written as an
+	 * entity rather than wrapped in `<nowiki>`. Nowiki is resolved long before
+	 * TreeAndMenu runs, and TreeAndMenu lifts a trailing `{...}` out of a list
+	 * item into a data-json attribute as node options
+	 * (TreeAndMenu_body.php:139), which is exactly the shape of a JSON payload:
+	 * the value would disappear from the tree into an attribute. Entities are
+	 * invisible to that and render as the characters themselves.
+	 *
+	 * Not linked either: a patch replacing "Category:X" with "Category:Y" is
+	 * talking about text, not about pages.
+	 */
+	private function asWrittenText( string $value ): string {
+		$lines = [];
+		foreach ( preg_split( '/\r\n|\r|\n/', $value ) as $line ) {
+			$indent = strlen( $line ) - strlen( ltrim( $line, ' ' ) );
+			$lines[] = str_repeat( '&nbsp;', $indent )
+				. $this->asEntities( substr( $line, $indent ) );
+		}
+
+		return implode( '<br />', $lines );
+	}
+
+	/**
+	 * Wikitext-significant characters as HTML entities.
+	 *
+	 * htmlspecialchars first, so the ampersands it produces are not themselves
+	 * re-encoded by the table below.
+	 */
+	private function asEntities( string $text ): string {
+		return strtr( htmlspecialchars( $text, ENT_QUOTES ), [
+			'{' => '&#123;',
+			'}' => '&#125;',
+			'[' => '&#91;',
+			']' => '&#93;',
+			'|' => '&#124;',
+			"'" => '&#39;',
+		] );
+	}
+
+	/**
 	 * @param mixed $value
 	 */
 	private function stringify( $value, string $type, ?string $smwProperty, bool $literal = false ): string {
@@ -412,10 +490,7 @@ class TreeRenderer {
 		}
 		if ( is_string( $value ) ) {
 			if ( $literal ) {
-				// Shown as written. Not a link either: a patch that replaces
-				// "Category:X" with "Category:Y" is talking about text, not
-				// about pages, and linking it would say the wrong thing.
-				return '<nowiki>' . $value . '</nowiki>';
+				return $this->asWrittenText( $value );
 			}
 			if ( $type === PropertyTypeResolver::DATE || $type === PropertyTypeResolver::DATE_TIME ) {
 				return (string)$this->dates->format( $value, $type, $smwProperty );
