@@ -45,12 +45,12 @@ class CategoryEditRightTest extends MediaWikiIntegrationTestCase {
 		// A subclass of the guarded category, so the tests can show that
 		// instantiating it is covered too. The chain is read from jsonschema
 		// allOf refs, the same place SchemaWalker reads it.
-		$this->writeSlots( self::GUARDED, [ Slots::JSONSCHEMA => '{"title":"Guarded"}' ] );
-		$this->writeSlots( self::SUBCLASS, [
+		$this->assertStatusGood( $this->writeSlots( self::GUARDED, [ Slots::JSONSCHEMA => '{"title":"Guarded"}' ] ) );
+		$this->assertStatusGood( $this->writeSlots( self::SUBCLASS, [
 			Slots::JSONSCHEMA => json_encode( [
 				'allOf' => [ [ '$ref' => '/wiki/' . self::GUARDED . '?action=raw&slot=jsonschema' ] ],
 			] ),
-		] );
+		] ) );
 	}
 
 	/**
@@ -209,6 +209,54 @@ class CategoryEditRightTest extends MediaWikiIntegrationTestCase {
 			$this->jsondata( [ 'type' => [ self::SUBCLASS ] ] ),
 			$user
 		) );
+	}
+
+	public function testTheGuardedCategoryPageItselfIsRefused(): void {
+		// Editing Category:Device is editing the definition every Device
+		// inherits, so it takes the same right. Its own jsondata cannot say so:
+		// a category's type is Category:Category and its subclass_of points at
+		// its parent, so neither reaches the rule naming it.
+		$status = $this->writeSlots(
+			self::GUARDED,
+			[ Slots::JSONSCHEMA => '{"title":"Rewritten"}' ],
+			$this->userWithoutTheRight()
+		);
+		$this->assertStatusNotGood( $status );
+
+		$permissionManager = MediaWikiServices::getInstance()->getPermissionManager();
+		$this->assertFalse( $permissionManager->userCan(
+			'edit', $this->userWithoutTheRight(), Title::newFromText( self::GUARDED )
+		) );
+	}
+
+	public function testASubcategoryOfAGuardedCategoryIsRefused(): void {
+		$status = $this->writeSlots(
+			self::SUBCLASS,
+			[ Slots::JSONSCHEMA => '{"title":"Rewritten subclass"}' ],
+			$this->userWithoutTheRight()
+		);
+
+		$this->assertStatusNotGood( $status );
+	}
+
+	public function testAGuardCannotBeStaleWithinOneRequest(): void {
+		// A save can create the very chain the guard is about to walk. Caching
+		// the answer from before it existed would let the first instance of a
+		// brand new subclass through.
+		$fresh = 'Category:MwJsonFreshSubclass';
+		$this->assertStatusGood( $this->writeSlots( $fresh, [
+			Slots::JSONSCHEMA => json_encode( [
+				'allOf' => [ [ '$ref' => '/wiki/' . self::GUARDED . '?action=raw&slot=jsonschema' ] ],
+			] ),
+		] ) );
+
+		$status = $this->writeSlots(
+			'Item:MwJsonFreshSubclassInstance',
+			$this->jsondata( [ 'type' => [ $fresh ] ] ),
+			$this->userWithoutTheRight()
+		);
+
+		$this->assertStatusNotGood( $status );
 	}
 
 	public function testAnEmptyMapGuardsNothing(): void {

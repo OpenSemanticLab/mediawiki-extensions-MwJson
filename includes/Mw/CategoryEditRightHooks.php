@@ -80,7 +80,13 @@ class CategoryEditRightHooks implements
 	 * @return bool
 	 */
 	public function onMultiContentSave( $renderedRevision, $user, $summary, $flags, $status ) {
-		$guard = $this->guard();
+		// A fresh guard, not the memoised one. A save can create or change the
+		// very category chain the guard is about to walk, and the memo would
+		// hand back an answer computed when the page did not exist yet: saving
+		// Category:Laptop and then an instance of it in one request would find
+		// Laptop unguarded. Saves are rare and already expensive; the read
+		// paths below keep the memo.
+		$guard = $this->newGuard();
 		if ( $guard->isEmpty() ) {
 			return true;
 		}
@@ -91,9 +97,10 @@ class CategoryEditRightHooks implements
 		// guarded class, and editing or de-classing one that already is. The
 		// incoming revision carries inherited slots too, so an edit that
 		// touches only header_template still sees the jsondata that classes it.
+		$title = Title::newFromPageIdentity( $revision->getPage() );
 		$rights = array_unique( array_merge(
-			$guard->rightsForData( $this->jsondataOf( $revision ) ),
-			$guard->rightsForData( $this->currentJsondataOf( $revision ) )
+			$this->rightsFor( $guard, $title, $this->jsondataOf( $revision ) ),
+			$this->rightsFor( $guard, $title, $this->currentJsondataOf( $revision ) )
 		) );
 
 		$missing = $this->missingRights( $rights, $user );
@@ -103,7 +110,7 @@ class CategoryEditRightHooks implements
 
 		$status->fatal(
 			'mwjson-category-edit-right-denied',
-			Title::newFromPageIdentity( $revision->getPage() )->getPrefixedText(),
+			$title->getPrefixedText(),
 			implode( ', ', $missing ),
 			count( $missing )
 		);
@@ -127,7 +134,7 @@ class CategoryEditRightHooks implements
 			return true;
 		}
 
-		$rights = $guard->rightsForData( $this->storedJsondataOf( $title ) );
+		$rights = $this->rightsFor( $guard, $title, $this->storedJsondataOf( $title ) );
 		$missing = $this->missingRights( $rights, $user );
 		if ( $missing === [] ) {
 			return true;
@@ -163,6 +170,27 @@ class CategoryEditRightHooks implements
 			$out->getUser()
 		);
 		$vars['wgMwJsonCanCreateInstance'] = $missing === [];
+	}
+
+	/**
+	 * Rights a page needs, from what it declares and from what it is.
+	 *
+	 * A guarded category is guarded itself, not only its instances: editing
+	 * Category:Device is editing the definition every Device inherits. Its own
+	 * jsondata cannot say so, because a category's `type` is Category:Category
+	 * and its `subclass_of` points at its parent, so neither reaches the rule
+	 * naming it. The title has to be asked about directly.
+	 *
+	 * @return string[]
+	 */
+	private function rightsFor( GuardedCategories $guard, Title $title, array $jsondata ): array {
+		$rights = $guard->rightsForData( $jsondata );
+
+		if ( $title->getNamespace() === NS_CATEGORY ) {
+			$rights = array_merge( $rights, $guard->rightsForCategory( $title->getPrefixedText() ) );
+		}
+
+		return array_unique( $rights );
 	}
 
 	/**
@@ -231,13 +259,21 @@ class CategoryEditRightHooks implements
 			->load( $title->getPrefixedText(), Slots::JSONDATA );
 	}
 
+	/**
+	 * The memoised guard, for the read paths, where nothing is changing under
+	 * it during the request.
+	 */
 	private function guard(): GuardedCategories {
 		if ( $this->guard === null ) {
-			$this->guard = new GuardedCategories(
-				(array)$this->config->get( 'MwJsonCategoryEditRights' ),
-				( new PipelineFactory() )->newSlotJsonLoader()
-			);
+			$this->guard = $this->newGuard();
 		}
 		return $this->guard;
+	}
+
+	private function newGuard(): GuardedCategories {
+		return new GuardedCategories(
+			(array)$this->config->get( 'MwJsonCategoryEditRights' ),
+			( new PipelineFactory() )->newSlotJsonLoader()
+		);
 	}
 }
