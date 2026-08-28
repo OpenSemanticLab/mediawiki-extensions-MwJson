@@ -2,6 +2,7 @@
 
 namespace MediaWiki\Extension\MwJson\Tests\Parity;
 
+use MediaWiki\Extension\MwJson\Mw\RevisionResolver;
 use MediaWiki\Extension\MwJson\Mw\SlotDependencies;
 use MediaWiki\Extension\MwJson\Mw\SlotJsonLoader;
 use MediaWiki\Extension\MwJson\Mw\WsSlotSource;
@@ -54,7 +55,7 @@ class ResolveSchema extends Maintenance {
 		$merge = new LegacyLuaMergeStrategy();
 		$slots = new WsSlotSource(
 			$services->getTitleFactory(),
-			$services->getWikiPageFactory(),
+			new RevisionResolver( $services->getWikiPageFactory() ),
 			$dependencies
 		);
 		$loader = new SlotJsonLoader( $slots, $merge );

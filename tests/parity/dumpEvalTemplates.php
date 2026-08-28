@@ -2,6 +2,7 @@
 
 namespace MediaWiki\Extension\MwJson\Tests\Parity;
 
+use MediaWiki\Extension\MwJson\Mw\RevisionResolver;
 use MediaWiki\Extension\MwJson\Mw\SlotJsonLoader;
 use MediaWiki\Extension\MwJson\Mw\WsSlotSource;
 use MediaWiki\Extension\MwJson\OOLD\LegacyLuaMergeStrategy;
@@ -55,7 +56,10 @@ class DumpEvalTemplates extends Maintenance {
 	public function execute() {
 		$services = MediaWikiServices::getInstance();
 		$this->loader = new SlotJsonLoader(
-			new WsSlotSource( $services->getTitleFactory(), $services->getWikiPageFactory() ),
+			new WsSlotSource(
+				$services->getTitleFactory(),
+				new RevisionResolver( $services->getWikiPageFactory() )
+			),
 			new LegacyLuaMergeStrategy()
 		);
 

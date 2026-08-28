@@ -52,7 +52,7 @@ class ApiMwJsonCanCreate extends ApiBase {
 		$parameters = $this->extractRequestParams();
 		$guard = new GuardedCategories(
 			(array)$this->getConfig()->get( 'MwJsonCategoryEditRights' ),
-			( new PipelineFactory() )->newSlotJsonLoader()
+			( new PipelineFactory() )->newStoredSlotJsonLoader()
 		);
 
 		$results = [];
@@ -100,7 +100,7 @@ class ApiMwJsonCanCreate extends ApiBase {
 			return [];
 		}
 
-		return ( new PipelineFactory() )->newSlotJsonLoader()
+		return ( new PipelineFactory() )->newStoredSlotJsonLoader()
 			->load( $title->getPrefixedText(), Slots::JSONDATA );
 	}
 
