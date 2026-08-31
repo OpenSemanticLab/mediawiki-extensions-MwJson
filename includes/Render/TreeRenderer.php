@@ -245,14 +245,28 @@ class TreeRenderer {
 			return false;
 		}
 
+		$required = array_filter( (array)( $branch['required'] ?? [] ), 'is_string' );
+
 		$discriminated = false;
 		foreach ( $properties as $name => $definition ) {
-			$expected = $this->discriminatorOf( $definition );
-			if ( $expected === null ) {
+			$allowed = $this->allowedValues( $definition );
+			if ( $allowed === null ) {
 				continue;
 			}
+
+			if ( !array_key_exists( $name, $value ) ) {
+				// A pinned key the entry does not carry rules the branch out
+				// only where the branch insists on it. TextProperty pins
+				// `format` to a list of formats, and a plain string entry has
+				// no format at all.
+				if ( in_array( $name, $required, true ) ) {
+					return false;
+				}
+				continue;
+			}
+
 			$discriminated = true;
-			if ( ( $value[$name] ?? null ) !== $expected ) {
+			if ( !in_array( $value[$name], $allowed, true ) ) {
 				return false;
 			}
 		}
@@ -261,8 +275,8 @@ class TreeRenderer {
 			return true;
 		}
 
-		foreach ( (array)( $branch['required'] ?? [] ) as $name ) {
-			if ( !is_string( $name ) || !array_key_exists( $name, $value ) ) {
+		foreach ( $required as $name ) {
+			if ( !array_key_exists( $name, $value ) ) {
 				return false;
 			}
 		}
@@ -271,22 +285,27 @@ class TreeRenderer {
 	}
 
 	/**
-	 * The one value a property is pinned to, from `const` or a one-member
-	 * `enum`. Both, because the schemas in the wild use both.
+	 * The values a property is pinned to, from `const` or `enum`.
+	 *
+	 * A multi-member enum pins just as firmly as a single one: it says which
+	 * values are allowed, so a value outside it rules the branch out. Reading
+	 * only single-member enums made NumberProperty, whose type enum is
+	 * ["number","integer"], match every property definition on the wiki,
+	 * because it is the first branch and nothing excluded it.
 	 *
 	 * @param mixed $definition
-	 * @return mixed null when the property pins nothing
+	 * @return array|null null when the property pins nothing
 	 */
-	private function discriminatorOf( $definition ) {
+	private function allowedValues( $definition ): ?array {
 		if ( !is_array( $definition ) ) {
 			return null;
 		}
 		if ( array_key_exists( 'const', $definition ) ) {
-			return $definition['const'];
+			return [ $definition['const'] ];
 		}
 		$enum = $definition['enum'] ?? null;
-		if ( is_array( $enum ) && count( $enum ) === 1 ) {
-			return $enum[0] ?? null;
+		if ( is_array( $enum ) && $enum !== [] ) {
+			return array_values( $enum );
 		}
 		return null;
 	}
