@@ -5,6 +5,7 @@ namespace MediaWiki\Extension\MwJson\Mw;
 use HTMLCacheUpdateJob;
 use JobQueueGroup;
 use MediaWiki\Config\Config;
+use MediaWiki\Page\WikiPageFactory;
 use MediaWiki\Title\Title;
 use WANObjectCache;
 
@@ -27,15 +28,18 @@ class ApprovedRevsHooks {
 	private Config $config;
 	private WANObjectCache $cache;
 	private JobQueueGroup $jobQueueGroup;
+	private WikiPageFactory $wikiPageFactory;
 
 	public function __construct(
 		Config $config,
 		WANObjectCache $cache,
-		JobQueueGroup $jobQueueGroup
+		JobQueueGroup $jobQueueGroup,
+		WikiPageFactory $wikiPageFactory
 	) {
 		$this->config = $config;
 		$this->cache = $cache;
 		$this->jobQueueGroup = $jobQueueGroup;
+		$this->wikiPageFactory = $wikiPageFactory;
 	}
 
 	/**
@@ -74,10 +78,21 @@ class ApprovedRevsHooks {
 			return;
 		}
 
-		// The pages built from this one are known only where the wiki has opted
-		// into registering slot reads as parser dependencies, since that is what
-		// puts them in templatelinks. Without it there is no backlink set to
-		// walk and the job would purge nothing.
+		// The page itself first, and by purging rather than by queueing a
+		// links update. SemanticMediaWiki skips an update whose revision it has
+		// already stored, and an approval moves no revision, so a refresh is
+		// discarded as redundant; only the purge path sets the forced-update
+		// flag that gets past that check.
+		//
+		// ApprovedRevs purges from its approve action but not from its API
+		// module, so an approval made through action=approve leaves the stored
+		// data describing whichever revision was approved before.
+		$this->wikiPageFactory->newFromTitle( $title )->doPurge();
+
+		// Then the pages built from this one, which are known only where the
+		// wiki has opted into registering slot reads as parser dependencies,
+		// since that is what puts them in templatelinks. Without it there is no
+		// backlink set to walk and the job would purge nothing.
 		if ( !$this->config->get( 'MwJsonRegisterSlotDependencies' ) ) {
 			return;
 		}

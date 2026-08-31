@@ -378,7 +378,8 @@
 			"services": [
 				"MainConfig",
 				"MainWANObjectCache",
-				"JobQueueGroup"
+				"JobQueueGroup",
+				"WikiPageFactory"
 			]
 		}
 	},
