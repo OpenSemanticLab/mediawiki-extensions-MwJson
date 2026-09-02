@@ -60,12 +60,20 @@ class ResolvedSchemaCacheTest extends MediaWikiIntegrationTestCase {
 	/**
 	 * @param string[] $visited
 	 * @param array<string,int> $reads title => revision the resolution "read"
+	 * @param array<string,int> $latest title => revision current at the time,
+	 *   defaulting to the one that was read, which is the ordinary case.
 	 */
-	private function computer( array $visited, array $reads, SlotDependencies $deps, int &$calls ): callable {
-		return static function () use ( $visited, $reads, $deps, &$calls ) {
+	private function computer(
+		array $visited,
+		array $reads,
+		SlotDependencies $deps,
+		int &$calls,
+		array $latest = []
+	): callable {
+		return static function () use ( $visited, $reads, $deps, &$calls, $latest ) {
 			$calls++;
 			foreach ( $reads as $title => $revision ) {
-				$deps->record( $title, $revision );
+				$deps->record( $title, $revision, $latest[$title] ?? $revision );
 			}
 			return new SchemaWalkResult( [ 'title' => 'merged' ], [], [], $visited );
 		};
@@ -167,15 +175,55 @@ class ResolvedSchemaCacheTest extends MediaWikiIntegrationTestCase {
 		$this->assertSame( [ 'Category:B' => 1 ], $deps->getAll() );
 	}
 
+	public function testAPageReadBehindItsLatestRevisionStaysFresh(): void {
+		$cache = $this->newCache();
+		$deps = new SlotDependencies();
+		$calls = 0;
+
+		// An approved page: the resolution read revision 7 while 10 was current.
+		// Comparing the read revision against the current one would find them
+		// different and recompute on every single request.
+		$this->revisions = [ 'Category:Entity' => 10 ];
+		$compute = $this->computer(
+			[ 'Category:Entity' ], [ 'Category:Entity' => 7 ], $deps, $calls,
+			[ 'Category:Entity' => 10 ]
+		);
+
+		$cache->get( 'Item:X|header', $deps, $compute );
+		$cache->clearProcessCache();
+		$cache->get( 'Item:X|header', $deps, $compute );
+
+		$this->assertSame( 1, $calls );
+	}
+
+	public function testApprovingARevisionInvalidates(): void {
+		$cache = $this->newCache();
+		$deps = new SlotDependencies();
+		$calls = 0;
+		$this->revisions = [ 'Category:Entity' => 10 ];
+		$compute = $this->computer( [ 'Category:Entity' ], [ 'Category:Entity' => 10 ], $deps, $calls );
+
+		$cache->get( 'Item:X|header', $deps, $compute );
+		$cache->clearProcessCache();
+
+		// Approving an older revision leaves page_latest where it was, so no
+		// comparison of revision ids can see it. The check key is what does.
+		$this->wan->touchCheckKey( $cache->approvalKey() );
+		$cache->get( 'Item:X|header', $deps, $compute );
+
+		$this->assertSame( 2, $calls );
+	}
+
 	public function testSlotDependenciesSortsAndResets(): void {
 		$deps = new SlotDependencies();
 		$this->assertTrue( $deps->isEmpty() );
 
-		$deps->record( 'Category:Z', 2 );
-		$deps->record( 'Category:A', 1 );
+		$deps->record( 'Category:Z', 2, 2 );
+		$deps->record( 'Category:A', 1, 3 );
 
 		// Sorted so the stored set is stable regardless of walk order.
 		$this->assertSame( [ 'Category:A' => 1, 'Category:Z' => 2 ], $deps->getAll() );
+		$this->assertSame( [ 'Category:A' => 3, 'Category:Z' => 2 ], $deps->getLatest() );
 
 		$deps->reset();
 		$this->assertTrue( $deps->isEmpty() );

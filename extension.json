@@ -261,6 +261,8 @@
 		"ScribuntoExternalLibraries": "MediaWiki\\Extension\\MwJson\\Hooks::onScribuntoExternalLibraries",
 		"ParserFirstCallInit": "MediaWiki\\Extension\\MwJson\\ParserFunctions\\MwJsonParserFunction::onParserFirstCallInit",
 		"MultiContentSave": "CategoryEditRight",
+		"ApprovedRevsRevisionApproved": "ApprovedRevs",
+		"ApprovedRevsRevisionUnapproved": "ApprovedRevs",
 		"MakeGlobalVariablesScript": [
 			"CategoryEditRight",
 			"MwJson::onMakeGlobalVariablesScript"
@@ -369,6 +371,15 @@
 				"MainConfig",
 				"RevisionLookup",
 				"PermissionManager"
+			]
+		},
+		"ApprovedRevs": {
+			"class": "MediaWiki\\Extension\\MwJson\\Mw\\ApprovedRevsHooks",
+			"services": [
+				"MainConfig",
+				"MainWANObjectCache",
+				"JobQueueGroup",
+				"WikiPageFactory"
 			]
 		}
 	},

@@ -64,7 +64,7 @@ class CountLinkQueries extends Maintenance {
 	public function execute() {
 		$services = MediaWikiServices::getInstance();
 		$factory = new PipelineFactory();
-		$loader = $factory->newSlotJsonLoader();
+		$loader = $factory->newStoredSlotJsonLoader();
 		$this->merge = new LegacyLuaMergeStrategy();
 		$this->walker = new \MediaWiki\Extension\MwJson\OOLD\SchemaWalker(
 			$loader,

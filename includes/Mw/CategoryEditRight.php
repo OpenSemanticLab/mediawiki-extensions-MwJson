@@ -37,7 +37,7 @@ class CategoryEditRight {
 		$services = MediaWikiServices::getInstance();
 		$guard = new GuardedCategories(
 			(array)$services->getMainConfig()->get( 'MwJsonCategoryEditRights' ),
-			( new PipelineFactory() )->newSlotJsonLoader()
+			( new PipelineFactory() )->newStoredSlotJsonLoader()
 		);
 
 		if ( $guard->isEmpty() ) {

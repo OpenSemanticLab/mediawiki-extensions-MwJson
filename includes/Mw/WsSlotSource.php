@@ -3,18 +3,21 @@
 namespace MediaWiki\Extension\MwJson\Mw;
 
 use MediaWiki\Extension\MwJson\OOLD\SlotTextLoader;
-use MediaWiki\Page\WikiPageFactory;
 use MediaWiki\Title\TitleFactory;
 use TextContent;
-use WSSlots\WSSlots;
 
 /**
- * Reads page slots through WSSlots.
+ * Reads page slots.
  *
  * Replaces mw.slots.slotContent() and, for the main slot, Title:getContent().
  *
- * This class is *the* seam for the slot-patch feature: PatchingSlotSource will
- * decorate a SlotTextLoader, so nothing upstream of here (SlotJsonLoader, the
+ * Which revision each read lands on is RevisionResolver's decision, not this
+ * class's: reading the page's current revision regardless of what is being
+ * rendered is exactly the bug that made a page under ApprovedRevs show approved
+ * wikitext over unapproved data.
+ *
+ * This class is *the* seam for the slot-patch feature: PatchingSlotSource
+ * decorates a SlotTextLoader, so nothing upstream of here (SlotJsonLoader, the
  * $ref expander, the schema walker) needs to know patches exist.
  *
  * @see \MediaWiki\Extension\MwJson\OOLD\SlotTextLoader
@@ -22,16 +25,16 @@ use WSSlots\WSSlots;
 class WsSlotSource implements SlotTextLoader {
 
 	private TitleFactory $titleFactory;
-	private WikiPageFactory $wikiPageFactory;
+	private RevisionResolver $revisions;
 	private ?SlotDependencies $dependencies;
 
 	public function __construct(
 		TitleFactory $titleFactory,
-		WikiPageFactory $wikiPageFactory,
+		RevisionResolver $revisions,
 		?SlotDependencies $dependencies = null
 	) {
 		$this->titleFactory = $titleFactory;
-		$this->wikiPageFactory = $wikiPageFactory;
+		$this->revisions = $revisions;
 		$this->dependencies = $dependencies;
 	}
 
@@ -49,15 +52,26 @@ class WsSlotSource implements SlotTextLoader {
 			return null;
 		}
 
-		// Record before the existence check, so that creating a page which the
-		// resolution looked for and did not find invalidates the cache entry.
-		$this->dependencies?->record( $pageTitle, $title->getLatestRevID() );
+		$revision = $this->revisions->forTitle( $title );
 
-		if ( !$title->exists() ) {
+		// Recorded before the existence check, so that creating a page which the
+		// resolution looked for and did not find invalidates the cache entry.
+		//
+		// Both ids, because they answer different questions. The one that was
+		// read is what the page's output was built from; the one that was
+		// current is what a later request can compare against cheaply, since an
+		// approval moves the first without moving the second.
+		$this->dependencies?->record(
+			$pageTitle,
+			(int)( $revision?->getId() ?? 0 ),
+			$title->getLatestRevID()
+		);
+
+		if ( $revision === null || !$revision->hasSlot( $slot ) ) {
 			return null;
 		}
 
-		$content = WSSlots::getSlotContent( $this->wikiPageFactory->newFromTitle( $title ), $slot );
+		$content = $revision->getContent( $slot );
 		if ( !$content instanceof TextContent ) {
 			return null;
 		}

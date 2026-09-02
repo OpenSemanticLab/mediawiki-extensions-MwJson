@@ -25,6 +25,7 @@ use MediaWiki\Extension\MwJson\Template\EmbeddedTemplateExpander;
 use MediaWiki\Extension\MwJson\Template\LegacyTemplateBypass;
 use MediaWiki\Extension\MwJson\Template\MustacheRenderer;
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Revision\RevisionRecord;
 use MediaWiki\Title\Title;
 use Parser;
 use PPFrame;
@@ -52,14 +53,19 @@ class PipelineFactory {
 	 * @param Parser $parser The parser rendering the page.
 	 * @param PPFrame $frame Its current frame.
 	 */
-	public function newEntityProcessor( Parser $parser, PPFrame $frame ): EntityProcessor {
+	public function newEntityProcessor(
+		Parser $parser,
+		PPFrame $frame,
+		?RevisionResolver $revisions = null
+	): EntityProcessor {
 		$wikitext = new ParserPreprocessor( $parser, $frame );
+		$revisions ??= $this->newRevisionResolver( $parser );
 
 		// The collector has to sit under the slot source, so that every read the
 		// walk performs is recorded and can be revalidated on a later request.
 		$dependencies = new SlotDependencies();
-		$registry = $this->newPatchRegistry( $dependencies );
-		$slots = $this->newSlotSource( $dependencies, $registry );
+		$registry = $this->newPatchRegistry( $dependencies, null, $revisions );
+		$slots = $this->newSlotSource( $revisions, $dependencies, $registry );
 		$loader = $this->wrapWithPatches(
 			new SlotJsonLoader( $slots, $this->merge ),
 			$registry
@@ -73,7 +79,9 @@ class PipelineFactory {
 		$title = $parser->getTitle();
 
 		return new EntityProcessor(
-			$this->newSchemaResolver( $loader, $slots, $dependencies, $title, $parser, $registry ),
+			$this->newSchemaResolver(
+				$loader, $slots, $dependencies, $title, $parser, $registry, $revisions
+			),
 			new JsonRefExpander( $loader, $this->merge ),
 			new EmbeddedTemplateExpander(
 				$this->newMustacheRenderer(),
@@ -122,13 +130,14 @@ class PipelineFactory {
 		?string $template = null
 	): string {
 		$subject = $title->getPrefixedText();
-		$jsondata ??= $this->newSlotJsonLoader()->load( $subject, Slots::JSONDATA );
+		$revisions = $this->newRevisionResolver( $parser );
+		$jsondata ??= $this->newResolvingSlotJsonLoader( $revisions )->load( $subject, Slots::JSONDATA );
 
 		// A Category page is rendered as an instance of the metaclass, since a
 		// class is itself an entity. Matches Module:Entity's dispatch.
 		$categories = $title->getNamespace() === NS_CATEGORY ? [ 'Category:Category' ] : null;
 
-		$result = $this->newEntityProcessor( $parser, $frame )->process(
+		$result = $this->newEntityProcessor( $parser, $frame, $revisions )->process(
 			$jsondata,
 			$subject,
 			$title->getNsText(),
@@ -156,10 +165,20 @@ class PipelineFactory {
 	}
 
 	/**
-	 * A loader on its own, for callers that only need to read jsondata.
+	 * A loader that reads what is stored: the current revision, unpatched.
+	 *
+	 * What the permission gate has to ask about. A right is required because of
+	 * what a page's class chain says now, and reading an approved revision
+	 * instead would let a category whose current revision adds a guarded
+	 * ancestor be instantiated by someone the guard exists to stop. Same for
+	 * patches: which class a patch page belongs to is a security question, even
+	 * though the operations it carries are a rendering one.
 	 */
-	public function newSlotJsonLoader(): SlotJsonLoader {
-		return new SlotJsonLoader( $this->newSlotSource(), $this->merge );
+	public function newStoredSlotJsonLoader(): SlotJsonLoader {
+		return new SlotJsonLoader(
+			$this->newSlotSource( $this->newStoredRevisionResolver() ),
+			$this->merge
+		);
 	}
 
 	/**
@@ -168,11 +187,19 @@ class PipelineFactory {
 	 */
 	public function newPatchedJsonLoader( ?array $patchsets = null ): JsonLoader {
 		$dependencies = new SlotDependencies();
-		$registry = $this->newPatchRegistry( $dependencies, $patchsets );
+		$revisions = $this->newRevisionResolver();
+		$registry = $this->newPatchRegistry( $dependencies, $patchsets, $revisions );
 		return $this->wrapWithPatches(
-			new SlotJsonLoader( $this->newSlotSource( $dependencies, $registry ), $this->merge ),
+			new SlotJsonLoader(
+				$this->newSlotSource( $revisions, $dependencies, $registry ),
+				$this->merge
+			),
 			$registry
 		);
+	}
+
+	private function newResolvingSlotJsonLoader( RevisionResolver $revisions ): SlotJsonLoader {
+		return new SlotJsonLoader( $this->newSlotSource( $revisions ), $this->merge );
 	}
 
 	public function newSmwWriter( Parser $parser ): SmwWriter {
@@ -260,17 +287,55 @@ class PipelineFactory {
 	}
 
 	private function newSlotSource(
+		RevisionResolver $revisions,
 		?SlotDependencies $dependencies = null,
 		?PatchRegistry $registry = null
 	): SlotTextLoader {
-		$services = MediaWikiServices::getInstance();
 		$source = new WsSlotSource(
-			$services->getTitleFactory(),
-			$services->getWikiPageFactory(),
+			MediaWikiServices::getInstance()->getTitleFactory(),
+			$revisions,
 			$dependencies
 		);
 
 		return $registry === null ? $source : new PatchingSlotSource( $source, $registry );
+	}
+
+	/**
+	 * The resolver a render reads through.
+	 *
+	 * The parser, where there is one, pins the page being parsed to the revision
+	 * being parsed. Everything else it reads goes to SemanticMediaWiki's
+	 * RevisionGuard, which is the same answer SMW uses when deciding what to
+	 * store, so a page cannot be rendered from one revision and stored from
+	 * another. Without SMW, or without anything answering its hooks, the guard
+	 * returns the current revision and nothing changes.
+	 */
+	private function newRevisionResolver( ?Parser $parser = null ): RevisionResolver {
+		$services = MediaWikiServices::getInstance();
+
+		$guard = null;
+		if ( class_exists( \SMW\Services\ServicesFactory::class ) ) {
+			$revisionGuard = \SMW\Services\ServicesFactory::getInstance()->singleton( 'RevisionGuard' );
+			$guard = static function ( Title $title, ?RevisionRecord $revision ) use ( $revisionGuard ) {
+				return $revisionGuard->getRevision( $title, $revision );
+			};
+		}
+
+		$parsedTitle = $parser?->getTitle();
+
+		return new RevisionResolver(
+			$services->getWikiPageFactory(),
+			$guard,
+			$parser?->getRevisionRecordObject(),
+			$parsedTitle?->getPrefixedText()
+		);
+	}
+
+	/**
+	 * A resolver that leaves every page at its current revision.
+	 */
+	private function newStoredRevisionResolver(): RevisionResolver {
+		return new RevisionResolver( MediaWikiServices::getInstance()->getWikiPageFactory() );
 	}
 
 	/**
@@ -283,7 +348,8 @@ class PipelineFactory {
 	 */
 	private function newPatchRegistry(
 		SlotDependencies $dependencies,
-		?array $patchsets = null
+		?array $patchsets = null,
+		?RevisionResolver $revisions = null
 	): ?PatchRegistry {
 		$config = MediaWikiServices::getInstance()->getMainConfig();
 		if ( !$config->get( 'MwJsonEnablePatches' ) ) {
@@ -294,19 +360,23 @@ class PipelineFactory {
 		}
 
 		$services = MediaWikiServices::getInstance();
-		$plain = new WsSlotSource(
-			$services->getTitleFactory(),
-			$services->getWikiPageFactory(),
-			$dependencies
-		);
+		$revisions ??= $this->newRevisionResolver();
 
+		$plain = new WsSlotSource( $services->getTitleFactory(), $revisions, $dependencies );
 		$loader = new SlotJsonLoader( $plain, $this->merge );
 
 		return new PatchRegistry(
 			\SMW\StoreFactory::getStore(),
 			$loader,
 			$patchsets ?? (array)$config->get( 'MwJsonDefaultPatchsets' ),
-			new GuardedCategories( (array)$config->get( 'MwJsonCategoryEditRights' ), $loader ),
+			// The guard reads what is stored, not what the reader sees. Whether a
+			// patch page is in a class that requires a right is the same question
+			// the edit gate answers, and the two have to give the same answer or
+			// the looser one decides.
+			new GuardedCategories(
+				(array)$config->get( 'MwJsonCategoryEditRights' ),
+				$this->newStoredSlotJsonLoader()
+			),
 			$services->getTitleFactory(),
 			(string)$config->get( 'MwJsonPatchCategory' )
 		);
@@ -345,7 +415,8 @@ class PipelineFactory {
 		SlotDependencies $dependencies,
 		?Title $title,
 		?Parser $parser = null,
-		?PatchRegistry $registry = null
+		?PatchRegistry $registry = null,
+		?RevisionResolver $revisions = null
 	): SchemaResolver {
 		$walker = new SchemaWalker( $loader, $slots, $this->merge );
 
@@ -367,6 +438,15 @@ class PipelineFactory {
 		$subject = $title->getPrefixedText();
 		if ( $registry !== null ) {
 			$subject .= '|patches:' . $registry->fingerprint();
+		}
+
+		// Likewise when the page is being rendered at anything other than its
+		// current revision: the resolution read that revision's slots, so it
+		// cannot be stored where the current revision will find it. Zero for
+		// every ordinary view, which leaves those keys exactly as they were.
+		$pinned = $revisions !== null ? $revisions->pinnedRevisionFor( $title ) : 0;
+		if ( $pinned !== 0 ) {
+			$subject .= '|rev:' . $pinned;
 		}
 
 		return new CachingSchemaWalker(

@@ -23,6 +23,9 @@ use WANObjectCache;
  * *stores* the dependency set alongside the result; on read, the recorded
  * revisions are compared against current ones and a mismatch recomputes.
  *
+ * That comparison sees edits and nothing else, so approvals are caught by a
+ * check key instead. See approvalKey().
+ *
  * Verifying N revisions costs one batched title lookup, against N slot reads
  * plus a full merge to recompute, so the check is worth making. It also means
  * an edit to a base Category invalidates every descendant automatically,
@@ -37,9 +40,12 @@ class ResolvedSchemaCache {
 	 * Bump when the stored shape or the resolution semantics change, so old
 	 * entries are ignored rather than deserialised into the wrong shape.
 	 */
-	private const VERSION = 1;
+	private const VERSION = 2;
 
 	private const TTL = WANObjectCache::TTL_DAY;
+
+	/** @see approvalKey() */
+	public const APPROVAL_CHECK_KEY = 'mwjson-approval';
 
 	private WANObjectCache $cache;
 	private TitleFactory $titleFactory;
@@ -90,8 +96,9 @@ class ResolvedSchemaCache {
 			return $memo['result'];
 		}
 
-		$entry = $this->cache->get( $key );
-		if ( is_array( $entry ) && $this->isFresh( $entry ) ) {
+		$curTTL = null;
+		$entry = $this->cache->get( $key, $curTTL, [ $this->approvalKey() ] );
+		if ( is_array( $entry ) && $curTTL > 0 && $this->isFresh( $entry ) ) {
 			$result = $this->unserialize( $entry['result'] );
 			$recorded = $entry['dependencies'];
 			if ( $registrar !== null ) {
@@ -114,6 +121,7 @@ class ResolvedSchemaCache {
 		if ( $recorded !== [] ) {
 			$this->cache->set( $key, [
 				'dependencies' => $recorded,
+				'latest' => $dependencies->getLatest(),
 				'result' => $this->serialize( $result ),
 			], self::TTL );
 		}
@@ -133,12 +141,34 @@ class ResolvedSchemaCache {
 	}
 
 	/**
-	 * Every recorded page must still be at the revision it was read at.
+	 * The key every entry is checked against, touched when a revision is
+	 * approved.
+	 *
+	 * Approving does not move `page_latest`, so no comparison of revision ids
+	 * can see it and the check below would hold an entry built from the
+	 * previously approved revision until it expired. One check key for the whole
+	 * extension rather than one per page: the set of pages an entry depends on
+	 * is not known until it has been read, and approvals are rare enough that
+	 * recomputing every resolved chain is the cheaper trade.
+	 */
+	public function approvalKey(): string {
+		return $this->cache->makeGlobalKey( self::APPROVAL_CHECK_KEY );
+	}
+
+	/**
+	 * Every recorded page must still be at the revision that was current when it
+	 * was read.
+	 *
+	 * Deliberately not the revision that was *read*: a page served at an older
+	 * approved revision would then never match, and its entry would recompute on
+	 * every request. What the two together establish is that nothing was edited,
+	 * and the check key above establishes that nothing was approved, so the read
+	 * revisions cannot have moved either.
 	 *
 	 * @param array $entry
 	 */
 	private function isFresh( array $entry ): bool {
-		$recorded = $entry['dependencies'] ?? null;
+		$recorded = $entry['latest'] ?? null;
 		if ( !is_array( $recorded ) || $recorded === [] || !isset( $entry['result'] ) ) {
 			return false;
 		}

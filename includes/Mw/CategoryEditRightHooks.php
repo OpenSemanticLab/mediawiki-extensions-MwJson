@@ -250,7 +250,7 @@ class CategoryEditRightHooks implements
 			return [];
 		}
 
-		return ( new PipelineFactory() )->newSlotJsonLoader()
+		return ( new PipelineFactory() )->newStoredSlotJsonLoader()
 			->load( $title->getPrefixedText(), Slots::JSONDATA );
 	}
 
@@ -268,7 +268,7 @@ class CategoryEditRightHooks implements
 	private function newGuard(): GuardedCategories {
 		return new GuardedCategories(
 			(array)$this->config->get( 'MwJsonCategoryEditRights' ),
-			( new PipelineFactory() )->newSlotJsonLoader()
+			( new PipelineFactory() )->newStoredSlotJsonLoader()
 		);
 	}
 }
