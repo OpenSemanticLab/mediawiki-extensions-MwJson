@@ -146,6 +146,47 @@ See also [T324933](https://phabricator.wikimedia.org/T324933)
 
 ![grafik](https://user-images.githubusercontent.com/52674635/218385870-34be7312-00bb-4da0-ab3d-a811c01f5181.png)
 
+## Approved revisions
+
+Where [ApprovedRevs](https://www.mediawiki.org/wiki/Extension:Approved_Revs) is
+installed, a slot read follows the revision that is actually being served rather
+than the page's current one. Without this a reader sees approved wikitext over
+unapproved data, and SemanticMediaWiki is handed values from a revision it did
+not store.
+
+Two rules decide which revision a read lands on:
+
+1. **The revision being parsed**, for the page being parsed. ApprovedRevs swaps
+   the whole revision at both ends, an `Article` pinned to the approved id for a
+   view and a render of the approved revision for the link updates, so the parse
+   already is of the approved revision. This also fixes `?oldid=` views, which
+   otherwise show current-revision data.
+2. **SemanticMediaWiki's `RevisionGuard`**, for every other page: the category
+   chain, `$ref` targets and patch pages. Those have no parse to draw on, so
+   something has to answer for the title alone, and asking the same guard SMW
+   asks means the two cannot disagree about which revision was stored.
+
+Rule 2 needs
+[SemanticApprovedRevs](https://github.com/SemanticMediaWiki/SemanticApprovedRevs)
+installed to answer those hooks. Without it the guard returns the current
+revision and nothing changes, so the feature is inert rather than optional: no
+configuration is added, and a wiki with no approval mechanism behaves exactly as
+before.
+
+Two things deliberately do not follow the approved revision:
+
+- **The permission gate.** `$wgMwJsonCategoryEditRights` is decided against
+  stored content. A category whose current revision adds a guarded ancestor must
+  guard it immediately, not once someone approves that revision.
+- **`Special:SlotResolver` without `patchset`.** That serves stored content, for
+  package export and for the editor reading source to edit.
+
+Approving invalidates two caches that cannot see it otherwise. An approval moves
+no revision, so `ResolvedSchemaCache`, which revalidates by comparing revision
+ids, is invalidated through a check key instead; and the approved page is purged,
+because SemanticMediaWiki skips an update whose revision it has already stored
+and only the purge path gets past that.
+
 ## Configuration
 
 Generated from `extension.json`; every setting the extension defines, with its default.
