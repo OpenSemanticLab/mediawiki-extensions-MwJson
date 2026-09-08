@@ -9,7 +9,7 @@
         "semantic mediawiki"
     ],
     "homepage": "https://github.com/OpenSemanticLab/mediawiki-extensions-MwJson",
-    "license": "AGPL-3.0-or-later",
+    "license": "Apache-2.0",
     "require": {
         "php": ">=8.1",
         "ext-json": "*",

@@ -10,7 +10,7 @@
 	"url": "https://github.com/simontaurus/mediawiki-extensions-MwJson",
 	"descriptionmsg": "mw-json-desc",
 	"namemsg": "mw-json-name",
-	"license-name": "AGPL-3.0-or-later",
+	"license-name": "Apache-2.0",
 	"type": "editor",
 	"requires": {
 		"MediaWiki": ">= 1.43",
