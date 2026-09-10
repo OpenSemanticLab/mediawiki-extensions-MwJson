@@ -111,19 +111,20 @@ The extension is built with a modular architecture:
    - VEForAll
 
 2. **Installation**
+
+   Clone the extension into the wiki's `extensions` directory:
    ```bash
-   cd extensions
-   git clone https://github.com/OpenSemanticLab/mediawiki-extensions-MwJson.git MwJson
-   cd MwJson
+   git clone https://github.com/OpenSemanticLab/mediawiki-extensions-MwJson.git extensions/MwJson
    ```
 
-   In the `LocalSettings.php` file, add the config
-   ```
+   Load it from `LocalSettings.php`, and enable the slot render transformation
+   so that what a slot renders is placed in the page rather than appended to it:
+   ```php
+   wfLoadExtension( 'MwJson' );
    $wgMwJsonSlotRenderResultTransformation = [
-      "enabled" => true,
+       "enabled" => true,
    ];
    ```
-   By enabling the MwJson option, this ensures slot render results are displayed correctly
 
 3. **Building**
    - Install dependencies
