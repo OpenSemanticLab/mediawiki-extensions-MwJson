@@ -47,7 +47,11 @@ class SpecialSlotResolver extends SpecialPage {
 
 		$target = $this->parseTarget( (string)$par );
 		if ( $target === null ) {
-			$this->showError( 'No slot addressed. Expected <namespace>/<page>.slot_<slot>.<extension>' );
+			$this->showError(
+				'No slot addressed. Expected <namespace>/<page>.slot_<slot>.<extension>',
+				400,
+				$this->extensionOf( (string)$par )
+			);
 			return;
 		}
 		[ $title, $slot, $extension ] = $target;
@@ -70,7 +74,10 @@ class SpecialSlotResolver extends SpecialPage {
 			// Undistinguished from the permission case above only in wording:
 			// by this point the reader is known to be allowed to see the page,
 			// so saying the slot is empty reveals nothing.
-			$this->showError( 'No content in slot "' . $slot . '".' );
+			//
+			// A missing page and an empty slot are the same answer to a caller
+			// fetching a package file: there is nothing at this address.
+			$this->showError( 'No content in slot "' . $slot . '".', 404, $extension );
 			return;
 		}
 
@@ -180,12 +187,36 @@ class SpecialSlotResolver extends SpecialPage {
 		echo $content;
 	}
 
-	private function showError( string $message ): void {
-		$out = $this->getOutput();
-		$out->setPageTitle( $this->msg( 'slotresolver' )->isDisabled()
-			? 'Slot Resolver'
-			: $this->msg( 'slotresolver' )->text() );
-		$out->addWikiTextAsInterface( $message );
+	/**
+	 * The extension a caller asked for, for paths too malformed to parse.
+	 *
+	 * Only a listed type counts, so the failure is reported in a shape the
+	 * caller can read without the path being able to choose the content type.
+	 */
+	private function extensionOf( string $par ): string {
+		$extension = strtolower( (string)substr( strrchr( $par, '.' ) ?: '', 1 ) );
+
+		return isset( self::CONTENT_TYPES[$extension] ) ? $extension : 'txt';
+	}
+
+	/**
+	 * Report a failure in the shape the caller asked for.
+	 *
+	 * This address is fetched by build tools rather than read in a browser, so
+	 * a rendered wiki page carrying HTTP 200 is the one answer that cannot be
+	 * acted on: the status says success and the body does not parse. The status
+	 * carries the outcome and the body matches the requested type.
+	 */
+	private function showError( string $message, int $status, string $extension ): void {
+		$response = $this->getRequest()->response();
+		$response->statusHeader( $status );
+		$response->header( 'Content-Type: ' . ( self::CONTENT_TYPES[$extension] ?? self::DEFAULT_CONTENT_TYPE ) );
+		$response->header( 'X-Content-Type-Options: nosniff' );
+
+		$this->getOutput()->disable();
+		echo $extension === 'json'
+			? json_encode( [ 'error' => $message ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
+			: $message;
 	}
 
 	/** @inheritDoc */

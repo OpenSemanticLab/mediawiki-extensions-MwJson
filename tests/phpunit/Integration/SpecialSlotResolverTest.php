@@ -131,8 +131,57 @@ class SpecialSlotResolverTest extends SpecialPageTestBase {
 	public function testMalformedTargetsDoNotCrash( string $target ): void {
 		[ $html, ] = $this->executeSpecialPage( $target, null, null, $this->getTestUser()->getUser() );
 
-		$this->assertStringNotContainsString( self::CONTENT, $html );
-		$this->assertNotSame( '', $html, 'Something should be reported rather than nothing.' );
+		$reported = $html . $this->getActualOutputForAssertion();
+		$this->assertStringNotContainsString( self::CONTENT, $reported );
+		$this->assertNotSame( '', $reported, 'Something should be reported rather than nothing.' );
+	}
+
+	/**
+	 * Callers are build tools, so a failure has to be readable as one. Serving a
+	 * rendered wiki page under HTTP 200 told them the fetch had succeeded and
+	 * handed them a body that does not parse.
+	 *
+	 * @dataProvider provideFailures
+	 */
+	public function testFailuresCarryAStatusAndTheRequestedType(
+		string $target, int $status, string $contentType
+	): void {
+		[ , $response ] = $this->executeSpecialPage(
+			$target, null, null, $this->getTestUser()->getUser()
+		);
+
+		$this->assertSame( $status, $response->getStatusCode() );
+		$this->assertSame( $contentType, $response->getHeader( 'Content-Type' ) );
+		$this->assertSame( 'nosniff', $response->getHeader( 'X-Content-Type-Options' ) );
+	}
+
+	public static function provideFailures(): array {
+		return [
+			'missing page, json' => [
+				'Category/NoSuchPageAnywhere.slot_jsonschema.json', 404, 'application/json; charset=UTF-8',
+			],
+			'missing page, text' => [
+				'Category/NoSuchPageAnywhere.slot_main.txt', 404, 'text/plain; charset=UTF-8',
+			],
+			'unaddressable, json' => [
+				'garbage.thing.json', 400, 'application/json; charset=UTF-8',
+			],
+			'unaddressable, no usable extension' => [
+				'nonsense', 400, 'text/plain; charset=UTF-8',
+			],
+		];
+	}
+
+	public function testJsonFailuresAreParseable(): void {
+		[ $html, ] = $this->executeSpecialPage(
+			'Category/NoSuchPageAnywhere.slot_jsonschema.json', null, null, $this->getTestUser()->getUser()
+		);
+
+		// As with the success path, the body arrives as captured output because
+		// the page disables OutputPage and echoes.
+		$decoded = json_decode( $html . $this->getActualOutputForAssertion(), true );
+		$this->assertIsArray( $decoded );
+		$this->assertArrayHasKey( 'error', $decoded );
 	}
 
 	public static function provideMalformedTargets(): array {

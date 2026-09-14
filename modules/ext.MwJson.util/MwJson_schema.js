@@ -60,9 +60,19 @@ mwjson.schema = class {
         server=server.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // escape for use in regex, e. g. '.' => '\.'
         let regex = new RegExp("^(?<domain>.*" + server + ")?(?<base>[^:]*)\/(.*title=)?(?<title>[^?&.]*?)(?<params>[?&].*)?$");
         this.title_regex = regex;
+        // Special:SlotResolver addresses a slot as <namespace>/<page>.slot_<slot>.<ext>,
+        // which the title regex above cannot match: it allows neither the colon in
+        // "Special:SlotResolver" nor the dots in the file part. Left to itself
+        // $RefParser falls back to its own http resolver, which turns a slot that
+        // is simply absent into a rejected bundle and an editor that will not open.
+        // Both url shapes reach here: the pretty /wiki/Special:SlotResolver/... and
+        // the index.php?title=Special:SlotResolver/... one, so the name is preceded
+        // by a slash or by the '=' of the title parameter.
+        const slot_resolver_regex = /(^|[/=])Special(:|%3A)SlotResolver\//i;
+        this.slot_resolver_regex = slot_resolver_regex;
         this.resolver = {
             order: 1,
-            canRead: regex,
+            canRead: (file) => regex.test(file.url) || slot_resolver_regex.test(file.url),
             // Return a Promise instead of using callbacks
             // $RefParser handles Promise-based resolvers natively and waits for resolution
             // before falling through to the next plugin. Callback-based resolvers with async
@@ -85,7 +95,16 @@ mwjson.schema = class {
                 }
                 let match = regex.exec(file.url);
                 let title = null;
-                if (match && match.groups && match.groups.title) {
+                // A Special:SlotResolver address is already complete, slot and patch
+                // sets included, so it is fetched as it stands by the plain branch at
+                // the end. Its title stays out of `title` on purpose: that variable
+                // selects the patchset and cache branches below, both of which would
+                // rebuild the url from scratch and so choose the wrong slot for a
+                // JsonSchema: page. It is kept only to name the page in a report.
+                const report_title = slot_resolver_regex.test(file.url)
+                    ? this.titleFromSlotResolverUrl(file.url)
+                    : null;
+                if (match && match.groups && match.groups.title && !report_title) {
                     url = match.groups.title;
                     if ("title" in query) {
                         delete query["title"];
@@ -106,7 +125,7 @@ mwjson.schema = class {
                 // Only record here; the collected refs are reported once after bundling, so
                 // a chain with many gaps does not produce one dialog per reference.
                 const unresolved = (kind) => {
-                    const name = title || url;
+                    const name = title || report_title || url;
                     const bucket = kind === 'missing-page' ? this.unresolved_refs.missing : this.unresolved_refs.empty;
                     if (!bucket.includes(name)) bucket.push(name);
                     return "{}";
@@ -203,6 +222,25 @@ mwjson.schema = class {
             "Special:SlotResolver/" + namespace + "/" + page + ".slot_" + slot + ".json",
             { patchset: patchsets.join("|") }
         );
+    }
+
+    /**
+     * The page a Special:SlotResolver address points at, or null.
+     *
+     * The inverse of slotResolverUrl above, used only to name an unresolved
+     * reference after the fetch has failed. Addresses of this shape are also
+     * built elsewhere, so the slot and extension are stripped rather than
+     * assumed to be the ones this class would have produced.
+     */
+    titleFromSlotResolverUrl(url) {
+        const match = /Special(?::|%3A)SlotResolver\/([^/?#]+)\/([^?#]+)/i.exec(url);
+        if (!match) return null;
+
+        const namespace = decodeURIComponent(match[1]);
+        const file = decodeURIComponent(match[2]);
+        const page = file.replace(/\.slot_[^.]*\.[^.]*$/, "");
+
+        return page ? namespace + ":" + page : null;
     }
 
     static selftest() {
