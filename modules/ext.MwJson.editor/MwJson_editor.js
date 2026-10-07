@@ -370,7 +370,7 @@ mwjson.editor = class {
 					if (!categories) categories = subeditor.schema?.options?.autocomplete?.category; //legacy
 					var super_categories = subeditor.schema?.subclassof_range; //indicates to create a new category of type range (MetaCategory) as subcategory of subclassof_range
 					// a query naming a single class wins over range, as it already does for the suggestion list
-					var queried_categories = mwjson.schema.getInlineCreateCategoriesFromQuery(subeditor.schema, subeditor.jsoneditor?.getValue());
+					var queried_categories = mwjson.schema.getInlineCreateCategoriesFromQuery(subeditor.schema, () => subeditor.jsoneditor?.getValue());
 					if (queried_categories) categories = queried_categories;
 
 					// create button to create an instance of the target category inline of not explicite disabled
@@ -406,7 +406,7 @@ mwjson.editor = class {
 							var super_categories = subeditor.schema?.subclassof_range;
 							if (super_categories && !Array.isArray(super_categories)) super_categories = [super_categories];
 							// derived again here rather than reused: the query may read values that changed since the button was built
-							var queried_categories = mwjson.schema.getInlineCreateCategoriesFromQuery(subeditor.schema, subeditor.jsoneditor?.getValue());
+							var queried_categories = mwjson.schema.getInlineCreateCategoriesFromQuery(subeditor.schema, () => subeditor.jsoneditor?.getValue());
 							if (queried_categories) categories = queried_categories;
 							// note: unhandled_input === true indicates there is some user input in the field but no element from the suggestion list was picked
 							// so subeditor.value would be the search string and no valid page name
@@ -1596,6 +1596,11 @@ mwjson.editor = class {
 					jsondata['_user_lang'] = jseditor_editor.jsoneditor.options.user_language; 
 					var template = Handlebars.compile(query);
 					query = template(jsondata);
+					// a template variable with no value renders as nothing and leaves [[Prop::]],
+					// which SMW reports as an unclosed "[[" and refuses to run at all. Read it as
+					// "any value", as an undefined $(key) is read above, so the remaining
+					// conditions still answer instead of the field going silent.
+					query = query.replaceAll(/::\s*\]\]/g, "::+]]");
 
 					// detect direct inserted UUID patterns
 					const uuid_regex = /([a-f0-9]{8})(_|-| |){1}([a-f0-9]{4})(_|-| |){1}([a-f0-9]{4})(_|-| |){1}([a-f0-9]{4})(_|-| |){1}([a-f0-9]{12})/gm;

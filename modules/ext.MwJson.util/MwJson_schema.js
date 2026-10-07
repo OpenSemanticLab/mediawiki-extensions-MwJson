@@ -1088,7 +1088,7 @@ mwjson.schema = class {
 
         var expanded;
         try {
-            expanded = Handlebars.compile(query)(jsondata || {});
+            expanded = Handlebars.compile(query)(typeof jsondata === "function" ? jsondata() : (jsondata || {}));
         } catch (e) {
             console.warn("Could not expand the autocomplete query to derive an inline create target: ", e);
             return null;
