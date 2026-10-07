@@ -1094,9 +1094,20 @@ mwjson.schema = class {
             return null;
         }
 
-        const matches = expanded.match(/Category:[^\]\[|:=<>\s]+/g);
-        if (!matches) return null;
-        const unique = [...new Set(matches)];
+        // category conditions only: [[Category:A]] and [[Category:A||Category:B]] select
+        // instances, while a category sitting in a value position such as
+        // [[SubClassOf::Category:A]] says what the results are about, not what to create
+        const conditions = expanded.match(/\[\[\s*Category:[^\]]*\]\]/g);
+        if (!conditions) return null;
+
+        var found = [];
+        for (const condition of conditions) {
+            const names = condition.match(/Category:[^\]|]+/g);
+            if (names) found = found.concat(names.map((name) => name.trim()));
+        }
+        if (!found.length) return null;
+
+        const unique = [...new Set(found)];
         if (unique.length !== 1) return null; // ambiguous, do not guess
 
         return unique;
