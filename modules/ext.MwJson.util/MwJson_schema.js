@@ -1061,6 +1061,47 @@ mwjson.schema = class {
         return { wikitext: res };
     }
 
+    /**
+     * Names the class an inline create should instantiate, taken from the query.
+     *
+     * Takes precedence over range and subclassof_range, because the query already
+     * replaces the fetch behind the suggestion list: a create button offering a
+     * different class than the list suggests would contradict it.
+     *
+     * range is a plain string, so a property whose target class depends on other
+     * values in the form can only express that through query, which is a template.
+     * Expanding it first is therefore the point: the class may be produced by the
+     * template rather than written in it. Only an unambiguous result is used, since
+     * creating an instance of the wrong class is worse than falling back to range.
+     *
+     * @param {Object} subschema
+     * @param {Object} jsondata values the template is expanded against
+     * @return {Array|null} the single category found, or null
+     */
+    static getInlineCreateCategoriesFromQuery(subschema, jsondata) {
+        if (subschema?.options?.autocomplete?.inline_create_target_from_query === false) return null;
+
+        var query = subschema?.options?.autocomplete?.query;
+        if (!query) query = subschema?.query; //legacy (deprecated)
+        if (!query || !mwjson.util.isString(query)) return null;
+        if (typeof Handlebars === "undefined") return null;
+
+        var expanded;
+        try {
+            expanded = Handlebars.compile(query)(jsondata || {});
+        } catch (e) {
+            console.warn("Could not expand the autocomplete query to derive an inline create target: ", e);
+            return null;
+        }
+
+        const matches = expanded.match(/Category:[^\]\[|:=<>\s]+/g);
+        if (!matches) return null;
+        const unique = [...new Set(matches)];
+        if (unique.length !== 1) return null; // ambiguous, do not guess
+
+        return unique;
+    }
+
     static getAutocompleteQuery(subschema) {
         if (subschema.query) { //legacy (deprecated)
             console.log("Warning: schema.query is deprecated. Use schema.options.autocomplete.query");

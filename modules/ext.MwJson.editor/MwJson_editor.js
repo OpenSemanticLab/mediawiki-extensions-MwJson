@@ -369,6 +369,9 @@ mwjson.editor = class {
 					var categories = subeditor.schema?.range;
 					if (!categories) categories = subeditor.schema?.options?.autocomplete?.category; //legacy
 					var super_categories = subeditor.schema?.subclassof_range; //indicates to create a new category of type range (MetaCategory) as subcategory of subclassof_range
+					// a query naming a single class wins over range, as it already does for the suggestion list
+					var queried_categories = mwjson.schema.getInlineCreateCategoriesFromQuery(subeditor.schema, subeditor.jsoneditor?.getValue());
+					if (queried_categories) categories = queried_categories;
 
 					// create button to create an instance of the target category inline of not explicite disabled
 					if (!(subeditor.schema?.options?.autocomplete?.create_inline === false) && (categories || super_categories) && !subeditor.inline_create_build && this.config.onCreateInline && this.config.onEditInline){
@@ -402,6 +405,9 @@ mwjson.editor = class {
 							if (categories && !Array.isArray(categories)) categories = [categories];
 							var super_categories = subeditor.schema?.subclassof_range;
 							if (super_categories && !Array.isArray(super_categories)) super_categories = [super_categories];
+							// derived again here rather than reused: the query may read values that changed since the button was built
+							var queried_categories = mwjson.schema.getInlineCreateCategoriesFromQuery(subeditor.schema, subeditor.jsoneditor?.getValue());
+							if (queried_categories) categories = queried_categories;
 							// note: unhandled_input === true indicates there is some user input in the field but no element from the suggestion list was picked
 							// so subeditor.value would be the search string and no valid page name
 							if (subeditor.input.value_id && !subeditor.unhandled_input) {
