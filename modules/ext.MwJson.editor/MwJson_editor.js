@@ -370,7 +370,7 @@ mwjson.editor = class {
 					if (!categories) categories = subeditor.schema?.options?.autocomplete?.category; //legacy
 					var super_categories = subeditor.schema?.subclassof_range; //indicates to create a new category of type range (MetaCategory) as subcategory of subclassof_range
 					// a query naming a single class wins over range, as it already does for the suggestion list
-					var queried_categories = mwjson.schema.getInlineCreateCategoriesFromQuery(subeditor.schema, () => subeditor.jsoneditor?.getValue());
+					var queried_categories = mwjson.schema.getInlineCreateCategoriesFromQuery(subeditor);
 					if (queried_categories) categories = queried_categories;
 
 					// create button to create an instance of the target category inline of not explicite disabled
@@ -406,7 +406,7 @@ mwjson.editor = class {
 							var super_categories = subeditor.schema?.subclassof_range;
 							if (super_categories && !Array.isArray(super_categories)) super_categories = [super_categories];
 							// derived again here rather than reused: the query may read values that changed since the button was built
-							var queried_categories = mwjson.schema.getInlineCreateCategoriesFromQuery(subeditor.schema, () => subeditor.jsoneditor?.getValue());
+							var queried_categories = mwjson.schema.getInlineCreateCategoriesFromQuery(subeditor);
 							if (queried_categories) categories = queried_categories;
 							// note: unhandled_input === true indicates there is some user input in the field but no element from the suggestion list was picked
 							// so subeditor.value would be the search string and no valid page name
@@ -1579,13 +1579,7 @@ mwjson.editor = class {
 					if (jseditor_editor.watched_values) console.log("Watched: " + jseditor_editor.watched_values);
 					var query = mwjson.schema.getAutocompleteQuery(jseditor_editor.schema, input);
 					
-					for (const key in jseditor_editor.watched_values) {
-						if (jseditor_editor.watched[key]) {
-							query = query.replaceAll('{{$(' + key + ')}}', '{{' + jseditor_editor.watched[key].replace("root.","") + '}}');
-						}
-						if (jseditor_editor.watched_values[key] === undefined) query = query.replace('$(' + key + ')', encodeURIComponent('+'));
-						query = query.replaceAll('$(' + key + ')', jseditor_editor.watched_values[key]);
-					}
+					query = mwjson.schema.resolveWatchedValues(query, jseditor_editor.watched, jseditor_editor.watched_values);
 
 					//create a copy here since we add addition properties
 					var jsondata = mwjson.util.deepCopy(jseditor_editor.jsoneditor.getValue());

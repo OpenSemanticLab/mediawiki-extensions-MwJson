@@ -1062,6 +1062,31 @@ mwjson.schema = class {
     }
 
     /**
+     * Substitutes the $(key) placeholders a query can carry with the values of the
+     * fields it watches. Shared so that what the suggestion list is filled from and
+     * what an inline create instantiates cannot drift apart.
+     *
+     * @param {string} query
+     * @param {Object} watched paths of the watched fields
+     * @param {Object} watched_values their current values
+     * @return {string}
+     */
+    static resolveWatchedValues(query, watched, watched_values) {
+        if (!query || !watched_values) return query;
+
+        for (const key in watched_values) {
+            if (watched && watched[key]) {
+                query = query.replaceAll('{{$(' + key + ')}}', '{{' + watched[key].replace("root.", "") + '}}');
+            }
+            // nothing picked yet: read as any value rather than leaving the placeholder
+            if (watched_values[key] === undefined) query = query.replace('$(' + key + ')', encodeURIComponent('+'));
+            query = query.replaceAll('$(' + key + ')', watched_values[key]);
+        }
+
+        return query;
+    }
+
+    /**
      * Names the class an inline create should instantiate, taken from the query.
      *
      * Takes precedence over range and subclassof_range, because the query already
@@ -1078,7 +1103,8 @@ mwjson.schema = class {
      * @param {Object} jsondata values the template is expanded against
      * @return {Array|null} the single category found, or null
      */
-    static getInlineCreateCategoriesFromQuery(subschema, jsondata) {
+    static getInlineCreateCategoriesFromQuery(subeditor) {
+        const subschema = subeditor?.schema;
         if (subschema?.options?.autocomplete?.inline_create_target_from_query === false) return null;
 
         var query = subschema?.options?.autocomplete?.query;
@@ -1088,7 +1114,12 @@ mwjson.schema = class {
 
         var expanded;
         try {
-            expanded = Handlebars.compile(query)(typeof jsondata === "function" ? jsondata() : (jsondata || {}));
+            // both substitutions the suggestion list applies, in the same order, so the
+            // class created is the class the list offers. A query may name its target
+            // through a watched field, as in [[$(asset_type_)]], which is literal text
+            // until the watched values are filled in.
+            query = mwjson.schema.resolveWatchedValues(query, subeditor?.watched, subeditor?.watched_values);
+            expanded = Handlebars.compile(query)(subeditor?.jsoneditor?.getValue() || {});
         } catch (e) {
             console.warn("Could not expand the autocomplete query to derive an inline create target: ", e);
             return null;
