@@ -1112,18 +1112,41 @@ mwjson.schema = class {
         if (!query || !mwjson.util.isString(query)) return null;
         if (typeof Handlebars === "undefined") return null;
 
+        // A watched field the user has not filled in yet is substituted with a
+        // placeholder meaning "any value". That placeholder is matchable text, so
+        // reading it as a class name would name one that cannot exist and would
+        // override a range that is still correct. The class is simply unknown until
+        // the watched field is answered.
+        const watched_values = subeditor?.watched_values;
+        if (watched_values) {
+            for (const key in watched_values) {
+                if (watched_values[key] === undefined && query.includes('$(' + key + ')')) return null;
+            }
+        }
+
         var expanded;
         try {
             // both substitutions the suggestion list applies, in the same order, so the
             // class created is the class the list offers. A query may name its target
             // through a watched field, as in [[$(asset_type_)]], which is literal text
             // until the watched values are filled in.
-            query = mwjson.schema.resolveWatchedValues(query, subeditor?.watched, subeditor?.watched_values);
-            expanded = Handlebars.compile(query)(subeditor?.jsoneditor?.getValue() || {});
+            query = mwjson.schema.resolveWatchedValues(query, subeditor?.watched, watched_values);
+            // compiling costs about twenty times as much as rendering, and the same
+            // query is rendered again on every change event
+            mwjson.schema._template_cache = mwjson.schema._template_cache || {};
+            if (!mwjson.schema._template_cache[query]) {
+                mwjson.schema._template_cache[query] = Handlebars.compile(query);
+            }
+            expanded = mwjson.schema._template_cache[query](subeditor?.jsoneditor?.getValue() || {});
         } catch (e) {
             console.warn("Could not expand the autocomplete query to derive an inline create target: ", e);
             return null;
         }
+
+        // A subquery describes what the results are about, not what to create, so its
+        // categories are not selections. Dropped before matching, since the condition
+        // pattern below has no notion of nesting.
+        expanded = expanded.replace(/<q>[\s\S]*?<\/q>/g, "");
 
         // category conditions only: [[Category:A]] and [[Category:A||Category:B]] select
         // instances, while a category sitting in a value position such as
@@ -1134,7 +1157,8 @@ mwjson.schema = class {
         var found = [];
         for (const condition of conditions) {
             const names = condition.match(/Category:[^\]|]+/g);
-            if (names) found = found.concat(names.map((name) => name.trim()));
+            // "Category:  A" is the same page as "Category:A"
+            if (names) found = found.concat(names.map((name) => name.replace(/^Category:\s*/, "Category:").trim()));
         }
         if (!found.length) return null;
 

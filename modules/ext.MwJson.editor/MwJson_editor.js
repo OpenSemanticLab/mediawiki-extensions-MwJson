@@ -369,9 +369,17 @@ mwjson.editor = class {
 					var categories = subeditor.schema?.range;
 					if (!categories) categories = subeditor.schema?.options?.autocomplete?.category; //legacy
 					var super_categories = subeditor.schema?.subclassof_range; //indicates to create a new category of type range (MetaCategory) as subcategory of subclassof_range
-					// a query naming a single class wins over range, as it already does for the suggestion list
-					var queried_categories = mwjson.schema.getInlineCreateCategoriesFromQuery(subeditor);
-					if (queried_categories) categories = queried_categories;
+					// a query naming a single class wins over range, as it already does for the suggestion list.
+					// Derived once per editor: this runs for every field on every change event, and
+					// deriving means serializing the whole form and compiling a template. The click
+					// handler derives again, where the values at click time are what matter.
+					var queried_categories = subeditor.inline_create_build ?
+						subeditor.inline_create_queried_categories :
+						mwjson.schema.getInlineCreateCategoriesFromQuery(subeditor);
+					if (queried_categories) {
+						subeditor.inline_create_queried_categories = queried_categories;
+						categories = queried_categories;
+					}
 
 					// create button to create an instance of the target category inline of not explicite disabled
 					if (!(subeditor.schema?.options?.autocomplete?.create_inline === false) && (categories || super_categories) && !subeditor.inline_create_build && this.config.onCreateInline && this.config.onEditInline){
@@ -1594,7 +1602,7 @@ mwjson.editor = class {
 					// which SMW reports as an unclosed "[[" and refuses to run at all. Read it as
 					// "any value", as an undefined $(key) is read above, so the remaining
 					// conditions still answer instead of the field going silent.
-					query = query.replaceAll(/::\s*\]\]/g, "::+]]");
+					query = query.replaceAll(/::\s*\]\]/g, "::%2B]]");
 
 					// detect direct inserted UUID patterns
 					const uuid_regex = /([a-f0-9]{8})(_|-| |){1}([a-f0-9]{4})(_|-| |){1}([a-f0-9]{4})(_|-| |){1}([a-f0-9]{4})(_|-| |){1}([a-f0-9]{12})/gm;
