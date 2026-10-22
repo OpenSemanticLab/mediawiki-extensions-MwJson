@@ -321,7 +321,7 @@ class SmwLinkLabelResolver implements LinkLabelResolver {
 		if (
 			$this->prefetch !== null
 			&& isset( $this->prefetched[$subject->getHash()] )
-			&& $this->prefetch->isCached( $diProperty )
+			&& $this->prefetch->isCached( $diProperty, $this->requestOptions )
 		) {
 			return $this->prefetch->getPropertyValues( $subject, $diProperty, $this->requestOptions );
 		}
