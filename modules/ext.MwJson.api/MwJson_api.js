@@ -614,11 +614,15 @@ mwjson.api = class {
 		}
 
 		//only html mode can retrieve inverse properties
-		//showInverse has to be sent: Semantic MediaWiki 7 types the parameter as
-		//bool, while its own getOption() answers null for an option that was
-		//never set, so leaving it out fails the whole request with a TypeError
+		//showAll is what fetches them. showInverse does not: it selects which
+		//side of the factbox the incoming section renders on, so true puts it
+		//under data-mw-smw-factbox-direction="start" next to the outgoing
+		//properties and the inverse selectors below match nothing
+		//showInverse has to be sent all the same: Semantic MediaWiki 7 types the
+		//parameter as bool, while its own getOption() answers null for an option
+		//that was never set, so leaving it out fails the request with a TypeError
 		if (mode === 'html') {
-			const query = mw.config.get("wgScriptPath") + `/api.php?action=smwbrowse&browse=subject&params={"subject":"${encodeURIComponent(subject)}","subobject":"${subObject}","options":{"showAll":"true","showInverse":true}, "ns":${namespace_id}, "type":"html"}&format=json`;
+			const query = mw.config.get("wgScriptPath") + `/api.php?action=smwbrowse&browse=subject&params={"subject":"${encodeURIComponent(subject)}","subobject":"${subObject}","options":{"showAll":"true","showInverse":false}, "ns":${namespace_id}, "type":"html"}&format=json`;
 			fetch(query)
 				.then(response => response.json())
 				.then(data => {
