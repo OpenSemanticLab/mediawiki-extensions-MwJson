@@ -474,10 +474,9 @@ class EntityProcessor {
 			if ( !is_string( $category ) ) {
 				continue;
 			}
-			// No sort key. The Lua computes a display label for one but scopes
-			// it to an inner block, so the outer reference is always nil and
-			// every category link is unsorted. Reproduced; worth fixing once
-			// the Lua is gone.
+			// No per link sort key: PipelineFactory::setSortKey() emits a
+			// DEFAULTSORT instead, which covers the category links a page's own
+			// templates emit too.
 			$wikitext .= '[[Category:' . str_replace( 'Category:', '', $category ) . ']]';
 		}
 

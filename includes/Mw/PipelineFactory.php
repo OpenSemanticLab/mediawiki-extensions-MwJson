@@ -147,12 +147,14 @@ class PipelineFactory {
 			$template
 		);
 
-		// The processor computes without writing; the writes happen here, in the
-		// order the Lua performed them. That order matters: the display title
-		// goes first, because SMW derives a subject's sort key from it during
-		// the #set and would otherwise fall back to the page name, so a category
-		// listing would sort by raw OSW id rather than by label.
+		// The processor computes without writing; the writes happen here. That
+		// order matters: the display title goes first, because SMW derives a
+		// subject's sort key from it during the #set and would otherwise fall
+		// back to the page name, so a query result would sort by raw OSW id
+		// rather than by label. The category sort key is the same string, and
+		// gives MediaWiki's own category listing the same order.
 		$this->setDisplayTitle( $parser, $result->displayTitle );
+		$this->setSortKey( $parser, $result->displayTitle );
 
 		$wikitext = $result->wikitext;
 		if ( $result->mapping !== null ) {
@@ -219,6 +221,25 @@ class PipelineFactory {
 			return;
 		}
 		CoreParserFunctions::displaytitle( $parser, $displayTitle );
+	}
+
+	/**
+	 * Apply the category sort key, which is the display title.
+	 *
+	 * An entity page is named by its OSW id, so without a sort key every page
+	 * in the wiki files under O and the listing on a category page is ordered
+	 * by id while it is rendered by label.
+	 *
+	 * A DEFAULTSORT rather than a per link `[[Category:X|key]]` prefix, so that
+	 * category links a page's own templates emit are sorted as well. `noreplace`
+	 * because an explicit DEFAULTSORT in one of those templates is a decision
+	 * about that page and has to win.
+	 */
+	public function setSortKey( Parser $parser, ?string $sortKey ): void {
+		if ( $sortKey === null || trim( $sortKey ) === '' ) {
+			return;
+		}
+		CoreParserFunctions::defaultsort( $parser, $sortKey, 'noreplace' );
 	}
 
 	/**
