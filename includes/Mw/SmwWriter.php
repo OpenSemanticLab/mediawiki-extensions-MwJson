@@ -120,6 +120,13 @@ class SmwWriter {
 				if ( $value === null || $value === '' ) {
 					continue;
 				}
+				if ( is_bool( $value ) ) {
+					// String concatenation turns false into the empty string,
+					// which SMW reads as no value at all. "1" and "0" are the
+					// two literals BooleanValue parses before it consults the
+					// content language's word lists.
+					$value = $value ? '1' : '0';
+				}
 				$arguments[] = $name . '=' . $value;
 			}
 		}
