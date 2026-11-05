@@ -1,7 +1,7 @@
 {
 	"manifest_version": 2,
 	"name": "MwJson",
-	"version": "0.58.7",
+	"version": "0.58.8",
 	"author": [
 		"[https://github.com/simontaurus Simon Stier]",
 		"[https://github.com/ademolaomosanya Ademola Omosanya]",
@@ -116,7 +116,8 @@
 			],
 			"dependencies": [
 				"ext.mwjson.api",
-				"ext.mwjson.parser"
+				"ext.mwjson.parser",
+				"mediawiki.util"
 			],
 			"position": "bottom",
 			"messages": [

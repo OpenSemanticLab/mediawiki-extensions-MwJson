@@ -2045,6 +2045,18 @@ mwjson.editor = class {
 		//})
 
 
+		// register page url resolver
+		// {{pageUrl <title>}}
+		// e. g. {{pageUrl 'Item:OSW01'}} => /wiki/Item:OSW01
+		// mw.util.getUrl applies $wgArticlePath and percent-encodes the title, so
+		// namespaces, '&', '+', '?' and subobject fragments survive. A relative
+		// './<title>' instead resolves against the current document, which points
+		// into the script path while the editor runs on /w/index.php.
+		Handlebars.registerHelper('pageUrl', function (title, options) {
+			if (!title || typeof title !== 'string') return '';
+			return mw.util.getUrl(title);
+		});
+
 		// register current datetime
 		// {{__uuid__}}
 		// e. g. {{__uuid__}} => ad56b31f-9fe5-466a-8be7-89bce58045f1
