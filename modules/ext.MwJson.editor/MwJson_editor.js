@@ -2057,6 +2057,22 @@ mwjson.editor = class {
 			return mw.util.getUrl(title);
 		});
 
+		// register thumbnail url resolver
+		// {{fileUrl <name> <width> <height>}}
+		// e. g. {{fileUrl 'A&B.png' 100 50}}
+		//       => /w/index.php?title=Special:Redirect/file/A%26B.png&width=100&height=50
+		// Given query parameters mw.util.getUrl builds a script path url, which is
+		// the same shape this was before, but it runs the file name through
+		// wikiUrlencode. Concatenated instead, a '&' in the name ends the title
+		// parameter and a '+' decodes as a space.
+		Handlebars.registerHelper('fileUrl', function (name, width, height, options) {
+			if (!name || typeof name !== 'string') return '';
+			const params = {};
+			if (width) params.width = width;
+			if (height) params.height = height;
+			return mw.util.getUrl('Special:Redirect/file/' + name, params);
+		});
+
 		// register current datetime
 		// {{__uuid__}}
 		// e. g. {{__uuid__}} => ad56b31f-9fe5-466a-8be7-89bce58045f1
