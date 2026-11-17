@@ -365,6 +365,14 @@
 			"mwjson-editpatch": true
 		}
 	},
+	"GrantPermissions": {
+		"mwjson-editpatch": {
+			"mwjson-editpatch": true
+		}
+	},
+	"GrantPermissionGroups": {
+		"mwjson-editpatch": "administration"
+	},
 	"HookHandlers": {
 		"CategoryEditRight": {
 			"class": "MediaWiki\\Extension\\MwJson\\Mw\\CategoryEditRightHooks",

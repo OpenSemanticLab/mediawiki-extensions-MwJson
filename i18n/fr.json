@@ -127,6 +127,7 @@
 	"mwjson-category-edit-right-denied": "Vous n'avez pas la permission de modifier « $1 », en raison de la classe à laquelle cette page appartient. {{PLURAL:$3|Le droit|Les droits}} $2 {{PLURAL:$3|est requis|sont requis}}.",
 	"right-mwjson-editpatch": "Créer et modifier des correctifs de page",
 	"action-mwjson-editpatch": "créer ou modifier un correctif de page",
+	"grant-mwjson-editpatch": "Créer et modifier des correctifs de page",
 	"apihelp-mwjsoncancreate-description": "Vérifier si l'utilisateur courant peut créer une page de la même classe que celles indiquées.",
 	"apihelp-mwjsoncancreate-summary": "Vérifier si l'utilisateur courant peut créer une page de la même classe que celles indiquées.",
 	"apihelp-mwjsoncancreate-param-titles": "Pages sur lesquelles porte la demande. Une catégorie est traitée comme une classe, tout le reste comme une page à copier.",

@@ -127,6 +127,7 @@
 	"mwjson-category-edit-right-denied": "Sie haben keine Berechtigung, \"$1\" zu ändern, aufgrund der Klasse, zu der die Seite gehört. {{PLURAL:$3|Erforderlich ist das Recht|Erforderlich sind die Rechte}} $2.",
 	"right-mwjson-editpatch": "Seiten-Patches erstellen und bearbeiten",
 	"action-mwjson-editpatch": "einen Seiten-Patch zu erstellen oder zu bearbeiten",
+	"grant-mwjson-editpatch": "Seiten-Patches erstellen und bearbeiten",
 	"apihelp-mwjsoncancreate-description": "Prüfen, ob der aktuelle Benutzer eine Seite mit der Klasse der angegebenen Seiten anlegen darf.",
 	"apihelp-mwjsoncancreate-summary": "Prüfen, ob der aktuelle Benutzer eine Seite mit der Klasse der angegebenen Seiten anlegen darf.",
 	"apihelp-mwjsoncancreate-param-titles": "Seiten, nach denen gefragt wird. Eine Kategorie wird als Klasse betrachtet, alles andere als zu kopierende Seite.",
