@@ -127,6 +127,7 @@
 	"mwjson-category-edit-right-denied": "You do not have permission to change \"$1\", because of the class it belongs to. {{PLURAL:$3|The right|The rights}} $2 {{PLURAL:$3|is|are}} required.",
 	"right-mwjson-editpatch": "Create and edit page patches",
 	"action-mwjson-editpatch": "create or edit a page patch",
+	"grant-mwjson-editpatch": "Create and edit page patches",
 	"apihelp-mwjsoncancreate-description": "Check whether the current user may create a page classed like the given ones.",
 	"apihelp-mwjsoncancreate-summary": "Check whether the current user may create a page classed like the given ones.",
 	"apihelp-mwjsoncancreate-param-titles": "Pages to ask about. A category is asked about as a class; anything else as a page to copy.",
